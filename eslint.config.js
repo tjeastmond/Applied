@@ -4,14 +4,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: [
-      "dist/",
-      "data/",
-      "node_modules/",
-      "eslint.config.js",
-      "prettier.config.js",
-      "src/components/ui/**",
-    ],
+    ignores: ["dist/", "data/", "node_modules/", "eslint.config.js", "prettier.config.js", "src/components/ui/**"],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,

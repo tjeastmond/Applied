@@ -31,29 +31,29 @@ bun run start        # NODE_ENV=production; Bun serves dist/ + /api on port 3000
 
 **Environment variables:**
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `PORT` | `3000` | HTTP port for Bun server |
-| `HOST` | `127.0.0.1` | Bind address |
-| `DATABASE_PATH` | `data/applied.db` | SQLite file path |
-| `NODE_ENV` | — | Set to `production` to enable static file serving from `dist/` |
+| Variable        | Default           | Purpose                                                        |
+| --------------- | ----------------- | -------------------------------------------------------------- |
+| `PORT`          | `3000`            | HTTP port for Bun server                                       |
+| `HOST`          | `127.0.0.1`       | Bind address                                                   |
+| `DATABASE_PATH` | `data/applied.db` | SQLite file path                                               |
+| `NODE_ENV`      | —                 | Set to `production` to enable static file serving from `dist/` |
 
 ---
 
 ## Stack
 
-| Layer | Technology |
-|-------|------------|
-| Runtime | Bun |
-| Frontend | React 19, Vite 6, TypeScript (strict) |
-| Styling | Tailwind CSS 4, Shadcn UI (`base-nova` style), Geist Variable font |
-| Icons | Lucide React |
-| Toasts | Sonner (`<Toaster />` in `src/main.tsx`) |
-| Backend | Bun.serve (no framework) |
-| Database | SQLite via `bun:sqlite` |
-| HTML parsing | linkedom (server-side job URL fetch + parse) |
-| Tests | Vitest (unit) + `bun:test` (SQLite integration) |
-| Lint/format | ESLint 9 (type-checked), Prettier + tailwind plugin |
+| Layer        | Technology                                                         |
+| ------------ | ------------------------------------------------------------------ |
+| Runtime      | Bun                                                                |
+| Frontend     | React 19, Vite 6, TypeScript (strict)                              |
+| Styling      | Tailwind CSS 4, Shadcn UI (`base-nova` style), Geist Variable font |
+| Icons        | Lucide React                                                       |
+| Toasts       | Sonner (`<Toaster />` in `src/main.tsx`)                           |
+| Backend      | Bun.serve (no framework)                                           |
+| Database     | SQLite via `bun:sqlite`                                            |
+| HTML parsing | linkedom (server-side job URL fetch + parse)                       |
+| Tests        | Vitest (unit) + `bun:test` (SQLite integration)                    |
+| Lint/format  | ESLint 9 (type-checked), Prettier + tailwind plugin                |
 
 ---
 
@@ -119,24 +119,24 @@ applied.dev/
 
 ### `JobApplication` (`src/types.ts`)
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | `string` | UUID, server-generated |
-| `url` | `string` | **Required** — job posting URL |
-| `linkedinUrl` | `string \| null` | Optional |
-| `title` | `string \| null` | **Required on create** (validated server + client) |
-| `company` | `string \| null` | **Required on create** |
-| `appliedAt` | `string` | **Required** — ISO date `YYYY-MM-DD` |
-| `viaRecruiter` | `boolean` | When false, recruiter fields cleared on save |
-| `recruiterName` | `string \| null` | Only when `viaRecruiter` |
-| `recruiterFirm` | `string \| null` | Only when `viaRecruiter` |
-| `contactEmail` | `string \| null` | |
-| `contactPhone` | `string \| null` | |
-| `notes` | `string \| null` | User-written notes (separate from parsed JD) |
-| `fullJd` | `string \| null` | Parsed job description — cleaned minimal HTML |
-| `status` | `ApplicationStatus` | `"applied" \| "interviewing" \| "rejected" \| "offer"` — defaults to `"applied"` |
-| `createdAt` | `string` | ISO timestamp |
-| `updatedAt` | `string` | ISO timestamp |
+| Field           | Type                | Notes                                                                            |
+| --------------- | ------------------- | -------------------------------------------------------------------------------- |
+| `id`            | `string`            | UUID, server-generated                                                           |
+| `url`           | `string`            | **Required** — job posting URL                                                   |
+| `linkedinUrl`   | `string \| null`    | Optional                                                                         |
+| `title`         | `string \| null`    | **Required on create** (validated server + client)                               |
+| `company`       | `string \| null`    | **Required on create**                                                           |
+| `appliedAt`     | `string`            | **Required** — ISO date `YYYY-MM-DD`                                             |
+| `viaRecruiter`  | `boolean`           | When false, recruiter fields cleared on save                                     |
+| `recruiterName` | `string \| null`    | Only when `viaRecruiter`                                                         |
+| `recruiterFirm` | `string \| null`    | Only when `viaRecruiter`                                                         |
+| `contactEmail`  | `string \| null`    |                                                                                  |
+| `contactPhone`  | `string \| null`    |                                                                                  |
+| `notes`         | `string \| null`    | User-written notes (separate from parsed JD)                                     |
+| `fullJd`        | `string \| null`    | Parsed job description — cleaned minimal HTML                                    |
+| `status`        | `ApplicationStatus` | `"applied" \| "interviewing" \| "rejected" \| "offer"` — defaults to `"applied"` |
+| `createdAt`     | `string`            | ISO timestamp                                                                    |
+| `updatedAt`     | `string`            | ISO timestamp                                                                    |
 
 **SQLite column mapping:** snake_case in DB (`linkedin_url`, `applied_at`, `full_jd`, etc.); camelCase in TypeScript via `rowToApplication()`.
 
@@ -154,13 +154,13 @@ applied.dev/
 
 All endpoints return JSON unless noted. Errors: `{ "error": "message" }` with 4xx status.
 
-| Method | Path | Body | Response |
-|--------|------|------|----------|
-| `GET` | `/api/applications` | — | `JobApplication[]` |
-| `POST` | `/api/applications` | `CreateJobApplicationInput` | `JobApplication` (201) |
-| `PATCH` | `/api/applications/:id` | `Partial<CreateJobApplicationInput>` | `JobApplication` or 404 |
-| `DELETE` | `/api/applications/:id` | — | 204 or 404 |
-| `POST` | `/api/jobs/parse` | `{ "url": string }` | `ParseJobUrlResult` |
+| Method   | Path                    | Body                                 | Response                |
+| -------- | ----------------------- | ------------------------------------ | ----------------------- |
+| `GET`    | `/api/applications`     | —                                    | `JobApplication[]`      |
+| `POST`   | `/api/applications`     | `CreateJobApplicationInput`          | `JobApplication` (201)  |
+| `PATCH`  | `/api/applications/:id` | `Partial<CreateJobApplicationInput>` | `JobApplication` or 404 |
+| `DELETE` | `/api/applications/:id` | —                                    | 204 or 404              |
+| `POST`   | `/api/jobs/parse`       | `{ "url": string }`                  | `ParseJobUrlResult`     |
 
 **Create validation** (`server/index.ts`): `url`, `title`, `company`, `appliedAt` must be non-empty strings.
 
@@ -199,7 +199,7 @@ Client helpers live in `src/api.ts`. Throws `Error` with server message on non-O
 
 - Config: `components.json` (style `base-nova`, `@/` aliases)
 - Add components: `bunx shadcn@latest add <component>`
-- **ESLint ignores `src/components/ui/**`** — don't hand-edit lint rules for generated files
+- **ESLint ignores `src/components/ui/**`\*\* — don't hand-edit lint rules for generated files
 - Installed: alert, badge, button, card, checkbox, dialog, field, input, input-group, label, separator, sonner, textarea
 
 ### Path alias
@@ -231,13 +231,13 @@ Client helpers live in `src/api.ts`. Throws `Error` with server message on non-O
 
 ## Testing
 
-| Command | What it runs |
-|---------|--------------|
-| `bun vitest` | Watch mode — `tests/**/*.test.ts` (excludes `*.bun.test.ts`) |
-| `bun vitest run` | Single run for Vitest tests |
-| `bun test tests/sqliteRepository.bun.test.ts` | Bun-native test using `bun:sqlite` in-memory |
-| `bun run test:run` | Both Vitest + Bun tests |
-| `bun run check` | Full gate before shipping |
+| Command                                       | What it runs                                                 |
+| --------------------------------------------- | ------------------------------------------------------------ |
+| `bun vitest`                                  | Watch mode — `tests/**/*.test.ts` (excludes `*.bun.test.ts`) |
+| `bun vitest run`                              | Single run for Vitest tests                                  |
+| `bun test tests/sqliteRepository.bun.test.ts` | Bun-native test using `bun:sqlite` in-memory                 |
+| `bun run test:run`                            | Both Vitest + Bun tests                                      |
+| `bun run check`                               | Full gate before shipping                                    |
 
 **Test files:**
 
@@ -277,16 +277,16 @@ Avoid generic names like `updates`, `wip`, or `fix-stuff`.
 [optional footer(s)]
 ```
 
-| Type | When to use |
-|------|-------------|
-| `feat` | New user-facing capability |
-| `fix` | Bug fix |
-| `docs` | Documentation only |
+| Type       | When to use                         |
+| ---------- | ----------------------------------- |
+| `feat`     | New user-facing capability          |
+| `fix`      | Bug fix                             |
+| `docs`     | Documentation only                  |
 | `refactor` | Code change without behavior change |
-| `test` | Tests only |
-| `chore` | Tooling, deps, housekeeping |
-| `ci` | CI/CD changes |
-| `perf` | Performance improvement |
+| `test`     | Tests only                          |
+| `chore`    | Tooling, deps, housekeeping         |
+| `ci`       | CI/CD changes                       |
+| `perf`     | Performance improvement             |
 
 **Examples:**
 
@@ -349,12 +349,12 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 ## Dev vs Production
 
-| | Development | Production |
-|---|-------------|------------|
-| Frontend | Vite HMR (separate process) | Served from `dist/` by Bun |
-| API | Bun on `:3000` | Same Bun process |
-| API calls | Vite proxies `/api` → `localhost:3000` | Same-origin `/api` |
-| Database | `data/applied.db` (local file) | Same |
+|           | Development                            | Production                 |
+| --------- | -------------------------------------- | -------------------------- |
+| Frontend  | Vite HMR (separate process)            | Served from `dist/` by Bun |
+| API       | Bun on `:3000`                         | Same Bun process           |
+| API calls | Vite proxies `/api` → `localhost:3000` | Same-origin `/api`         |
+| Database  | `data/applied.db` (local file)         | Same                       |
 
 `bun run dev` runs `dev:server` and `dev:vite` in parallel (`&`). Both must be running for full local UX.
 

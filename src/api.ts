@@ -32,10 +32,7 @@ export function createApplication(input: CreateJobApplicationInput): Promise<Job
   });
 }
 
-export function updateApplication(
-  id: string,
-  input: Partial<CreateJobApplicationInput>,
-): Promise<JobApplication> {
+export function updateApplication(id: string, input: Partial<CreateJobApplicationInput>): Promise<JobApplication> {
   return request<JobApplication>(`/api/applications/${id}`, {
     method: "PATCH",
     body: JSON.stringify(input),

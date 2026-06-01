@@ -1,19 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  createApplication,
-  deleteApplication,
-  listApplications,
-  parseJobUrl,
-  updateApplication,
-} from "@/api";
+import { createApplication, deleteApplication, listApplications, parseJobUrl, updateApplication } from "@/api";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -23,20 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSeparator,
-} from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Textarea } from "@/components/ui/textarea";
 import {
   applicationToForm,
@@ -89,11 +66,7 @@ function ApplicationFormFields({
             onChange={(e) => updateField("url", e.target.value)}
           />
           <InputGroupAddon align="inline-end">
-            <InputGroupButton
-              variant="secondary"
-              disabled={isParsing || !form.url.trim()}
-              onClick={onParse}
-            >
+            <InputGroupButton variant="secondary" disabled={isParsing || !form.url.trim()} onClick={onParse}>
               {isParsing ? "Parsing…" : "Parse"}
             </InputGroupButton>
           </InputGroupAddon>
@@ -438,7 +411,7 @@ function JobDescriptionDialog({
             "[&_h2]:text-foreground [&_h3]:text-foreground [&_h4]:text-foreground",
             "[&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold",
             "[&_h3]:mt-3 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold",
-            "[&_p]:mb-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5",
+            "[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5",
           )}
           dangerouslySetInnerHTML={{ __html: html }}
         />
@@ -486,13 +459,7 @@ function ApplicationCard({
             <Button type="button" variant="outline" size="sm" onClick={onEdit}>
               Edit
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="text-destructive"
-              onClick={onDelete}
-            >
+            <Button type="button" variant="outline" size="sm" className="text-destructive" onClick={onDelete}>
               Delete
             </Button>
           </div>

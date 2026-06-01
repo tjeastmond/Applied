@@ -61,10 +61,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
 
   async list(): Promise<JobApplication[]> {
     const rows = this.db
-      .query<
-        ApplicationRow,
-        []
-      >(`SELECT * FROM applications ORDER BY applied_at DESC, created_at DESC`)
+      .query<ApplicationRow, []>(`SELECT * FROM applications ORDER BY applied_at DESC, created_at DESC`)
       .all();
     return rows.map(rowToApplication);
   }
@@ -107,9 +104,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
         $updated_at: timestamp,
       });
 
-    const row = this.db
-      .query<ApplicationRow, [string]>(`SELECT * FROM applications WHERE id = ?`)
-      .get(id);
+    const row = this.db.query<ApplicationRow, [string]>(`SELECT * FROM applications WHERE id = ?`).get(id);
 
     if (!row) {
       throw new Error("Failed to create application");
@@ -118,26 +113,19 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
     return rowToApplication(row);
   }
 
-  async update(
-    id: string,
-    input: Partial<CreateJobApplicationInput>,
-  ): Promise<JobApplication | null> {
-    const existing = this.db
-      .query<ApplicationRow, [string]>(`SELECT * FROM applications WHERE id = ?`)
-      .get(id);
+  async update(id: string, input: Partial<CreateJobApplicationInput>): Promise<JobApplication | null> {
+    const existing = this.db.query<ApplicationRow, [string]>(`SELECT * FROM applications WHERE id = ?`).get(id);
 
     if (!existing) {
       return null;
     }
 
-    const viaRecruiter =
-      input.viaRecruiter !== undefined ? input.viaRecruiter : existing.via_recruiter === 1;
+    const viaRecruiter = input.viaRecruiter !== undefined ? input.viaRecruiter : existing.via_recruiter === 1;
 
     const updated: ApplicationRow = {
       ...existing,
       url: input.url !== undefined ? input.url.trim() : existing.url,
-      linkedin_url:
-        input.linkedinUrl !== undefined ? trimOrNull(input.linkedinUrl) : existing.linkedin_url,
+      linkedin_url: input.linkedinUrl !== undefined ? trimOrNull(input.linkedinUrl) : existing.linkedin_url,
       title: input.title !== undefined ? trimOrNull(input.title) : existing.title,
       company: input.company !== undefined ? trimOrNull(input.company) : existing.company,
       applied_at: input.appliedAt ?? existing.applied_at,
@@ -152,10 +140,8 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
           ? trimOrNull(input.recruiterFirm)
           : existing.recruiter_firm
         : null,
-      contact_email:
-        input.contactEmail !== undefined ? trimOrNull(input.contactEmail) : existing.contact_email,
-      contact_phone:
-        input.contactPhone !== undefined ? trimOrNull(input.contactPhone) : existing.contact_phone,
+      contact_email: input.contactEmail !== undefined ? trimOrNull(input.contactEmail) : existing.contact_email,
+      contact_phone: input.contactPhone !== undefined ? trimOrNull(input.contactPhone) : existing.contact_phone,
       notes: input.notes !== undefined ? trimOrNull(input.notes) : existing.notes,
       full_jd: input.fullJd !== undefined ? trimOrNull(input.fullJd) : existing.full_jd,
       status: input.status ?? existing.status,

@@ -30,13 +30,7 @@ function stripDisallowedTags(element: Element): void {
   const children = [...element.children];
   for (const child of children) {
     const tag = child.tagName.toLowerCase();
-    if (
-      tag === "script" ||
-      tag === "style" ||
-      tag === "nav" ||
-      tag === "header" ||
-      tag === "footer"
-    ) {
+    if (tag === "script" || tag === "style" || tag === "nav" || tag === "header" || tag === "footer") {
       child.remove();
       continue;
     }
