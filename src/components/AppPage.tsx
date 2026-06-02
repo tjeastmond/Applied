@@ -15,6 +15,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { emptyForm, formatDate, formToInput, isFormValid, type FormState } from "@/lib/applicationForm";
+import {
+  isEditableKeyboardTarget,
+  isModKeyChord,
+  modKShortcutDescription,
+  modKShortcutLabel,
+} from "@/lib/keyboardShortcut";
 import type { JobApplication } from "@/types";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -52,10 +58,22 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     setShowValidation(false);
   }
 
-  function openAddForm() {
-    resetForm();
+  const openAddForm = useCallback(() => {
+    setForm(emptyForm());
+    setShowValidation(false);
     setFormOpen(true);
-  }
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!isModKeyChord(event, "k")) return;
+      if (isEditableKeyboardTarget(event.target)) return;
+      event.preventDefault();
+      openAddForm();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [openAddForm]);
 
   function openDetail(application: JobApplication) {
     setSelectedId(application.id);
@@ -161,9 +179,12 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
         <div className="text-center sm:text-left">
           <h1 className="text-3xl font-bold tracking-tight">Applied.dev</h1>
         </div>
-        <Button type="button" onClick={openAddForm}>
+        <Button type="button" onClick={openAddForm} title={modKShortcutDescription()}>
           <PlusIcon data-icon="inline-start" />
           Add Application
+          <kbd className="bg-primary-foreground/15 text-primary-foreground/90 pointer-events-none hidden rounded px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline">
+            {modKShortcutLabel()}
+          </kbd>
         </Button>
       </header>
 
@@ -228,9 +249,12 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
           <Card className="shadow-sm shadow-black/5">
             <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
               <p className="text-muted-foreground text-sm">No applications yet.</p>
-              <Button type="button" variant="outline" onClick={openAddForm}>
+              <Button type="button" variant="outline" onClick={openAddForm} title={modKShortcutDescription()}>
                 <PlusIcon data-icon="inline-start" />
                 Add Your First Application
+                <kbd className="bg-muted text-muted-foreground pointer-events-none hidden rounded px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline">
+                  {modKShortcutLabel()}
+                </kbd>
               </Button>
             </CardContent>
           </Card>
