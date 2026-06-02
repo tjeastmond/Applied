@@ -8,7 +8,13 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 
 - Use Shadcn UI for frontend components
 - Show status feedback with Sonner toasts in the bottom-right corner, not inline alert banners
-- Add and edit job applications in a Shadcn Dialog modal, not inline on the page
+- Add new applications in a Shadcn Dialog modal; view and edit existing applications in the `ApplicationDetailSheet` drawer (card click or Edit)
+- Cmd+K (Mac) / Ctrl+K (Windows) opens the new application modal
+- Save/submit buttons green; Cancel buttons red/destructive in modals and sheets
+- Form inputs: blue border on focus without a gray focus ring; red border (`aria-invalid`) on required fields left empty after a failed submit
+- Title case for UI labels and button text
+- Hide notes on the add-application dialog; manage notes in the detail drawer; no form section dividers; recruiter/contact fields visible by default (optional)
+- Label the field "Company LinkedIn URL"; use "Contact Name" for the recruiter name field
 - Do not edit attached plan files when implementing plans
 - Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) for branch names, commit messages, and PR titles
 - Prettier uses 2-space indentation and a 120-character print width (`prettier.config.js`)
@@ -389,10 +395,12 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 - Applied.dev is a single-page job application tracker
 - Stack: Next.js App Router, Node.js, pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI
-- Dev server runs on port 3000 by default (`PORT` env overrides for production)
+- `pnpm dev` runs Next.js with Turbopack on port 3000 (`PORT` env overrides for production)
 - Tooling includes Prettier, ESLint, and Vitest (run via `pnpm`)
 - Required application form fields: job posting URL, title, company, apply date; all other fields are optional
-- Parsed job postings store cleaned minimal HTML in `full_jd`; user notes live in `application_notes`
+- Parsed job postings store cleaned minimal HTML in `full_jd`; user notes live in `application_notes` (many per application)
 - SQLite persistence via better-sqlite3 (`data/applied.db` by default)
-- Git workflow uses Conventional Commits for branch names, commit messages, and PR titles
+- API request bodies are validated with Zod (`src/lib/schemas/`) and sanitized before persistence (`sanitize.ts`, `sanitizeApplicationInput.ts`)
+- `normalizeJobTitle()` strips trailing suffixes such as ` | Y Combinator` on parse and save
+- Application detail uses `ApplicationDetailSheet` at 60vw width, sliding in from the right
 - Deployable to Vercel; thin auth later; SQLite for now, Postgres possible later
