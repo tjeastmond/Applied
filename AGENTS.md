@@ -19,7 +19,8 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 
 ```bash
 pnpm install         # install dependencies
-pnpm dev             # Next.js dev server (default port 3000)
+pnpm dev             # Next.js dev server with Turbopack (port 3000)
+pnpm dev:clean       # wipe .next and start dev (if HMR/CSS breaks)
 pnpm run check       # typecheck + tests + lint + format + build (full CI gate)
 ```
 
