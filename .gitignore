@@ -5,3 +5,4 @@ data/*.db
 *.local
 .cursor/hooks/state/
 .next
+*.tsbuildinfo
