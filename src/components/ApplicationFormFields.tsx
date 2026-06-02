@@ -35,14 +35,30 @@ export function ApplicationFormFields({
   onParse: () => void;
 }) {
   const minimal = variant === "minimal";
-  const urlInvalid = showValidation && form.url.trim().length === 0;
-  const titleInvalid = showValidation && (form.title?.trim().length ?? 0) === 0;
-  const companyInvalid = showValidation && (form.company?.trim().length ?? 0) === 0;
-  const appliedInvalid = showValidation && (form.appliedAt?.trim().length ?? 0) === 0;
+  const urlInvalid = showValidation && !form.url.trim();
+  const titleInvalid = showValidation && !form.title.trim();
+  const companyInvalid = showValidation && !form.company.trim();
+  const appliedInvalid = showValidation && !form.appliedAt.trim();
+
+  const companyField = (
+    <Field data-invalid={companyInvalid || undefined}>
+      <FieldLabel htmlFor="company">
+        Company <RequiredMark />
+      </FieldLabel>
+      <Input
+        id="company"
+        placeholder="Acme Inc."
+        value={form.company}
+        aria-invalid={companyInvalid}
+        onChange={(e) => updateField("company", e.target.value)}
+      />
+      <FieldError>{companyInvalid && "Company is required."}</FieldError>
+    </Field>
+  );
 
   return (
     <FieldGroup>
-      <Field data-invalid={urlInvalid ? true : undefined}>
+      <Field data-invalid={urlInvalid || undefined}>
         <FieldLabel htmlFor="url">
           Job Description URL <RequiredMark />
         </FieldLabel>
@@ -64,60 +80,32 @@ export function ApplicationFormFields({
         <FieldError>{urlInvalid && "Job Description URL is required."}</FieldError>
       </Field>
 
-      <Field data-invalid={titleInvalid ? true : undefined}>
+      <Field data-invalid={titleInvalid || undefined}>
         <FieldLabel htmlFor="title">
           Title <RequiredMark />
         </FieldLabel>
         <Input
           id="title"
           placeholder="Senior Engineer"
-          value={form.title ?? ""}
+          value={form.title}
           aria-invalid={titleInvalid}
           onChange={(e) => updateField("title", e.target.value)}
         />
         <FieldError>{titleInvalid && "Title is required."}</FieldError>
       </Field>
 
-      {stackedTitleCompany ? (
-        <Field data-invalid={companyInvalid ? true : undefined}>
-          <FieldLabel htmlFor="company">
-            Company <RequiredMark />
-          </FieldLabel>
-          <Input
-            id="company"
-            placeholder="Acme Inc."
-            value={form.company ?? ""}
-            aria-invalid={companyInvalid}
-            onChange={(e) => updateField("company", e.target.value)}
-          />
-          <FieldError>{companyInvalid && "Company is required."}</FieldError>
-        </Field>
-      ) : null}
+      {stackedTitleCompany ? companyField : null}
 
       <div className="grid gap-5 sm:grid-cols-2">
-        {!stackedTitleCompany ? (
-          <Field data-invalid={companyInvalid ? true : undefined}>
-            <FieldLabel htmlFor="company">
-              Company <RequiredMark />
-            </FieldLabel>
-            <Input
-              id="company"
-              placeholder="Acme Inc."
-              value={form.company ?? ""}
-              aria-invalid={companyInvalid}
-              onChange={(e) => updateField("company", e.target.value)}
-            />
-            <FieldError>{companyInvalid && "Company is required."}</FieldError>
-          </Field>
-        ) : null}
-        <Field data-invalid={appliedInvalid ? true : undefined}>
+        {!stackedTitleCompany ? companyField : null}
+        <Field data-invalid={appliedInvalid || undefined}>
           <FieldLabel htmlFor="appliedAt">
             Applied <RequiredMark />
           </FieldLabel>
           <Input
             id="appliedAt"
             type="date"
-            value={form.appliedAt ?? ""}
+            value={form.appliedAt}
             aria-invalid={appliedInvalid}
             onChange={(e) => updateField("appliedAt", e.target.value)}
           />
@@ -129,7 +117,7 @@ export function ApplicationFormFields({
             <select
               id="status"
               className="border-input bg-background focus-visible:border-blue-500 focus-visible:ring-0 aria-invalid:border-destructive aria-invalid:focus-visible:border-destructive h-9 w-full rounded-md border px-2.5 text-sm outline-none"
-              value={form.status ?? "applied"}
+              value={form.status}
               onChange={(e) => updateField("status", e.target.value as ApplicationStatus)}
             >
               {STATUS_OPTIONS.map((option) => (

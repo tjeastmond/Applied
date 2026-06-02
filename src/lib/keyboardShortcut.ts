@@ -8,9 +8,8 @@ export function modKShortcutLabel(): string {
 }
 
 export function modKShortcutDescription(): string {
-  return isMacPlatform()
-    ? "Command K opens the new application modal"
-    : "Ctrl+K opens the new application modal";
+  const modifier = isMacPlatform() ? "Command" : "Ctrl";
+  return `${modifier}+K opens the new application modal`;
 }
 
 export function isModKeyChord(event: KeyboardEvent, key: string): boolean {

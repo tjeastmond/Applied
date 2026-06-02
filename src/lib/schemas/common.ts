@@ -5,6 +5,11 @@ export const applicationStatusSchema = z.enum(["applied", "interviewing", "rejec
 
 export const uuidSchema = z.uuid("must be a valid id");
 
+export function parseUuid(raw: string): string | null {
+  const result = uuidSchema.safeParse(raw);
+  return result.success ? result.data : null;
+}
+
 export const isoDateSchema = z
   .string()
   .trim()

@@ -25,7 +25,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { emptyForm, formatDate, formToInput, isFormValid, type FormState } from "@/lib/applicationForm";
+import { errorMessage } from "@/lib/errorMessage";
+import { emptyForm, formatDate, formToInput, isFormValid, mergeParseResult, type FormState } from "@/lib/applicationForm";
 import {
   isEditableKeyboardTarget,
   isModKeyChord,
@@ -72,8 +73,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   }
 
   const openAddForm = useCallback(() => {
-    setForm(emptyForm());
-    setShowValidation(false);
+    resetForm();
     setFormOpen(true);
   }, []);
 
@@ -91,11 +91,6 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   function openDetail(application: JobApplication) {
     setSelectedId(application.id);
     setDetailOpen(true);
-  }
-
-  function closeDetail() {
-    setDetailOpen(false);
-    setSelectedId(null);
   }
 
   function handleDetailOpenChange(open: boolean) {
@@ -127,18 +122,13 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     try {
       const result = await parseJobUrl(form.url.trim());
       if (result.ok) {
-        setForm((prev) => ({
-          ...prev,
-          title: result.title ?? prev.title,
-          company: result.company ?? prev.company,
-          fullJd: result.fullJd ?? prev.fullJd,
-        }));
+        setForm((prev) => mergeParseResult(prev, result));
         toast.success("Job details parsed. Review and save when ready.");
       } else {
         toast.error(result.error);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to parse URL");
+      toast.error(errorMessage(error, "Failed to parse URL"));
     } finally {
       setIsParsing(false);
     }
@@ -163,7 +153,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
       closeForm();
       await refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save application");
+      toast.error(errorMessage(error, "Failed to save application"));
     } finally {
       setIsSaving(false);
     }
@@ -190,12 +180,12 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
         closeForm();
       }
       if (selectedId === id) {
-        closeDetail();
+        handleDetailOpenChange(false);
       }
       toast.success("Application deleted.");
       await refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete application");
+      toast.error(errorMessage(error, "Failed to delete application"));
     } finally {
       setIsDeleting(false);
     }

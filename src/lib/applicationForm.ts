@@ -4,7 +4,7 @@ import {
   requiredApplicationFieldsSchema,
   type ParsedCreateJobApplicationInput,
 } from "@/lib/schemas/application";
-import type { ApplicationStatus, JobApplication } from "@/types";
+import type { ApplicationStatus, JobApplication, ParseJobUrlSuccess } from "@/types";
 
 export type FormState = {
   id?: string;
@@ -52,6 +52,15 @@ export function isFormValid(form: FormState): boolean {
   }).success;
 }
 
+export function mergeParseResult(form: FormState, result: Pick<ParseJobUrlSuccess, "title" | "company" | "fullJd">): FormState {
+  return {
+    ...form,
+    title: result.title ?? form.title,
+    company: result.company ?? form.company,
+    fullJd: result.fullJd ?? form.fullJd,
+  };
+}
+
 export function truncate(text: string, max = 120): string {
   if (text.length <= max) return text;
   return `${text.slice(0, max).trim()}…`;
@@ -67,7 +76,7 @@ export function formatDate(value: string): string {
 }
 
 export function formToInput(form: FormState): ParsedCreateJobApplicationInput {
-  const hasRecruiterInfo = (form.recruiterName?.trim().length ?? 0) > 0 || (form.recruiterFirm?.trim().length ?? 0) > 0;
+  const hasRecruiterInfo = Boolean(form.recruiterName.trim()) || Boolean(form.recruiterFirm.trim());
   const result = createJobApplicationSchema.safeParse({
     url: form.url,
     title: form.title,

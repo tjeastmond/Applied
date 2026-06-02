@@ -15,7 +15,15 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { applicationToForm, formatDate, formToInput, isFormValid, type FormState } from "@/lib/applicationForm";
+import { errorMessage } from "@/lib/errorMessage";
+import {
+  applicationToForm,
+  formatDate,
+  formToInput,
+  isFormValid,
+  mergeParseResult,
+  type FormState,
+} from "@/lib/applicationForm";
 import type { ApplicationNote, JobApplication } from "@/types";
 import { ChevronDownIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
@@ -56,7 +64,7 @@ export function ApplicationDetailSheet({
     try {
       setNotes(await listApplicationNotes(applicationId));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to load notes");
+      toast.error(errorMessage(error, "Failed to load notes"));
     }
   }, []);
 
@@ -81,22 +89,13 @@ export function ApplicationDetailSheet({
     try {
       const result = await parseJobUrl(form.url.trim());
       if (result.ok) {
-        setForm((prev) =>
-          prev
-            ? {
-                ...prev,
-                title: result.title ?? prev.title,
-                company: result.company ?? prev.company,
-                fullJd: result.fullJd ?? prev.fullJd,
-              }
-            : prev,
-        );
+        setForm((prev) => (prev ? mergeParseResult(prev, result) : prev));
         toast.success("Job details parsed.");
       } else {
         toast.error(result.error);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to parse URL");
+      toast.error(errorMessage(error, "Failed to parse URL"));
     } finally {
       setIsParsing(false);
     }
@@ -114,7 +113,7 @@ export function ApplicationDetailSheet({
       toast.success("Application updated.");
       await onSaved();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save application");
+      toast.error(errorMessage(error, "Failed to save application"));
     } finally {
       setIsSaving(false);
     }
@@ -132,7 +131,7 @@ export function ApplicationDetailSheet({
       await loadNotes(application.id);
       toast.success("Note added.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to add note");
+      toast.error(errorMessage(error, "Failed to add note"));
     } finally {
       setIsAddingNote(false);
     }
@@ -146,16 +145,16 @@ export function ApplicationDetailSheet({
       await loadNotes(application.id);
       toast.success("Note deleted.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete note");
+      toast.error(errorMessage(error, "Failed to delete note"));
     } finally {
       setDeletingNoteId(null);
     }
   }
 
-  const headerTitle = form?.title?.trim() || application?.title || application?.company || "Application";
+  const headerTitle = form?.title.trim() || application?.title || application?.company || "Application";
   const postingUrl = form?.url.trim() || application?.url.trim() || "";
-  const valid = form ? isFormValid(form) : false;
-  const fullJd = form?.fullJd?.trim() || application?.fullJd?.trim();
+  const fullJd = form?.fullJd.trim() || application?.fullJd?.trim();
+  const valid = form !== null && isFormValid(form);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -179,9 +178,9 @@ export function ApplicationDetailSheet({
             )}
           </SheetTitle>
           <SheetDescription className="flex flex-wrap items-center gap-x-1.5">
-            {(form?.company?.trim() || application?.company) ? (
+            {(form?.company.trim() || application?.company) ? (
               <>
-                <span>{form?.company?.trim() || application?.company}</span>
+                <span>{form?.company.trim() || application?.company}</span>
                 <span aria-hidden="true">·</span>
               </>
             ) : null}

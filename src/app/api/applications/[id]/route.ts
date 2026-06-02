@@ -2,7 +2,7 @@ import { getRepository } from "@/lib/server/db";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
 import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
 import { patchJobApplicationSchema } from "@/lib/schemas/application";
-import { uuidSchema } from "@/lib/schemas/common";
+import { parseUuid } from "@/lib/schemas/common";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -11,8 +11,8 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
   const { id: rawId } = await context.params;
-  const idResult = uuidSchema.safeParse(rawId);
-  if (!idResult.success) {
+  const id = parseUuid(rawId);
+  if (!id) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
@@ -21,7 +21,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const updated = await getRepository().update(idResult.data, sanitizeApplicationInput(parsed.data));
+  const updated = await getRepository().update(id, sanitizeApplicationInput(parsed.data));
   if (!updated) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
@@ -30,12 +30,12 @@ export async function PATCH(request: Request, context: RouteContext) {
 
 export async function DELETE(_request: Request, context: RouteContext) {
   const { id: rawId } = await context.params;
-  const idResult = uuidSchema.safeParse(rawId);
-  if (!idResult.success) {
+  const id = parseUuid(rawId);
+  if (!id) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
-  const deleted = await getRepository().delete(idResult.data);
+  const deleted = await getRepository().delete(id);
   if (!deleted) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
