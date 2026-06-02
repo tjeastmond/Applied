@@ -158,7 +158,7 @@ export function ApplicationDetailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex w-[50vw] max-w-[50vw] min-w-[50vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[50vw]"
+        className="flex w-[75vw] max-w-[75vw] min-w-[75vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[75vw]"
       >
         <SheetHeader className="border-b px-6 py-4">
           <SheetTitle className="pr-8 text-lg">
