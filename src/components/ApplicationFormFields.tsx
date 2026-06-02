@@ -128,7 +128,7 @@ export function ApplicationFormFields({
             <FieldLabel htmlFor="status">Status</FieldLabel>
             <select
               id="status"
-              className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full rounded-md border px-2.5 text-sm outline-none focus-visible:ring-3"
+              className="border-input bg-background focus-visible:border-blue-500 focus-visible:ring-0 aria-invalid:border-destructive aria-invalid:focus-visible:border-destructive h-9 w-full rounded-md border px-2.5 text-sm outline-none"
               value={form.status ?? "applied"}
               onChange={(e) => updateField("status", e.target.value as ApplicationStatus)}
             >
