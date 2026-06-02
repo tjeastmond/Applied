@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { parseJobUrl } from "../server/services/parseJobUrl";
+import { parseJobUrl } from "@/lib/server/services/parseJobUrl";
 
 const sampleHtml = `<!doctype html>
 <html>

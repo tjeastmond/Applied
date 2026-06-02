@@ -1,5 +1,5 @@
-import type { Database } from "bun:sqlite";
-import type { CreateJobApplicationInput, JobApplication } from "../../src/types";
+import type Database from "better-sqlite3";
+import type { CreateJobApplicationInput, JobApplication } from "@/types";
 import type { JobApplicationRepository } from "../repositories/jobApplicationRepository";
 
 type ApplicationRow = {
@@ -56,13 +56,54 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+const LIST_SQL = `SELECT * FROM applications ORDER BY applied_at DESC, created_at DESC`;
+const GET_BY_ID_SQL = `SELECT * FROM applications WHERE id = ?`;
+const INSERT_SQL = `INSERT INTO applications (
+  id, url, linkedin_url, title, company, applied_at,
+  via_recruiter, recruiter_name, recruiter_firm,
+  contact_email, contact_phone, notes, full_jd, status,
+  created_at, updated_at
+) VALUES (
+  $id, $url, $linkedin_url, $title, $company, $applied_at,
+  $via_recruiter, $recruiter_name, $recruiter_firm,
+  $contact_email, $contact_phone, $notes, $full_jd, $status,
+  $created_at, $updated_at
+)`;
+const UPDATE_SQL = `UPDATE applications SET
+  url = $url,
+  linkedin_url = $linkedin_url,
+  title = $title,
+  company = $company,
+  applied_at = $applied_at,
+  via_recruiter = $via_recruiter,
+  recruiter_name = $recruiter_name,
+  recruiter_firm = $recruiter_firm,
+  contact_email = $contact_email,
+  contact_phone = $contact_phone,
+  notes = $notes,
+  full_jd = $full_jd,
+  status = $status,
+  updated_at = $updated_at
+WHERE id = $id`;
+const DELETE_SQL = `DELETE FROM applications WHERE id = ?`;
+
 export class SqliteJobApplicationRepository implements JobApplicationRepository {
-  constructor(private readonly db: Database) {}
+  private readonly listStmt;
+  private readonly getByIdStmt;
+  private readonly insertStmt;
+  private readonly updateStmt;
+  private readonly deleteStmt;
+
+  constructor(db: Database.Database) {
+    this.listStmt = db.prepare(LIST_SQL);
+    this.getByIdStmt = db.prepare(GET_BY_ID_SQL);
+    this.insertStmt = db.prepare(INSERT_SQL);
+    this.updateStmt = db.prepare(UPDATE_SQL);
+    this.deleteStmt = db.prepare(DELETE_SQL);
+  }
 
   async list(): Promise<JobApplication[]> {
-    const rows = this.db
-      .query<ApplicationRow, []>(`SELECT * FROM applications ORDER BY applied_at DESC, created_at DESC`)
-      .all();
+    const rows = this.listStmt.all() as ApplicationRow[];
     return rows.map(rowToApplication);
   }
 
@@ -71,40 +112,26 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
     const timestamp = nowIso();
     const viaRecruiter = input.viaRecruiter ?? false;
 
-    this.db
-      .query(
-        `INSERT INTO applications (
-          id, url, linkedin_url, title, company, applied_at,
-          via_recruiter, recruiter_name, recruiter_firm,
-          contact_email, contact_phone, notes, full_jd, status,
-          created_at, updated_at
-        ) VALUES (
-          $id, $url, $linkedin_url, $title, $company, $applied_at,
-          $via_recruiter, $recruiter_name, $recruiter_firm,
-          $contact_email, $contact_phone, $notes, $full_jd, $status,
-          $created_at, $updated_at
-        )`,
-      )
-      .run({
-        $id: id,
-        $url: input.url.trim(),
-        $linkedin_url: trimOrNull(input.linkedinUrl),
-        $title: input.title?.trim() ?? "",
-        $company: input.company?.trim() ?? "",
-        $applied_at: input.appliedAt?.trim() ?? todayIsoDate(),
-        $via_recruiter: viaRecruiter ? 1 : 0,
-        $recruiter_name: viaRecruiter ? trimOrNull(input.recruiterName) : null,
-        $recruiter_firm: viaRecruiter ? trimOrNull(input.recruiterFirm) : null,
-        $contact_email: trimOrNull(input.contactEmail),
-        $contact_phone: trimOrNull(input.contactPhone),
-        $notes: trimOrNull(input.notes),
-        $full_jd: trimOrNull(input.fullJd),
-        $status: input.status ?? "applied",
-        $created_at: timestamp,
-        $updated_at: timestamp,
-      });
+    this.insertStmt.run({
+      id,
+      url: input.url.trim(),
+      linkedin_url: trimOrNull(input.linkedinUrl),
+      title: input.title?.trim() ?? "",
+      company: input.company?.trim() ?? "",
+      applied_at: input.appliedAt?.trim() ?? todayIsoDate(),
+      via_recruiter: viaRecruiter ? 1 : 0,
+      recruiter_name: viaRecruiter ? trimOrNull(input.recruiterName) : null,
+      recruiter_firm: viaRecruiter ? trimOrNull(input.recruiterFirm) : null,
+      contact_email: trimOrNull(input.contactEmail),
+      contact_phone: trimOrNull(input.contactPhone),
+      notes: trimOrNull(input.notes),
+      full_jd: trimOrNull(input.fullJd),
+      status: input.status ?? "applied",
+      created_at: timestamp,
+      updated_at: timestamp,
+    });
 
-    const row = this.db.query<ApplicationRow, [string]>(`SELECT * FROM applications WHERE id = ?`).get(id);
+    const row = this.getByIdStmt.get(id) as ApplicationRow | undefined;
 
     if (!row) {
       throw new Error("Failed to create application");
@@ -114,7 +141,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
   }
 
   async update(id: string, input: Partial<CreateJobApplicationInput>): Promise<JobApplication | null> {
-    const existing = this.db.query<ApplicationRow, [string]>(`SELECT * FROM applications WHERE id = ?`).get(id);
+    const existing = this.getByIdStmt.get(id) as ApplicationRow | undefined;
 
     if (!existing) {
       return null;
@@ -148,48 +175,29 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
       updated_at: nowIso(),
     };
 
-    this.db
-      .query(
-        `UPDATE applications SET
-          url = $url,
-          linkedin_url = $linkedin_url,
-          title = $title,
-          company = $company,
-          applied_at = $applied_at,
-          via_recruiter = $via_recruiter,
-          recruiter_name = $recruiter_name,
-          recruiter_firm = $recruiter_firm,
-          contact_email = $contact_email,
-          contact_phone = $contact_phone,
-          notes = $notes,
-          full_jd = $full_jd,
-          status = $status,
-          updated_at = $updated_at
-        WHERE id = $id`,
-      )
-      .run({
-        $id: id,
-        $url: updated.url,
-        $linkedin_url: updated.linkedin_url,
-        $title: updated.title,
-        $company: updated.company,
-        $applied_at: updated.applied_at,
-        $via_recruiter: updated.via_recruiter,
-        $recruiter_name: updated.recruiter_name,
-        $recruiter_firm: updated.recruiter_firm,
-        $contact_email: updated.contact_email,
-        $contact_phone: updated.contact_phone,
-        $notes: updated.notes,
-        $full_jd: updated.full_jd,
-        $status: updated.status,
-        $updated_at: updated.updated_at,
-      });
+    this.updateStmt.run({
+      id,
+      url: updated.url,
+      linkedin_url: updated.linkedin_url,
+      title: updated.title,
+      company: updated.company,
+      applied_at: updated.applied_at,
+      via_recruiter: updated.via_recruiter,
+      recruiter_name: updated.recruiter_name,
+      recruiter_firm: updated.recruiter_firm,
+      contact_email: updated.contact_email,
+      contact_phone: updated.contact_phone,
+      notes: updated.notes,
+      full_jd: updated.full_jd,
+      status: updated.status,
+      updated_at: updated.updated_at,
+    });
 
     return rowToApplication(updated);
   }
 
   async delete(id: string): Promise<boolean> {
-    const result = this.db.query(`DELETE FROM applications WHERE id = ?`).run(id);
+    const result = this.deleteStmt.run(id);
     return result.changes > 0;
   }
 }

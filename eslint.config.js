@@ -4,7 +4,19 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist/", "data/", "node_modules/", "eslint.config.js", "prettier.config.js", "src/components/ui/**"],
+    ignores: [
+      "dist/",
+      ".next/",
+      "data/",
+      "node_modules/",
+      "eslint.config.js",
+      "prettier.config.js",
+      "next.config.ts",
+      "postcss.config.mjs",
+      "vitest.config.ts",
+      "src/components/ui/**",
+      "next-env.d.ts",
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -18,7 +30,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["server/db/sqliteRepository.ts"],
+    files: ["src/lib/server/db/sqliteRepository.ts"],
     rules: {
       "@typescript-eslint/require-await": "off",
     },

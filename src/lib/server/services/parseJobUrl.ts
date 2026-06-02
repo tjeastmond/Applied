@@ -1,5 +1,5 @@
 import { parseHTML } from "linkedom";
-import type { ParseJobUrlResult } from "../../src/types";
+import type { ParseJobUrlResult } from "@/types";
 import { buildFullJd } from "./extractFullJd";
 
 const USER_AGENT =

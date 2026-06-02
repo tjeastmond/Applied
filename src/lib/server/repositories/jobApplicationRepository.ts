@@ -1,4 +1,4 @@
-import type { CreateJobApplicationInput, JobApplication } from "../../src/types";
+import type { CreateJobApplicationInput, JobApplication } from "@/types";
 
 export interface JobApplicationRepository {
   list(): Promise<JobApplication[]>;

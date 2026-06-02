@@ -1,6 +1,6 @@
-import { describe, expect, test } from "bun:test";
-import { openDatabase } from "../server/db/migrate";
-import { SqliteJobApplicationRepository } from "../server/db/sqliteRepository";
+import { describe, expect, test } from "vitest";
+import { openDatabase } from "@/lib/server/db/migrate";
+import { SqliteJobApplicationRepository } from "@/lib/server/db/sqliteRepository";
 
 describe("SqliteJobApplicationRepository", () => {
   test("creates, lists, updates, and deletes applications with extended fields", async () => {

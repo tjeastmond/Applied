@@ -11,32 +11,32 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 - Add and edit job applications in a Shadcn Dialog modal, not inline on the page
 - Do not edit attached plan files when implementing plans
 - Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) for branch names, commit messages, and PR titles
+- Prettier uses 2-space indentation and a 120-character print width (`prettier.config.js`)
 
 ---
 
 ## Quick Start
 
 ```bash
-bun install          # install dependencies
-bun run dev          # Bun API (port 3000) + Vite dev server (proxies /api → 3000)
-bun run check        # typecheck + tests + lint + format + build (full CI gate)
+pnpm install         # install dependencies
+pnpm dev             # Next.js dev server (default port 3000)
+pnpm run check       # typecheck + tests + lint + format + build (full CI gate)
 ```
 
 **Production:**
 
 ```bash
-bun run build        # vite build → dist/
-bun run start        # NODE_ENV=production; Bun serves dist/ + /api on port 3000
+pnpm run build       # next build
+pnpm run start       # next start (production server)
 ```
 
 **Environment variables:**
 
-| Variable        | Default           | Purpose                                                        |
-| --------------- | ----------------- | -------------------------------------------------------------- |
-| `PORT`          | `3000`            | HTTP port for Bun server                                       |
-| `HOST`          | `127.0.0.1`       | Bind address                                                   |
-| `DATABASE_PATH` | `data/applied.db` | SQLite file path                                               |
-| `NODE_ENV`      | —                 | Set to `production` to enable static file serving from `dist/` |
+| Variable        | Default           | Purpose                          |
+| --------------- | ----------------- | -------------------------------- |
+| `DATABASE_PATH` | `data/applied.db` | SQLite file path                 |
+| `NODE_ENV`      | —                 | `production` for optimized build |
+| `PORT`          | `3000`            | HTTP port for `next start`       |
 
 ---
 
@@ -44,15 +44,17 @@ bun run start        # NODE_ENV=production; Bun serves dist/ + /api on port 3000
 
 | Layer        | Technology                                                         |
 | ------------ | ------------------------------------------------------------------ |
-| Runtime      | Bun                                                                |
-| Frontend     | React 19, Vite 6, TypeScript (strict)                              |
+| Runtime      | Node.js                                                            |
+| Package mgr  | pnpm                                                               |
+| Framework    | Next.js 15 (App Router)                                            |
+| Frontend     | React 19, TypeScript (strict)                                      |
 | Styling      | Tailwind CSS 4, Shadcn UI (`base-nova` style), Geist Variable font |
 | Icons        | Lucide React                                                       |
-| Toasts       | Sonner (`<Toaster />` in `src/main.tsx`)                           |
-| Backend      | Bun.serve (no framework)                                           |
-| Database     | SQLite via `bun:sqlite`                                            |
+| Toasts       | Sonner (`<Toaster />` in `src/app/layout.tsx`)                     |
+| Backend      | Next.js Route Handlers (`src/app/api/**`)                          |
+| Database     | SQLite via `better-sqlite3`                                        |
 | HTML parsing | linkedom (server-side job URL fetch + parse)                       |
-| Tests        | Vitest (unit) + `bun:test` (SQLite integration)                    |
+| Tests        | Vitest (unit + SQLite integration)                                 |
 | Lint/format  | ESLint 9 (type-checked), Prettier + tailwind plugin                |
 
 ---
@@ -60,22 +62,23 @@ bun run start        # NODE_ENV=production; Bun serves dist/ + /api on port 3000
 ## Architecture
 
 ```
-Browser (Vite dev or static dist/)
-  └─ src/App.tsx          React UI, form state, toasts
-  └─ src/api.ts           fetch() wrappers for /api/*
+Browser
+  └─ src/app/page.tsx           Client UI: list, dialog form, cards
+  └─ src/app/layout.tsx         Root layout + Sonner Toaster
+  └─ src/api.ts                 fetch() wrappers for /api/*
        │
-       ▼  (dev: Vite proxy; prod: same origin)
-Bun server (server/index.ts)
-  └─ /api/*               JSON REST handlers
-  └─ /*                   Static files from dist/ (production only)
+       ▼  (same origin)
+Next.js App Router
+  └─ src/app/api/**             Route handlers (JSON REST)
+  └─ src/lib/server/db.ts       Singleton DB + repository
   └─ SqliteJobApplicationRepository
        └─ data/applied.db
-  └─ parseJobUrl service  Fetches external job URLs, extracts metadata
+  └─ parseJobUrl service        Fetches external job URLs, extracts metadata
 ```
 
-**Shared types:** `src/types.ts` is imported by both frontend and server. Keep API shapes in sync here.
+**Shared types:** `src/types.ts` is imported by both client and server code. Keep API shapes in sync here.
 
-**Repository pattern:** `server/repositories/jobApplicationRepository.ts` defines the interface; `server/db/sqliteRepository.ts` is the only implementation. Use the interface when adding alternate backends or mocking.
+**Repository pattern:** `src/lib/server/repositories/jobApplicationRepository.ts` defines the interface; `src/lib/server/db/sqliteRepository.ts` is the only implementation. Use the interface when adding alternate backends or mocking.
 
 ---
 
@@ -83,34 +86,43 @@ Bun server (server/index.ts)
 
 ```
 applied.dev/
-├── src/                          # Frontend (React)
-│   ├── App.tsx                   # Main page: list, dialog form, cards
-│   ├── api.ts                    # Client-side API helpers
-│   ├── types.ts                  # Shared domain types (frontend + server)
-│   ├── main.tsx                  # React root + Sonner Toaster
-│   ├── styles.css                # Tailwind + Shadcn theme tokens
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx              # Root layout, metadata, Toaster
+│   │   ├── page.tsx                # Main page: list, dialog form, cards
+│   │   └── api/
+│   │       ├── applications/
+│   │       │   ├── route.ts        # GET list, POST create
+│   │       │   └── [id]/route.ts   # PATCH update, DELETE
+│   │       └── jobs/parse/route.ts # POST parse job URL
+│   ├── api.ts                      # Client-side API helpers
+│   ├── types.ts                    # Shared domain types
+│   ├── styles.css                  # Tailwind + Shadcn theme tokens
+│   ├── middleware.ts               # Next.js middleware (placeholder)
 │   ├── lib/
-│   │   ├── applicationForm.ts    # Form state, validation, conversions
-│   │   └── utils.ts              # cn() helper (clsx + tailwind-merge)
-│   └── components/ui/          # Shadcn components (do not lint)
-├── server/
-│   ├── index.ts                  # Bun.serve entry, routing, validation
-│   ├── db/
-│   │   ├── schema.sql            # Table DDL
-│   │   ├── migrate.ts            # Runs schema + incremental ALTERs
-│   │   └── sqliteRepository.ts   # CRUD implementation
-│   ├── repositories/
-│   │   └── jobApplicationRepository.ts
-│   └── services/
-│       ├── parseJobUrl.ts        # Fetch URL, extract title/company/JD
-│       └── extractFullJd.ts      # Sanitize HTML → minimal full_jd
-├── tests/                        # Vitest (*.test.ts) + Bun (*.bun.test.ts)
-├── data/                         # SQLite DB (gitignored); auto-created
-├── .ai/issues.md                 # Track bugs/issues found during work
-├── components.json               # Shadcn config (style: base-nova)
-├── vite.config.ts                # @ alias, /api proxy → localhost:3000
-├── vitest.config.ts              # Excludes *.bun.test.ts; externalizes bun:
-└── AGENTS.md                     # This file
+│   │   ├── applicationForm.ts      # Form state, validation, conversions
+│   │   ├── utils.ts                # cn() helper (clsx + tailwind-merge)
+│   │   └── server/
+│   │       ├── db.ts               # DB singleton + getRepository()
+│   │       ├── validation.ts       # Request body validation
+│   │       ├── db/
+│   │       │   ├── schema.sql      # Table DDL
+│   │       │   ├── migrate.ts      # Runs schema + incremental ALTERs
+│   │       │   └── sqliteRepository.ts
+│   │       ├── repositories/
+│   │       │   └── jobApplicationRepository.ts
+│   │       └── services/
+│   │           ├── parseJobUrl.ts  # Fetch URL, extract title/company/JD
+│   │           └── extractFullJd.ts
+│   └── components/ui/              # Shadcn components (do not lint)
+├── tests/                          # Vitest (*.test.ts)
+├── data/                           # SQLite DB (gitignored); auto-created
+├── .ai/issues.md                   # Track bugs/issues found during work
+├── components.json                 # Shadcn config (style: base-nova)
+├── next.config.ts                  # Next.js config (externalizes better-sqlite3)
+├── postcss.config.mjs              # Tailwind PostCSS
+├── vitest.config.ts
+└── AGENTS.md                       # This file
 ```
 
 ---
@@ -144,8 +156,8 @@ applied.dev/
 
 ### Schema migrations
 
-- `server/db/schema.sql` — `CREATE TABLE IF NOT EXISTS` + index
-- `server/db/migrate.ts` — runs schema on startup; includes legacy `ALTER TABLE` for `full_jd` if missing
+- `src/lib/server/db/schema.sql` — `CREATE TABLE IF NOT EXISTS` + index
+- `src/lib/server/db/migrate.ts` — runs schema on startup; includes legacy `ALTER TABLE` for `full_jd` if missing
 - Add new columns via `migrate.ts` (check `PRAGMA table_info`) — do not rely on ALTER in schema.sql alone for existing DBs
 
 ---
@@ -162,7 +174,7 @@ All endpoints return JSON unless noted. Errors: `{ "error": "message" }` with 4x
 | `DELETE` | `/api/applications/:id` | —                                    | 204 or 404              |
 | `POST`   | `/api/jobs/parse`       | `{ "url": string }`                  | `ParseJobUrlResult`     |
 
-**Create validation** (`server/index.ts`): `url`, `title`, `company`, `appliedAt` must be non-empty strings.
+**Create validation** (`src/lib/server/validation.ts`): `url`, `title`, `company`, `appliedAt` must be non-empty strings.
 
 **Parse response:**
 
@@ -175,11 +187,15 @@ All endpoints return JSON unless noted. Errors: `{ "error": "message" }` with 4x
 
 Client helpers live in `src/api.ts`. Throws `Error` with server message on non-OK responses.
 
+Route handlers set `export const runtime = "nodejs"` because `better-sqlite3` requires the Node.js runtime.
+
 ---
 
 ## Frontend
 
-### Main UI flow (`src/App.tsx`)
+### Main UI flow (`src/app/page.tsx`)
+
+Client component (`"use client"`). Contains the full application UI:
 
 1. **List view** — cards sorted by server; empty state with CTA
 2. **Add/Edit** — Shadcn `Dialog` with `ApplicationFormFields`
@@ -198,19 +214,19 @@ Client helpers live in `src/api.ts`. Throws `Error` with server message on non-O
 ### Shadcn UI
 
 - Config: `components.json` (style `base-nova`, `@/` aliases)
-- Add components: `bunx shadcn@latest add <component>`
+- Add components: `pnpm dlx shadcn@latest add <component>`
 - **ESLint ignores `src/components/ui/**`\*\* — don't hand-edit lint rules for generated files
 - Installed: alert, badge, button, card, checkbox, dialog, field, input, input-group, label, separator, sonner, textarea
 
 ### Path alias
 
-`@/*` → `src/*` (configured in `tsconfig.json` and `vite.config.ts`)
+`@/*` → `src/*` (configured in `tsconfig.json`)
 
 ---
 
 ## Server Services
 
-### Job URL parsing (`server/services/parseJobUrl.ts`)
+### Job URL parsing (`src/lib/server/services/parseJobUrl.ts`)
 
 1. Validates URL (http/https only)
 2. Fetches with 8s timeout, browser User-Agent
@@ -219,7 +235,7 @@ Client helpers live in `src/api.ts`. Throws `Error` with server message on non-O
 5. **Company:** `og:site_name` → `application-name` meta → hostname heuristic
 6. **fullJd:** delegated to `extractFullJd.ts`
 
-### JD extraction (`server/services/extractFullJd.ts`)
+### JD extraction (`src/lib/server/services/extractFullJd.ts`)
 
 - Finds description root via CSS selectors (`job-description`, `article`, `main`, etc.)
 - Strips to allowed tags: `p`, `ul`, `ol`, `li`, `h2`–`h4`, `strong`, `em`, `br`
@@ -231,22 +247,18 @@ Client helpers live in `src/api.ts`. Throws `Error` with server message on non-O
 
 ## Testing
 
-| Command                                       | What it runs                                                 |
-| --------------------------------------------- | ------------------------------------------------------------ |
-| `bun vitest`                                  | Watch mode — `tests/**/*.test.ts` (excludes `*.bun.test.ts`) |
-| `bun vitest run`                              | Single run for Vitest tests                                  |
-| `bun test tests/sqliteRepository.bun.test.ts` | Bun-native test using `bun:sqlite` in-memory                 |
-| `bun run test:run`                            | Both Vitest + Bun tests                                      |
-| `bun run check`                               | Full gate before shipping                                    |
+| Command             | What it runs                      |
+| ------------------- | --------------------------------- |
+| `pnpm test`         | Watch mode — `tests/**/*.test.ts` |
+| `pnpm run test:run` | Single run for Vitest tests       |
+| `pnpm run check`    | Full gate before shipping         |
 
 **Test files:**
 
 - `tests/applicationForm.test.ts` — form validation
 - `tests/parseJobUrl.test.ts` — parse service (mocked fetch)
 - `tests/extractFullJd.test.ts` — JD HTML sanitization
-- `tests/sqliteRepository.bun.test.ts` — full CRUD lifecycle
-
-**Vitest config** externalizes `bun:` imports so server code can be imported without running under Bun.
+- `tests/sqliteRepository.test.ts` — full CRUD lifecycle (better-sqlite3 in-memory)
 
 ---
 
@@ -328,7 +340,7 @@ Squash-merge or rebase so `main` history reads as conventional commits.
 
 - **TypeScript strict** — `verbatimModuleSyntax`, no unused locals/params
 - **Git** — Conventional Commits for branches, commits, and PR titles (see above)
-- **Prettier** — run `bun run format` before commit; Tailwind class sorting via plugin
+- **Prettier** — run `pnpm run format` before commit; Tailwind class sorting via plugin
 - **No inline alerts for UX feedback** — use Sonner toasts
 - **Modals for forms** — not inline editing on the list page
 - **Minimal diffs** — match existing patterns; don't over-abstract
@@ -349,24 +361,23 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 ## Dev vs Production
 
-|           | Development                            | Production                 |
-| --------- | -------------------------------------- | -------------------------- |
-| Frontend  | Vite HMR (separate process)            | Served from `dist/` by Bun |
-| API       | Bun on `:3000`                         | Same Bun process           |
-| API calls | Vite proxies `/api` → `localhost:3000` | Same-origin `/api`         |
-| Database  | `data/applied.db` (local file)         | Same                       |
-
-`bun run dev` runs `dev:server` and `dev:vite` in parallel (`&`). Both must be running for full local UX.
+|           | Development              | Production                      |
+| --------- | ------------------------ | ------------------------------- |
+| Server    | `pnpm dev` (Next.js HMR) | `pnpm run build` + `pnpm start` |
+| API       | Same Next.js process     | Same Next.js process            |
+| API calls | Same-origin `/api`       | Same-origin `/api`              |
+| Database  | `data/applied.db`        | Same                            |
 
 ---
 
 ## Learned Workspace Facts
 
 - Applied.dev is a single-page job application tracker
-- Stack: Bun runtime, Vite build, strict TypeScript, React, Tailwind CSS, Shadcn UI
-- Dev server and API run on port 3000 (`PORT` env overrides default)
-- Tooling includes Prettier, ESLint, and Vitest (run via `bun`)
+- Stack: Next.js App Router, Node.js, pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI
+- Dev server runs on port 3000 by default (`PORT` env overrides for production)
+- Tooling includes Prettier, ESLint, and Vitest (run via `pnpm`)
 - Required application form fields: job posting URL, title, company, apply date; all other fields are optional
 - Parsed job postings store cleaned minimal HTML in `full_jd`, separate from user notes
-- SQLite persistence via Bun (`data/applied.db` by default)
+- SQLite persistence via better-sqlite3 (`data/applied.db` by default)
 - Git workflow uses Conventional Commits for branch names, commit messages, and PR titles
+- Deployable to Vercel; thin auth later; SQLite for now, Postgres possible later

@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback, useEffect, useState } from "react";
 import { createApplication, deleteApplication, listApplications, parseJobUrl, updateApplication } from "@/api";
 import { Button } from "@/components/ui/button";
@@ -352,11 +354,23 @@ export default function App() {
               onParse={() => void handleParse()}
             />
           </div>
-          <DialogFooter className="mt-0">
-            <Button type="button" variant="outline" onClick={closeForm}>
+          <DialogFooter className="mx-0 mb-0 gap-3 px-6 py-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={closeForm}
+            >
               Cancel
             </Button>
-            <Button type="button" disabled={isSaving || !valid} onClick={() => void handleSave()}>
+            <Button
+              type="button"
+              size="lg"
+              disabled={isSaving || !valid}
+              className="bg-green-600 text-white hover:bg-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30"
+              onClick={() => void handleSave()}
+            >
               {isSaving ? "Saving…" : form.id ? "Update application" : "Save application"}
             </Button>
           </DialogFooter>

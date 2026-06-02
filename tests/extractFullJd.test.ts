@@ -1,6 +1,6 @@
 import { parseHTML } from "linkedom";
 import { describe, expect, it } from "vitest";
-import { buildFullJd } from "../server/services/extractFullJd";
+import { buildFullJd } from "@/lib/server/services/extractFullJd";
 
 describe("buildFullJd", () => {
   it("builds summary and minimal HTML from job description content", () => {

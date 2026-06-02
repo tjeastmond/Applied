@@ -4,3 +4,4 @@ data/*.db
 .DS_Store
 *.local
 .cursor/hooks/state/
+.next
