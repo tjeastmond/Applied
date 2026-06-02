@@ -55,7 +55,7 @@ pnpm run start       # next start (production server)
 | Package mgr  | pnpm                                                               |
 | Framework    | Next.js 15 (App Router)                                            |
 | Frontend     | React 19, TypeScript (strict)                                      |
-| Styling      | Tailwind CSS 4, Shadcn UI (`base-nova` style), Geist Variable font |
+| Styling      | Tailwind CSS 4, Shadcn UI (`base-nova` style), Roboto Mono (self-hosted) |
 | Icons        | Lucide React                                                       |
 | Toasts       | Sonner (`<Toaster />` in `src/app/layout.tsx`)                     |
 | Backend      | Next.js Route Handlers (`src/app/api/**`)                          |
