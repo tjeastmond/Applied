@@ -8,6 +8,16 @@ import { JobDescriptionLink } from "@/components/JobDescriptionLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -39,11 +49,17 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   const [isSaving, setIsSaving] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const valid = isFormValid(form);
   const selectedApplication = useMemo(
     () => applications.find((application) => application.id === selectedId) ?? null,
     [applications, selectedId],
+  );
+  const pendingDeleteApplication = useMemo(
+    () => applications.find((application) => application.id === pendingDeleteId) ?? null,
+    [applications, pendingDeleteId],
   );
 
   useEffect(() => {
@@ -157,10 +173,23 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm("Delete this application?")) return;
+  function requestDelete(id: string) {
+    setPendingDeleteId(id);
+  }
+
+  function handleDeleteDialogOpenChange(open: boolean) {
+    if (!open && !isDeleting) {
+      setPendingDeleteId(null);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
+    setIsDeleting(true);
     try {
       await deleteApplication(id);
+      setPendingDeleteId(null);
       if (form.id === id) {
         closeForm();
       }
@@ -171,6 +200,8 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
       await refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to delete application");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -244,6 +275,34 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
         onSaved={refresh}
       />
 
+      <AlertDialog open={pendingDeleteId !== null} onOpenChange={handleDeleteDialogOpenChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Application?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDeleteApplication
+                ? `This will permanently remove "${pendingDeleteApplication.title || pendingDeleteApplication.url}". This action cannot be undone.`
+                : "This will permanently remove this application. This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isDeleting}
+              className="border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              className="bg-red-600 text-white hover:bg-red-700 focus-visible:border-red-700 focus-visible:ring-red-600/30"
+              onClick={() => void confirmDelete()}
+            >
+              {isDeleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Applications</h2>
         {applications.length === 0 ? (
@@ -266,7 +325,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
               application={application}
               onOpen={() => openDetail(application)}
               onEdit={() => openDetail(application)}
-              onDelete={() => void handleDelete(application.id)}
+              onDelete={() => requestDelete(application.id)}
             />
           ))
         )}
