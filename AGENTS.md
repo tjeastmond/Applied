@@ -157,12 +157,12 @@ applied.dev/
 
 Many notes per application, stored in `application_notes` (not on the application form).
 
-| Field             | Type     | Notes                                      |
-| ----------------- | -------- | ------------------------------------------ |
-| `id`              | `string` | UUID                                       |
-| `applicationId`   | `string` | FK → `applications.id` (cascade on delete) |
-| `content`         | `string` | Note body                                  |
-| `createdAt`       | `string` | ISO timestamp                              |
+| Field           | Type     | Notes                                      |
+| --------------- | -------- | ------------------------------------------ |
+| `id`            | `string` | UUID                                       |
+| `applicationId` | `string` | FK → `applications.id` (cascade on delete) |
+| `content`       | `string` | Note body                                  |
+| `createdAt`     | `string` | ISO timestamp                              |
 
 Repository: `getNoteRepository()` in `src/lib/server/db.ts` (`create`, `listByApplicationId`). UI/API for adding notes is not wired yet.
 

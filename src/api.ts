@@ -1,4 +1,4 @@
-import type { CreateJobApplicationInput, JobApplication, ParseJobUrlResult } from "./types";
+import type { ApplicationNote, CreateJobApplicationInput, JobApplication, ParseJobUrlResult } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -49,5 +49,22 @@ export function parseJobUrl(url: string): Promise<ParseJobUrlResult> {
   return request<ParseJobUrlResult>("/api/jobs/parse", {
     method: "POST",
     body: JSON.stringify({ url }),
+  });
+}
+
+export function listApplicationNotes(applicationId: string): Promise<ApplicationNote[]> {
+  return request<ApplicationNote[]>(`/api/applications/${applicationId}/notes`);
+}
+
+export function createApplicationNote(applicationId: string, content: string): Promise<ApplicationNote> {
+  return request<ApplicationNote>(`/api/applications/${applicationId}/notes`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+}
+
+export function deleteApplicationNote(applicationId: string, noteId: string): Promise<void> {
+  return request<void>(`/api/applications/${applicationId}/notes/${noteId}`, {
+    method: "DELETE",
   });
 }

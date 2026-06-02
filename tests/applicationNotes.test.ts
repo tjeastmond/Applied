@@ -24,9 +24,11 @@ describe("SqliteApplicationNoteRepository", () => {
 
     const listed = await notes.listByApplicationId(application.id);
     expect(listed).toHaveLength(2);
-    expect(listed.map((n) => n.content).sort()).toEqual(
-      ["First round next week.", "Phone screen scheduled."].sort(),
-    );
+    expect(listed.map((n) => n.content).sort()).toEqual(["First round next week.", "Phone screen scheduled."].sort());
+
+    const deleted = await notes.delete(first.id);
+    expect(deleted).toBe(true);
+    expect(await notes.listByApplicationId(application.id)).toHaveLength(1);
 
     await applications.delete(application.id);
     expect(await notes.listByApplicationId(application.id)).toHaveLength(0);

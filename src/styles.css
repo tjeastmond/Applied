@@ -117,6 +117,30 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@layer components {
+  .job-description-html {
+    @apply text-foreground text-sm leading-relaxed;
+  }
+  .job-description-html p {
+    @apply mb-3 last:mb-0;
+  }
+  .job-description-html ul,
+  .job-description-html ol {
+    @apply mb-3 list-inside list-disc space-y-1 pl-1;
+  }
+  .job-description-html ol {
+    @apply list-decimal;
+  }
+  .job-description-html h2,
+  .job-description-html h3,
+  .job-description-html h4 {
+    @apply mt-4 mb-2 font-semibold;
+  }
+  .job-description-html strong {
+    @apply font-semibold;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

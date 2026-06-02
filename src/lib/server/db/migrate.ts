@@ -11,9 +11,9 @@ function columnExists(db: Database.Database, column: string): boolean {
 }
 
 function tableExists(db: Database.Database, table: string): boolean {
-  const row = db
-    .prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`)
-    .get(table) as { 1: number } | undefined;
+  const row = db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(table) as
+    | { 1: number }
+    | undefined;
   return row !== undefined;
 }
 

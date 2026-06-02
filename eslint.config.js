@@ -30,7 +30,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/lib/server/db/sqliteRepository.ts"],
+    files: ["src/lib/server/db/sqliteRepository.ts", "src/lib/server/db/sqliteApplicationNoteRepository.ts"],
     rules: {
       "@typescript-eslint/require-await": "off",
     },

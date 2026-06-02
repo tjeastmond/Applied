@@ -47,8 +47,7 @@ export function formatDate(value: string): string {
 }
 
 export function formToInput(form: FormState): CreateJobApplicationInput {
-  const hasRecruiterInfo =
-    (form.recruiterName?.trim().length ?? 0) > 0 || (form.recruiterFirm?.trim().length ?? 0) > 0;
+  const hasRecruiterInfo = (form.recruiterName?.trim().length ?? 0) > 0 || (form.recruiterFirm?.trim().length ?? 0) > 0;
 
   return {
     url: form.url.trim(),

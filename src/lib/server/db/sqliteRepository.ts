@@ -112,6 +112,11 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
     return rows.map(rowToApplication);
   }
 
+  async getById(id: string): Promise<JobApplication | null> {
+    const row = this.getByIdStmt.get(id) as ApplicationRow | undefined;
+    return row ? rowToApplication(row) : null;
+  }
+
   async create(input: CreateJobApplicationInput): Promise<JobApplication> {
     const id = crypto.randomUUID();
     const timestamp = nowIso();

@@ -24,14 +24,17 @@ function nowIso(): string {
 
 const LIST_BY_APPLICATION_SQL = `SELECT * FROM application_notes WHERE application_id = ? ORDER BY created_at DESC`;
 const INSERT_SQL = `INSERT INTO application_notes (id, application_id, content, created_at) VALUES (?, ?, ?, ?)`;
+const DELETE_SQL = `DELETE FROM application_notes WHERE id = ?`;
 
 export class SqliteApplicationNoteRepository implements ApplicationNoteRepository {
   private readonly listByApplicationStmt;
   private readonly insertStmt;
+  private readonly deleteStmt;
 
   constructor(db: Database.Database) {
     this.listByApplicationStmt = db.prepare(LIST_BY_APPLICATION_SQL);
     this.insertStmt = db.prepare(INSERT_SQL);
+    this.deleteStmt = db.prepare(DELETE_SQL);
   }
 
   async listByApplicationId(applicationId: string): Promise<ApplicationNote[]> {
@@ -56,5 +59,10 @@ export class SqliteApplicationNoteRepository implements ApplicationNoteRepositor
       content: trimmed,
       createdAt,
     };
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const result = this.deleteStmt.run(id);
+    return result.changes > 0;
   }
 }
