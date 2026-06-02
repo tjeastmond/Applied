@@ -38,11 +38,13 @@ export function ApplicationDetailSheet({
   open,
   onOpenChange,
   onApplicationChange,
+  onRequestDelete,
 }: {
   application: JobApplication | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onApplicationChange: (application: JobApplication) => void;
+  onRequestDelete: (id: string) => void;
 }) {
   const [form, setForm] = useState<FormState | null>(null);
   const [notes, setNotes] = useState<ApplicationNote[]>([]);
@@ -303,13 +305,25 @@ export function ApplicationDetailSheet({
             ) : null}
           </div>
 
-          <SheetFooter className="border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Close
+          <SheetFooter className="border-t px-6 py-4 sm:flex-row sm:justify-between">
+            <Button
+              type="button"
+              variant="destructiveSolid"
+              disabled={!applicationId}
+              onClick={() => {
+                if (applicationId) onRequestDelete(applicationId);
+              }}
+            >
+              Delete
             </Button>
-            <Button type="button" variant="save" disabled={isSaving || !valid} onClick={() => void save()}>
-              {isSaving ? "Saving…" : "Save changes"}
-            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+              <Button type="button" variant="save" disabled={isSaving || !valid} onClick={() => void save()}>
+                {isSaving ? "Saving…" : "Save changes"}
+              </Button>
+            </div>
           </SheetFooter>
         </SheetContent>
       </Sheet>

@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { APPLICATION_STATUSES } from "@/lib/applicationStatus";
 import { emptyToNull, sanitizeHttpUrl, sanitizeOptionalPlainText, sanitizePlainText } from "@/lib/sanitize";
 
-export const applicationStatusSchema = z.enum(["applied", "interviewing", "rejected", "offer"]);
+export const applicationStatusSchema = z.enum(APPLICATION_STATUSES);
 
 export const uuidSchema = z.uuid("must be a valid id");
 

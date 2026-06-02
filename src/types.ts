@@ -1,4 +1,6 @@
-export type ApplicationStatus = "applied" | "interviewing" | "rejected" | "offer";
+import type { ApplicationStatus } from "@/lib/applicationStatus";
+
+export type { ApplicationStatus };
 
 export interface JobApplication {
   id: string;

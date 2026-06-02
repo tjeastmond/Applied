@@ -1,19 +1,13 @@
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { ApplicationStatusPicker } from "@/components/ApplicationStatusPicker";
 import type { FormState, RequiredValidationState } from "@/lib/applicationForm";
 import type { ApplicationStatus } from "@/types";
 
 function RequiredMark() {
   return <span className="text-destructive">*</span>;
 }
-
-const STATUS_OPTIONS: { value: ApplicationStatus; label: string }[] = [
-  { value: "applied", label: "Applied" },
-  { value: "interviewing", label: "Interviewing" },
-  { value: "rejected", label: "Rejected" },
-  { value: "offer", label: "Offer" },
-];
 
 export function ApplicationFormFields({
   form,
@@ -110,19 +104,11 @@ export function ApplicationFormFields({
         </Field>
         {showStatus && !minimal ? (
           <Field>
-            <FieldLabel htmlFor="status">Status</FieldLabel>
-            <select
-              id="status"
-              className="border-input bg-background aria-invalid:border-destructive aria-invalid:focus-visible:border-destructive h-9 w-full rounded-md border px-2.5 text-sm outline-none focus-visible:border-blue-500 focus-visible:ring-0"
-              value={form.status}
-              onChange={(e) => updateField("status", e.target.value as ApplicationStatus)}
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <FieldLabel>Status</FieldLabel>
+            <ApplicationStatusPicker
+              status={form.status}
+              onStatusChange={(value: ApplicationStatus) => updateField("status", value)}
+            />
           </Field>
         ) : null}
       </div>

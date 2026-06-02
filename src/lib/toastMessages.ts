@@ -8,6 +8,7 @@ export const toastMessages = {
   applicationUpdated: "Application updated.",
   applicationDeleted: "Application deleted.",
   deleteApplicationFailed: "Failed to delete application",
+  statusUpdateFailed: "Failed to update status",
   notesLoadFailed: "Failed to load notes",
   noteTextRequired: "Enter note text before adding.",
   noteAdded: "Note added.",
@@ -16,4 +17,6 @@ export const toastMessages = {
   noteDeleteFailed: "Failed to delete note",
   jobUrlCopied: "Job description URL copied.",
   jobUrlCopyFailed: "Failed to copy URL.",
+  allJobUrlsCopied: "All job URLs copied.",
+  allJobUrlsCopyFailed: "Failed to copy job URLs.",
 } as const;

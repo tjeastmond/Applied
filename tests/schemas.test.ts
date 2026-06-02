@@ -64,6 +64,14 @@ describe("patchJobApplicationSchema", () => {
     expect(parsed.status).toBe("interviewing");
   });
 
+  it("accepts passed status", () => {
+    const parsed = patchJobApplicationSchema.parse({
+      status: "passed",
+    });
+
+    expect(parsed.status).toBe("passed");
+  });
+
   it("rejects empty title values", () => {
     const result = patchJobApplicationSchema.safeParse({
       title: "   ",

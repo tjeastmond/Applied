@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createApplication, deleteApplication, updateApplication } from "@/api";
 import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
+import { ApplicationStatusPicker } from "@/components/ApplicationStatusPicker";
 import { JobDescriptionLink } from "@/components/JobDescriptionLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,8 +37,9 @@ import {
   modKShortcutLabel,
 } from "@/lib/keyboardShortcut";
 import { toastMessages } from "@/lib/toastMessages";
-import type { JobApplication } from "@/types";
-import { PlusIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { ApplicationStatus, JobApplication } from "@/types";
+import { CopyIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export function AppPage({ initialApplications }: { initialApplications: JobApplication[] }) {
@@ -48,6 +50,22 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   const [detailOpen, setDetailOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [scrollHoverLocked, setScrollHoverLocked] = useState(false);
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    function onScroll() {
+      setScrollHoverLocked(true);
+      clearTimeout(timeout);
+      timeout = setTimeout(() => setScrollHoverLocked(false), 150);
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(timeout);
+    };
+  }, []);
 
   const handleApplicationChange = useCallback((application: JobApplication) => {
     setApplications((prev) => upsertApplication(prev, application));
@@ -128,9 +146,52 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     setPendingDeleteId(id);
   }
 
+  async function handleStatusChange(id: string, status: ApplicationStatus) {
+    let previousApplication: JobApplication | undefined;
+
+    setApplications((prev) => {
+      const application = prev.find((item) => item.id === id);
+      if (!application || application.status === status) return prev;
+      previousApplication = application;
+      return upsertApplication(prev, { ...application, status });
+    });
+
+    if (!previousApplication) return;
+
+    const snapshot = previousApplication;
+
+    try {
+      const updated = await updateApplication(id, { status });
+      setApplications((prev) => {
+        const current = prev.find((item) => item.id === id);
+        if (!current || current.status !== status) return prev;
+        return upsertApplication(prev, updated);
+      });
+    } catch (error) {
+      setApplications((prev) => {
+        const current = prev.find((item) => item.id === id);
+        if (!current || current.status !== status) return prev;
+        return upsertApplication(prev, snapshot);
+      });
+      toast.error(errorMessage(error, toastMessages.statusUpdateFailed));
+    }
+  }
+
   function handleDeleteDialogOpenChange(open: boolean) {
     if (!open && !isDeleting) {
       setPendingDeleteId(null);
+    }
+  }
+
+  async function copyAllUrls() {
+    const urls = applications.map((application) => application.url.trim()).filter(Boolean);
+    if (urls.length === 0) return;
+
+    try {
+      await navigator.clipboard.writeText(urls.join("\n"));
+      toast.success(toastMessages.allJobUrlsCopied);
+    } catch {
+      toast.error(toastMessages.allJobUrlsCopyFailed);
     }
   }
 
@@ -162,13 +223,24 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
         <div className="text-center sm:text-left">
           <h1 className="text-3xl font-bold tracking-tight">Applied.dev</h1>
         </div>
-        <Button type="button" onClick={openAddForm} title={modKShortcutDescription()}>
-          <PlusIcon data-icon="inline-start" />
-          Add Application
-          <kbd className="bg-primary-foreground/15 text-primary-foreground/90 pointer-events-none hidden rounded px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline">
-            {modKShortcutLabel()}
-          </kbd>
-        </Button>
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={applications.length === 0}
+            onClick={() => void copyAllUrls()}
+          >
+            <CopyIcon data-icon="inline-start" />
+            Copy All URLs
+          </Button>
+          <Button type="button" onClick={openAddForm} title={modKShortcutDescription()}>
+            <PlusIcon data-icon="inline-start" />
+            Add Application
+            <kbd className="bg-primary-foreground/15 text-primary-foreground/90 pointer-events-none hidden rounded px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline">
+              {modKShortcutLabel()}
+            </kbd>
+          </Button>
+        </div>
       </header>
 
       <Dialog open={formOpen} onOpenChange={handleFormOpenChange}>
@@ -217,6 +289,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
         open={detailOpen}
         onOpenChange={handleDetailOpenChange}
         onApplicationChange={handleApplicationChange}
+        onRequestDelete={requestDelete}
       />
 
       <AlertDialog open={pendingDeleteId !== null} onOpenChange={handleDeleteDialogOpenChange}>
@@ -260,8 +333,9 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
             <ApplicationCard
               key={application.id}
               application={application}
+              scrollHoverLocked={scrollHoverLocked}
               onOpen={() => openDetail(application)}
-              onDelete={() => requestDelete(application.id)}
+              onStatusChange={(status) => void handleStatusChange(application.id, status)}
             />
           ))
         )}
@@ -272,22 +346,32 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
 
 function ApplicationCard({
   application,
+  scrollHoverLocked,
   onOpen,
-  onDelete,
+  onStatusChange,
 }: {
   application: JobApplication;
+  scrollHoverLocked: boolean;
   onOpen: () => void;
-  onDelete: () => void;
+  onStatusChange: (status: ApplicationStatus) => void;
 }) {
   const title = application.title || application.url;
   const appliedLabel = formatDate(application.appliedAt);
   const postingUrl = application.url.trim();
 
   return (
-    <Card className="hover:bg-muted/50 relative gap-0 py-0 transition-colors hover:shadow-md hover:shadow-black/5">
+    <Card
+      className={cn(
+        "relative gap-0 py-0 transition-colors",
+        !scrollHoverLocked && "hover:bg-muted/50 hover:shadow-md hover:shadow-black/5",
+      )}
+    >
       <button
         type="button"
-        className="focus-visible:ring-ring/50 absolute inset-0 z-0 cursor-pointer rounded-xl focus-visible:ring-3 focus-visible:outline-none"
+        className={cn(
+          "focus-visible:ring-ring/50 absolute inset-0 z-0 rounded-xl focus-visible:ring-3 focus-visible:outline-none",
+          scrollHoverLocked ? "cursor-default" : "cursor-pointer",
+        )}
         aria-label={`View details for ${title}`}
         onClick={onOpen}
       />
@@ -310,14 +394,11 @@ function ApplicationCard({
             ) : null}
           </CardDescription>
         </div>
-        <div className="pointer-events-auto flex shrink-0 gap-2">
-          <Button type="button" size="sm" variant="save" onClick={onOpen}>
-            Edit
-          </Button>
-          <Button type="button" size="sm" variant="destructiveSolid" onClick={onDelete}>
-            Delete
-          </Button>
-        </div>
+        <ApplicationStatusPicker
+          className="pointer-events-auto"
+          status={application.status}
+          onStatusChange={onStatusChange}
+        />
       </CardHeader>
     </Card>
   );
