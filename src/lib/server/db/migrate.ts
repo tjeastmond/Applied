@@ -17,7 +17,6 @@ function tableExists(db: Database.Database, table: string): boolean {
   return row !== undefined;
 }
 
-/** Moves non-empty `applications.notes` into `application_notes` (idempotent). */
 export function migrateLegacyApplicationNotes(db: Database.Database): void {
   if (!tableExists(db, "application_notes")) {
     return;

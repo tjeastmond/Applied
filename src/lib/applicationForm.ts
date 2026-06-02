@@ -43,10 +43,8 @@ export function emptyForm(): FormState {
   };
 }
 
-const requiredFormFieldsSchema = requiredApplicationFieldsSchema;
-
 export function isFormValid(form: FormState): boolean {
-  return requiredFormFieldsSchema.safeParse({
+  return requiredApplicationFieldsSchema.safeParse({
     url: form.url,
     title: form.title,
     company: form.company,

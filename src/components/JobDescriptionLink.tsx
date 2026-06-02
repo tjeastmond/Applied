@@ -9,7 +9,6 @@ import { toast } from "sonner";
 type JobDescriptionLinkProps = {
   url: string;
   className?: string;
-  /** When true, clicks do not bubble (e.g. application cards with a full-card open handler). */
   stopPropagation?: boolean;
 };
 
@@ -19,14 +18,12 @@ export function JobDescriptionLink({ url, className, stopPropagation = false }: 
     return null;
   }
 
-  function maybeStopPropagation(event: MouseEvent) {
-    if (stopPropagation) {
-      event.stopPropagation();
-    }
+  function stopBubble(event: MouseEvent) {
+    if (stopPropagation) event.stopPropagation();
   }
 
   async function handleCopy(event: MouseEvent) {
-    maybeStopPropagation(event);
+    stopBubble(event);
     try {
       await navigator.clipboard.writeText(trimmed);
       toast.success("Job description URL copied.");
@@ -42,7 +39,7 @@ export function JobDescriptionLink({ url, className, stopPropagation = false }: 
         target="_blank"
         rel="noopener noreferrer"
         className="text-xs text-blue-600 underline underline-offset-4 hover:no-underline dark:text-blue-400"
-        onClick={maybeStopPropagation}
+        onClick={stopBubble}
       >
         Job Description
       </a>

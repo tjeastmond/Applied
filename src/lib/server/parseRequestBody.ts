@@ -1,8 +1,6 @@
 import type { ZodType } from "zod";
 import { formatZodError } from "@/lib/formatZodError";
 
-export { formatZodError };
-
 export async function parseRequestBody<T>(
   request: Request,
   schema: ZodType<T>,

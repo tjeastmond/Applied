@@ -36,10 +36,6 @@ import type { JobApplication } from "@/types";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
-function RequiredMark() {
-  return <span className="text-destructive">*</span>;
-}
-
 export function AppPage({ initialApplications }: { initialApplications: JobApplication[] }) {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [formOpen, setFormOpen] = useState(false);
@@ -232,7 +228,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
             <DialogHeader className="border-b px-6 py-4">
               <DialogTitle>Add Application</DialogTitle>
               <DialogDescription>
-                Fields marked with <RequiredMark /> are required.
+                Fields marked with <span className="text-destructive">*</span> are required.
               </DialogDescription>
             </DialogHeader>
             <div className="overflow-y-auto px-6 py-4">
@@ -324,7 +320,6 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
               key={application.id}
               application={application}
               onOpen={() => openDetail(application)}
-              onEdit={() => openDetail(application)}
               onDelete={() => requestDelete(application.id)}
             />
           ))
@@ -337,12 +332,10 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
 function ApplicationCard({
   application,
   onOpen,
-  onEdit,
   onDelete,
 }: {
   application: JobApplication;
   onOpen: () => void;
-  onEdit: () => void;
   onDelete: () => void;
 }) {
   const title = application.title || application.url;
@@ -381,7 +374,7 @@ function ApplicationCard({
             type="button"
             size="sm"
             className="bg-green-600 text-white hover:bg-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30"
-            onClick={onEdit}
+            onClick={onOpen}
           >
             Edit
           </Button>

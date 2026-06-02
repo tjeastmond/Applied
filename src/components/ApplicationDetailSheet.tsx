@@ -53,7 +53,11 @@ export function ApplicationDetailSheet({
   const [jdOpen, setJdOpen] = useState(false);
 
   const loadNotes = useCallback(async (applicationId: string) => {
-    setNotes(await listApplicationNotes(applicationId));
+    try {
+      setNotes(await listApplicationNotes(applicationId));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load notes");
+    }
   }, []);
 
   useEffect(() => {
@@ -64,9 +68,7 @@ export function ApplicationDetailSheet({
     setShowValidation(false);
     setNewNote("");
     setJdOpen(false);
-    void loadNotes(application.id).catch((error: unknown) => {
-      toast.error(error instanceof Error ? error.message : "Failed to load notes");
-    });
+    void loadNotes(application.id);
   }, [application, open, loadNotes]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
