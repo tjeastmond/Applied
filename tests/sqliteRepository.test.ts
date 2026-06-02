@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { openDatabase } from "@/lib/server/db/migrate";
 import { SqliteJobApplicationRepository } from "@/lib/server/db/sqliteRepository";
 
@@ -7,20 +8,22 @@ describe("SqliteJobApplicationRepository", () => {
     const db = openDatabase(":memory:");
     const repository = new SqliteJobApplicationRepository(db);
 
-    const created = await repository.create({
-      url: "https://jobs.example.com/role",
-      linkedinUrl: "https://linkedin.com/company/acme",
-      title: "Senior Engineer",
-      company: "Acme",
-      appliedAt: "2026-06-01",
-      viaRecruiter: true,
-      recruiterName: "Jane Doe",
-      recruiterFirm: "TechRecruit LLC",
-      contactEmail: "jane@acme.com",
-      contactPhone: "555-1234",
-      fullJd: "<p><strong>Summary</strong> Great role.</p>",
-      status: "applied",
-    });
+    const created = await repository.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/role",
+        linkedinUrl: "https://linkedin.com/company/acme",
+        title: "Senior Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        viaRecruiter: true,
+        recruiterName: "Jane Doe",
+        recruiterFirm: "TechRecruit LLC",
+        contactEmail: "jane@acme.com",
+        contactPhone: "555-1234",
+        fullJd: "<p><strong>Summary</strong> Great role.</p>",
+        status: "applied",
+      }),
+    );
 
     expect(created.id).toBeTruthy();
     expect(created.viaRecruiter).toBe(true);

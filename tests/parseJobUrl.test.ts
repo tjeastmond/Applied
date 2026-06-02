@@ -82,4 +82,22 @@ describe("parseJobUrl", () => {
     expect(result.company).toBe("Stripe");
     expect(result.fullJd).toBeNull();
   });
+
+  it("strips the Y Combinator suffix from parsed titles", async () => {
+    const html = `<!doctype html><html><head><meta property="og:title" content="Founding Engineer | Y Combinator" /></head><body></body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+
+    const result = await parseJobUrl("https://www.ycombinator.com/companies/acme/jobs/abc");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.title).toBe("Founding Engineer");
+  });
 });

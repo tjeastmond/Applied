@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyForm, isFormValid } from "../src/lib/applicationForm";
+import { emptyForm, formToInput, isFormValid } from "../src/lib/applicationForm";
 
 describe("isFormValid", () => {
   it("requires url, title, company, and appliedAt", () => {
@@ -21,5 +21,17 @@ describe("isFormValid", () => {
     form.appliedAt = "2026-06-01";
     form.linkedinUrl = "";
     expect(isFormValid(form)).toBe(true);
+  });
+});
+
+describe("formToInput", () => {
+  it("strips the Y Combinator suffix from titles", () => {
+    const form = emptyForm();
+    form.url = "https://www.ycombinator.com/companies/acme/jobs/abc";
+    form.title = "Founding Engineer | Y Combinator";
+    form.company = "Acme";
+    form.appliedAt = "2026-06-01";
+
+    expect(formToInput(form).title).toBe("Founding Engineer");
   });
 });

@@ -1,4 +1,5 @@
 import { parseHTML } from "linkedom";
+import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
 import type { ParseJobUrlResult } from "@/types";
 import { buildFullJd } from "./extractFullJd";
 
@@ -72,11 +73,12 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
     const html = await response.text();
     const { document } = parseHTML(html);
 
-    const title =
+    const rawTitle =
       getMetaContent(document, "og:title") ??
       document.querySelector("title")?.textContent?.trim() ??
       document.querySelector("h1")?.textContent?.trim() ??
       null;
+    const title = normalizeJobTitle(rawTitle);
 
     const company =
       getMetaContent(document, "og:site_name") ??

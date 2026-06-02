@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
-import type { CreateJobApplicationInput, JobApplication } from "@/types";
+import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
+import type { JobApplication, ParsedCreateJobApplicationInput } from "@/types";
 import type { JobApplicationRepository } from "../repositories/jobApplicationRepository";
 
 type ApplicationRow = {
@@ -31,7 +32,7 @@ function rowToApplication(row: ApplicationRow): JobApplication {
     id: row.id,
     url: row.url,
     linkedinUrl: row.linkedin_url,
-    title: row.title,
+    title: normalizeJobTitle(row.title),
     company: row.company,
     appliedAt: row.applied_at,
     viaRecruiter: row.via_recruiter === 1,
@@ -117,7 +118,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
     return row ? rowToApplication(row) : null;
   }
 
-  async create(input: CreateJobApplicationInput): Promise<JobApplication> {
+  async create(input: ParsedCreateJobApplicationInput): Promise<JobApplication> {
     const id = crypto.randomUUID();
     const timestamp = nowIso();
     const viaRecruiter = input.viaRecruiter ?? false;
@@ -126,7 +127,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
       id,
       url: input.url.trim(),
       linkedin_url: trimOrNull(input.linkedinUrl),
-      title: input.title?.trim() ?? "",
+      title: normalizeJobTitle(input.title?.trim()) ?? "",
       company: input.company?.trim() ?? "",
       applied_at: input.appliedAt?.trim() ?? todayIsoDate(),
       via_recruiter: viaRecruiter ? 1 : 0,
@@ -149,7 +150,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
     return rowToApplication(row);
   }
 
-  async update(id: string, input: Partial<CreateJobApplicationInput>): Promise<JobApplication | null> {
+  async update(id: string, input: Partial<ParsedCreateJobApplicationInput>): Promise<JobApplication | null> {
     const existing = this.getByIdStmt.get(id) as ApplicationRow | undefined;
 
     if (!existing) {
@@ -162,7 +163,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
       ...existing,
       url: input.url !== undefined ? input.url.trim() : existing.url,
       linkedin_url: input.linkedinUrl !== undefined ? trimOrNull(input.linkedinUrl) : existing.linkedin_url,
-      title: input.title !== undefined ? trimOrNull(input.title) : existing.title,
+      title: input.title !== undefined ? normalizeJobTitle(trimOrNull(input.title)) : existing.title,
       company: input.company !== undefined ? trimOrNull(input.company) : existing.company,
       applied_at: input.appliedAt ?? existing.applied_at,
       via_recruiter: viaRecruiter ? 1 : 0,

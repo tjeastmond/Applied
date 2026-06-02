@@ -1,21 +1,16 @@
 import { parseJobUrl } from "@/lib/server/services/parseJobUrl";
+import { parseRequestBody } from "@/lib/server/parseRequestBody";
+import { parseJobUrlRequestSchema } from "@/lib/schemas/parseJob";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-async function readJson<T>(request: Request): Promise<T | null> {
-  try {
-    return (await request.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(request: Request) {
-  const body = await readJson<{ url?: string }>(request);
-  if (!body?.url) {
-    return NextResponse.json({ error: "url is required" }, { status: 400 });
+  const parsed = await parseRequestBody(request, parseJobUrlRequestSchema);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  const result = await parseJobUrl(body.url);
+
+  const result = await parseJobUrl(parsed.data.url);
   return NextResponse.json(result);
 }

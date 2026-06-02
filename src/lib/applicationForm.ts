@@ -1,6 +1,26 @@
-import type { CreateJobApplicationInput, JobApplication } from "@/types";
+import { formatZodError } from "@/lib/formatZodError";
+import {
+  createJobApplicationSchema,
+  requiredApplicationFieldsSchema,
+  type ParsedCreateJobApplicationInput,
+} from "@/lib/schemas/application";
+import type { ApplicationStatus, JobApplication } from "@/types";
 
-export type FormState = CreateJobApplicationInput & { id?: string };
+export type FormState = {
+  id?: string;
+  url: string;
+  linkedinUrl: string;
+  title: string;
+  company: string;
+  appliedAt: string;
+  viaRecruiter: boolean;
+  recruiterName: string;
+  recruiterFirm: string;
+  contactEmail: string;
+  contactPhone: string;
+  fullJd: string;
+  status: ApplicationStatus;
+};
 
 export function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -23,13 +43,15 @@ export function emptyForm(): FormState {
   };
 }
 
+const requiredFormFieldsSchema = requiredApplicationFieldsSchema;
+
 export function isFormValid(form: FormState): boolean {
-  return (
-    form.url.trim().length > 0 &&
-    (form.title?.trim().length ?? 0) > 0 &&
-    (form.company?.trim().length ?? 0) > 0 &&
-    (form.appliedAt?.trim().length ?? 0) > 0
-  );
+  return requiredFormFieldsSchema.safeParse({
+    url: form.url,
+    title: form.title,
+    company: form.company,
+    appliedAt: form.appliedAt,
+  }).success;
 }
 
 export function truncate(text: string, max = 120): string {
@@ -46,23 +68,28 @@ export function formatDate(value: string): string {
   });
 }
 
-export function formToInput(form: FormState): CreateJobApplicationInput {
+export function formToInput(form: FormState): ParsedCreateJobApplicationInput {
   const hasRecruiterInfo = (form.recruiterName?.trim().length ?? 0) > 0 || (form.recruiterFirm?.trim().length ?? 0) > 0;
-
-  return {
-    url: form.url.trim(),
-    linkedinUrl: form.linkedinUrl?.trim() || null,
-    title: form.title?.trim() ?? "",
-    company: form.company?.trim() ?? "",
-    appliedAt: form.appliedAt?.trim() ?? today(),
+  const result = createJobApplicationSchema.safeParse({
+    url: form.url,
+    title: form.title,
+    company: form.company,
+    appliedAt: form.appliedAt,
+    linkedinUrl: form.linkedinUrl,
     viaRecruiter: hasRecruiterInfo,
-    recruiterName: hasRecruiterInfo ? form.recruiterName?.trim() || null : null,
-    recruiterFirm: hasRecruiterInfo ? form.recruiterFirm?.trim() || null : null,
-    contactEmail: form.contactEmail?.trim() || null,
-    contactPhone: form.contactPhone?.trim() || null,
-    fullJd: form.fullJd?.trim() || null,
-    status: form.status ?? "applied",
-  };
+    recruiterName: hasRecruiterInfo ? form.recruiterName : null,
+    recruiterFirm: hasRecruiterInfo ? form.recruiterFirm : null,
+    contactEmail: form.contactEmail,
+    contactPhone: form.contactPhone,
+    fullJd: form.fullJd,
+    status: form.status,
+  });
+
+  if (!result.success) {
+    throw new Error(formatZodError(result.error));
+  }
+
+  return result.data;
 }
 
 export function applicationToForm(application: JobApplication): FormState {

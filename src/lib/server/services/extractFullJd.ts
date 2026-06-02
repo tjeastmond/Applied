@@ -1,4 +1,20 @@
+import { parseHTML } from "linkedom";
+
 const ALLOWED_TAGS = new Set(["p", "ul", "ol", "li", "h2", "h3", "h4", "strong", "em", "br"]);
+const REMOVED_TAGS = new Set([
+  "script",
+  "style",
+  "nav",
+  "header",
+  "footer",
+  "iframe",
+  "object",
+  "embed",
+  "form",
+  "input",
+  "meta",
+  "link",
+]);
 const BOILERPLATE_PATTERN =
   /\b(equal opportunity|eeo|privacy policy|cookie|apply now|share this job|©|all rights reserved)\b/i;
 
@@ -30,7 +46,7 @@ function stripDisallowedTags(element: Element): void {
   const children = [...element.children];
   for (const child of children) {
     const tag = child.tagName.toLowerCase();
-    if (tag === "script" || tag === "style" || tag === "nav" || tag === "header" || tag === "footer") {
+    if (REMOVED_TAGS.has(tag)) {
       child.remove();
       continue;
     }
@@ -143,4 +159,14 @@ export function buildFullJd(document: Document, metaDescription: string | null):
 
   const html = sections.join("\n").trim();
   return html.length > 0 ? html : null;
+}
+
+export function sanitizeStoredHtml(html: string): string | null {
+  const { document } = parseHTML(`<div id="sanitize-root">${html}</div>`);
+  const root = document.getElementById("sanitize-root");
+  if (!root) return null;
+
+  stripDisallowedTags(root);
+  const cleaned = root.innerHTML.trim();
+  return cleaned.length > 0 ? cleaned : null;
 }

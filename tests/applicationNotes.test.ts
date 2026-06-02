@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { migrateLegacyApplicationNotes, openDatabase } from "@/lib/server/db/migrate";
 import { SqliteApplicationNoteRepository } from "@/lib/server/db/sqliteApplicationNoteRepository";
 import { SqliteJobApplicationRepository } from "@/lib/server/db/sqliteRepository";
@@ -9,12 +10,14 @@ describe("SqliteApplicationNoteRepository", () => {
     const applications = new SqliteJobApplicationRepository(db);
     const notes = new SqliteApplicationNoteRepository(db);
 
-    const application = await applications.create({
-      url: "https://jobs.example.com/role",
-      title: "Engineer",
-      company: "Acme",
-      appliedAt: "2026-06-01",
-    });
+    const application = await applications.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/role",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+      }),
+    );
 
     const first = await notes.create(application.id, "First round next week.");
     const second = await notes.create(application.id, "Phone screen scheduled.");

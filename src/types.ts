@@ -18,20 +18,11 @@ export interface JobApplication {
   updatedAt: string;
 }
 
-export interface CreateJobApplicationInput {
-  url: string;
-  linkedinUrl?: string | null;
-  title?: string | null;
-  company?: string | null;
-  appliedAt?: string;
-  viaRecruiter?: boolean;
-  recruiterName?: string | null;
-  recruiterFirm?: string | null;
-  contactEmail?: string | null;
-  contactPhone?: string | null;
-  fullJd?: string | null;
-  status?: ApplicationStatus;
-}
+export type {
+  CreateJobApplicationInput,
+  ParsedCreateJobApplicationInput,
+  PatchJobApplicationInput,
+} from "@/lib/schemas/application";
 
 export type ParseJobUrlSuccess = {
   ok: true;
