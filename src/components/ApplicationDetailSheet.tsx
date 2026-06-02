@@ -158,7 +158,7 @@ export function ApplicationDetailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex w-[75vw] max-w-[75vw] min-w-[75vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[75vw]"
+        className="flex w-[60vw] max-w-[60vw] min-w-[60vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[60vw]"
       >
         <SheetHeader className="border-b px-6 py-4">
           <SheetTitle className="pr-8 text-lg">
@@ -192,7 +192,7 @@ export function ApplicationDetailSheet({
                   rel="noopener noreferrer"
                   className="text-xs text-blue-600 underline underline-offset-4 hover:no-underline dark:text-blue-400"
                 >
-                  Job posting
+                  Job Description
                 </a>
               </>
             ) : null}
@@ -267,7 +267,7 @@ export function ApplicationDetailSheet({
               <section>
                 <Collapsible open={jdOpen} onOpenChange={setJdOpen}>
                   <CollapsibleTrigger className="hover:bg-muted/60 flex w-full items-center justify-between gap-2 rounded-lg border px-4 py-3 text-left text-sm font-semibold tracking-wide uppercase transition-colors">
-                    Job description
+                    Job Description
                     <ChevronDownIcon className={`size-4 shrink-0 transition-transform ${jdOpen ? "rotate-180" : ""}`} />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pt-3">

@@ -14,14 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  applicationToForm,
-  emptyForm,
-  formatDate,
-  formToInput,
-  isFormValid,
-  type FormState,
-} from "@/lib/applicationForm";
+import { emptyForm, formatDate, formToInput, isFormValid, type FormState } from "@/lib/applicationForm";
 import type { JobApplication } from "@/types";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -61,12 +54,6 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
 
   function openAddForm() {
     resetForm();
-    setFormOpen(true);
-  }
-
-  function openEditForm(application: JobApplication) {
-    setForm(applicationToForm(application));
-    setShowValidation(false);
     setFormOpen(true);
   }
 
@@ -182,41 +169,49 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
 
       <Dialog open={formOpen} onOpenChange={handleFormOpenChange}>
         <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 shadow-lg shadow-black/10 sm:max-w-2xl">
-          <DialogHeader className="border-b px-6 py-4">
-            <DialogTitle>{form.id ? "Edit Application" : "Add Application"}</DialogTitle>
-            <DialogDescription>
-              Fields marked with <RequiredMark /> are required.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="overflow-y-auto px-6 py-4">
-            <ApplicationFormFields
-              form={form}
-              showValidation={showValidation}
-              isParsing={isParsing}
-              updateField={updateField}
-              onParse={() => void handleParse()}
-            />
-          </div>
-          <DialogFooter className="mx-0 mb-0 gap-3 px-6 py-4">
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={closeForm}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="lg"
-              disabled={isSaving || !valid}
-              className="bg-green-600 text-white hover:bg-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30"
-              onClick={() => void handleSave()}
-            >
-              {isSaving ? "Saving…" : form.id ? "Update Application" : "Save Application"}
-            </Button>
-          </DialogFooter>
+          <form
+            className="flex min-h-0 flex-1 flex-col"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSave();
+            }}
+          >
+            <DialogHeader className="border-b px-6 py-4">
+              <DialogTitle>Add Application</DialogTitle>
+              <DialogDescription>
+                Fields marked with <RequiredMark /> are required.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="overflow-y-auto px-6 py-4">
+              <ApplicationFormFields
+                variant="minimal"
+                form={form}
+                showValidation={showValidation}
+                isParsing={isParsing}
+                updateField={updateField}
+                onParse={() => void handleParse()}
+              />
+            </div>
+            <DialogFooter className="mx-0 mb-0 gap-3 px-6 py-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={closeForm}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="lg"
+                disabled={isSaving}
+                className="bg-green-600 text-white hover:bg-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30"
+              >
+                {isSaving ? "Saving…" : "Save Application"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -245,7 +240,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
               key={application.id}
               application={application}
               onOpen={() => openDetail(application)}
-              onEdit={() => openEditForm(application)}
+              onEdit={() => openDetail(application)}
               onDelete={() => void handleDelete(application.id)}
             />
           ))
@@ -299,7 +294,7 @@ function ApplicationCard({
                   className="pointer-events-auto text-xs text-blue-600 underline underline-offset-4 hover:no-underline dark:text-blue-400"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  Job posting
+                  Job Description
                 </a>
               </>
             ) : null}

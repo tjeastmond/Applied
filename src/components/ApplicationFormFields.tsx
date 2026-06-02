@@ -19,6 +19,7 @@ export function ApplicationFormFields({
   form,
   showValidation,
   isParsing,
+  variant = "full",
   showStatus = false,
   stackedTitleCompany = false,
   updateField,
@@ -27,11 +28,13 @@ export function ApplicationFormFields({
   form: FormState;
   showValidation: boolean;
   isParsing: boolean;
+  variant?: "minimal" | "full";
   showStatus?: boolean;
   stackedTitleCompany?: boolean;
   updateField: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
   onParse: () => void;
 }) {
+  const minimal = variant === "minimal";
   const urlInvalid = showValidation && form.url.trim().length === 0;
   const titleInvalid = showValidation && (form.title?.trim().length ?? 0) === 0;
   const companyInvalid = showValidation && (form.company?.trim().length ?? 0) === 0;
@@ -39,9 +42,9 @@ export function ApplicationFormFields({
 
   return (
     <FieldGroup>
-      <Field data-invalid={urlInvalid || undefined}>
+      <Field data-invalid={urlInvalid ? true : undefined}>
         <FieldLabel htmlFor="url">
-          Job Posting URL <RequiredMark />
+          Job Description URL <RequiredMark />
         </FieldLabel>
         <InputGroup>
           <InputGroupInput
@@ -58,10 +61,10 @@ export function ApplicationFormFields({
             </InputGroupButton>
           </InputGroupAddon>
         </InputGroup>
-        <FieldError>{urlInvalid && "Job posting URL is required."}</FieldError>
+        <FieldError>{urlInvalid && "Job Description URL is required."}</FieldError>
       </Field>
 
-      <Field data-invalid={titleInvalid || undefined}>
+      <Field data-invalid={titleInvalid ? true : undefined}>
         <FieldLabel htmlFor="title">
           Title <RequiredMark />
         </FieldLabel>
@@ -76,7 +79,7 @@ export function ApplicationFormFields({
       </Field>
 
       {stackedTitleCompany ? (
-        <Field data-invalid={companyInvalid || undefined}>
+        <Field data-invalid={companyInvalid ? true : undefined}>
           <FieldLabel htmlFor="company">
             Company <RequiredMark />
           </FieldLabel>
@@ -93,7 +96,7 @@ export function ApplicationFormFields({
 
       <div className="grid gap-5 sm:grid-cols-2">
         {!stackedTitleCompany ? (
-          <Field data-invalid={companyInvalid || undefined}>
+          <Field data-invalid={companyInvalid ? true : undefined}>
             <FieldLabel htmlFor="company">
               Company <RequiredMark />
             </FieldLabel>
@@ -107,7 +110,7 @@ export function ApplicationFormFields({
             <FieldError>{companyInvalid && "Company is required."}</FieldError>
           </Field>
         ) : null}
-        <Field data-invalid={appliedInvalid || undefined}>
+        <Field data-invalid={appliedInvalid ? true : undefined}>
           <FieldLabel htmlFor="appliedAt">
             Applied <RequiredMark />
           </FieldLabel>
@@ -120,7 +123,7 @@ export function ApplicationFormFields({
           />
           <FieldError>{appliedInvalid && "Apply date is required."}</FieldError>
         </Field>
-        {showStatus ? (
+        {showStatus && !minimal ? (
           <Field>
             <FieldLabel htmlFor="status">Status</FieldLabel>
             <select
@@ -139,6 +142,8 @@ export function ApplicationFormFields({
         ) : null}
       </div>
 
+      {minimal ? null : (
+        <>
       <Field>
         <FieldLabel htmlFor="linkedinUrl">Company LinkedIn URL</FieldLabel>
         <Input
@@ -193,6 +198,8 @@ export function ApplicationFormFields({
           />
         </Field>
       </div>
+        </>
+      )}
     </FieldGroup>
   );
 }
