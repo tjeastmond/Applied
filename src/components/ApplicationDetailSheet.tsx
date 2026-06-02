@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createApplicationNote, deleteApplicationNote, listApplicationNotes, updateApplication } from "@/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createApplicationNote, deleteApplicationNote, updateApplication } from "@/api";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
 import { JobDescriptionLink } from "@/components/JobDescriptionLink";
 import { Button } from "@/components/ui/button";
@@ -36,18 +36,25 @@ import { toast } from "sonner";
 export function ApplicationDetailSheet({
   application,
   open,
+  notes,
+  notesLoading,
+  onNotesChange,
   onOpenChange,
   onApplicationChange,
   onRequestDelete,
 }: {
   application: JobApplication | null;
   open: boolean;
+  notes: ApplicationNote[];
+  notesLoading: boolean;
+  onNotesChange: (notes: ApplicationNote[]) => void;
   onOpenChange: (open: boolean) => void;
   onApplicationChange: (application: JobApplication) => void;
   onRequestDelete: (id: string) => void;
 }) {
-  const [form, setForm] = useState<FormState | null>(null);
-  const [notes, setNotes] = useState<ApplicationNote[]>([]);
+  const [form, setForm] = useState<FormState | null>(() =>
+    application ? applicationToForm(application) : null,
+  );
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [pendingNoteId, setPendingNoteId] = useState<string | null>(null);
@@ -61,15 +68,7 @@ export function ApplicationDetailSheet({
   const formRef = useRef(form);
   formRef.current = form;
   const syncedUpdatedAtRef = useRef<string | null>(null);
-  const syncedApplicationIdRef = useRef<string | null>(null);
-
-  const loadNotes = useCallback(async (id: string) => {
-    try {
-      setNotes(await listApplicationNotes(id));
-    } catch (error) {
-      toast.error(errorMessage(error, toastMessages.notesLoadFailed));
-    }
-  }, []);
+  const [syncedApplicationId, setSyncedApplicationId] = useState<string | null>(null);
 
   const { updateField, isParsing, isSaving, requiredValidation, valid, parse, save, setShowValidation } =
     useApplicationFormActions({
@@ -83,47 +82,40 @@ export function ApplicationDetailSheet({
         return updateApplication(currentForm.id, input);
       },
       onApplicationChange: (updated) => {
+        if (applicationRef.current?.id !== updated.id) return;
         onApplicationChange(updated);
         setForm(applicationToForm(updated));
         syncedUpdatedAtRef.current = updated.updatedAt;
       },
     });
 
-  useEffect(() => {
-    if (!applicationId || !open) {
+  if (!open || !applicationId || !application || application.id !== applicationId) {
+    if (syncedApplicationId !== null) {
+      setSyncedApplicationId(null);
       syncedUpdatedAtRef.current = null;
-      syncedApplicationIdRef.current = null;
-      return;
     }
+  } else if (syncedApplicationId !== applicationId) {
+    setSyncedApplicationId(applicationId);
+    setForm(applicationToForm(application));
+    syncedUpdatedAtRef.current = application.updatedAt;
+    setShowValidation(false);
+    setNewNote("");
+    setJdOpen(false);
+    setPendingNoteId(null);
+    setIsAddingNote(false);
+    setIsDeletingNote(false);
+  }
 
-    const currentApplication = applicationRef.current;
-    if (!currentApplication || currentApplication.id !== applicationId) {
-      return;
-    }
-
-    const isInitialLoad = syncedApplicationIdRef.current !== applicationId;
-
-    if (isInitialLoad) {
-      setForm(applicationToForm(currentApplication));
-      syncedApplicationIdRef.current = applicationId;
-      syncedUpdatedAtRef.current = currentApplication.updatedAt;
-      setShowValidation(false);
-      setNewNote("");
-      setJdOpen(false);
-      void loadNotes(applicationId);
-      return;
-    }
-
-    if (syncedUpdatedAtRef.current === currentApplication.updatedAt) {
-      return;
-    }
+  useEffect(() => {
+    if (!open || !applicationId || !application || application.id !== applicationId) return;
+    if (syncedUpdatedAtRef.current === application.updatedAt) return;
 
     const currentForm = formRef.current;
-    if (currentForm && currentForm.id === currentApplication.id && isFormPristine(currentForm, currentApplication)) {
-      setForm(applicationToForm(currentApplication));
+    if (currentForm && currentForm.id === applicationId && isFormPristine(currentForm, application)) {
+      setForm(applicationToForm(application));
     }
-    syncedUpdatedAtRef.current = currentApplication.updatedAt;
-  }, [applicationId, applicationUpdatedAt, open, loadNotes, setShowValidation]);
+    syncedUpdatedAtRef.current = application.updatedAt;
+  }, [application, applicationId, applicationUpdatedAt, open]);
 
   const pendingNote = useMemo(() => notes.find((note) => note.id === pendingNoteId) ?? null, [notes, pendingNoteId]);
 
@@ -135,8 +127,9 @@ export function ApplicationDetailSheet({
     setIsAddingNote(true);
     try {
       const note = await createApplicationNote(applicationId, newNote);
+      if (applicationRef.current?.id !== applicationId) return;
       setNewNote("");
-      setNotes((prev) => [note, ...prev]);
+      onNotesChange([note, ...notes]);
       toast.success(toastMessages.noteAdded);
     } catch (error) {
       toast.error(errorMessage(error, toastMessages.noteAddFailed));
@@ -161,8 +154,9 @@ export function ApplicationDetailSheet({
     setIsDeletingNote(true);
     try {
       await deleteApplicationNote(applicationId, noteId);
+      if (applicationRef.current?.id !== applicationId) return;
       setPendingNoteId(null);
-      setNotes((prev) => prev.filter((note) => note.id !== noteId));
+      onNotesChange(notes.filter((note) => note.id !== noteId));
       toast.success(toastMessages.noteDeleted);
     } catch (error) {
       toast.error(errorMessage(error, toastMessages.noteDeleteFailed));
@@ -171,9 +165,14 @@ export function ApplicationDetailSheet({
     }
   }
 
-  const headerTitle = form?.title.trim() || application?.title || application?.company || "Application";
-  const postingUrl = form?.url.trim() || application?.url.trim() || "";
-  const fullJd = form?.fullJd.trim() || application?.fullJd?.trim();
+  const formMatchesApplication = form?.id === applicationId;
+  const headerTitle =
+    (formMatchesApplication ? form.title.trim() : "") ||
+    application?.title ||
+    application?.company ||
+    "Application";
+  const postingUrl = (formMatchesApplication ? form.url.trim() : "") || application?.url.trim() || "";
+  const fullJd = (formMatchesApplication ? form.fullJd.trim() : "") || application?.fullJd?.trim() || "";
 
   return (
     <>
@@ -198,9 +197,9 @@ export function ApplicationDetailSheet({
               )}
             </SheetTitle>
             <SheetDescription className="flex flex-wrap items-center gap-x-1.5">
-              {form?.company.trim() || application?.company ? (
+              {(formMatchesApplication ? form.company.trim() : "") || application?.company ? (
                 <>
-                  <span>{form?.company.trim() || application?.company}</span>
+                  <span>{(formMatchesApplication ? form.company.trim() : "") || application?.company}</span>
                   <span aria-hidden="true">·</span>
                 </>
               ) : null}
@@ -215,7 +214,7 @@ export function ApplicationDetailSheet({
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto px-6 py-4">
-            {form ? (
+            {form && formMatchesApplication ? (
               <div className="space-y-8">
                 <section>
                   <h3 className="mb-4 text-sm font-semibold tracking-wide uppercase">Details</h3>
@@ -234,7 +233,9 @@ export function ApplicationDetailSheet({
 
                 <section className="space-y-4">
                   <h3 className="text-sm font-semibold tracking-wide uppercase">Notes</h3>
-                  {notes.length === 0 ? (
+                  {notesLoading && notes.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">Loading notes…</p>
+                  ) : notes.length === 0 ? (
                     <p className="text-muted-foreground text-sm">No notes yet.</p>
                   ) : (
                     <ul className="space-y-3">

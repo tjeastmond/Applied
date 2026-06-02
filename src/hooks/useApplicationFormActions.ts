@@ -55,11 +55,15 @@ export function useApplicationFormActions({
 
   const parse = useCallback(async () => {
     if (!form?.url.trim()) return;
+    const scopeId = form.id;
     setIsParsing(true);
     try {
       const result = await parseJobUrl(form.url.trim());
       if (result.ok) {
-        setForm((prev) => (prev ? mergeParseResult(prev, result) : prev));
+        setForm((prev) => {
+          if (!prev || (scopeId !== undefined && prev.id !== scopeId)) return prev;
+          return mergeParseResult(prev, result);
+        });
         toast.success(parseSuccessMessage);
       } else {
         toast.error(result.error);
@@ -69,7 +73,7 @@ export function useApplicationFormActions({
     } finally {
       setIsParsing(false);
     }
-  }, [form?.url, parseSuccessMessage, setForm]);
+  }, [form?.id, form?.url, parseSuccessMessage, setForm]);
 
   const save = useCallback(async (): Promise<boolean> => {
     if (!form || (requireId && !form.id)) {

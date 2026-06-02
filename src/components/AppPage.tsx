@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useApplicationFormActions } from "@/hooks/useApplicationFormActions";
+import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
 import { removeApplication, upsertApplication } from "@/lib/applicationsList";
 import { emptyForm, formatDate, type FormState } from "@/lib/applicationForm";
 import { errorMessage } from "@/lib/errorMessage";
@@ -51,6 +52,8 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [scrollHoverLocked, setScrollHoverLocked] = useState(false);
+  const { prefetch, prefetchMany, getNotes, isLoading, setNotes, removeApplication: clearNotesCache } =
+    useApplicationNotesCache();
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
@@ -107,6 +110,10 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     setApplications(initialApplications);
   }, [initialApplications]);
 
+  useEffect(() => {
+    prefetchMany(applications.map((application) => application.id));
+  }, [applications, prefetchMany]);
+
   const openAddForm = useCallback(() => {
     resetForm();
     setFormOpen(true);
@@ -124,6 +131,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   }, [openAddForm]);
 
   function openDetail(application: JobApplication) {
+    prefetch(application.id, { notifyOnError: true });
     setSelectedId(application.id);
     setDetailOpen(true);
   }
@@ -202,6 +210,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     try {
       await deleteApplication(id);
       setPendingDeleteId(null);
+      clearNotesCache(id);
       setApplications((prev) => removeApplication(prev, id));
       if (form.id === id) {
         closeForm();
@@ -285,8 +294,14 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
       </Dialog>
 
       <ApplicationDetailSheet
+        key={selectedId ?? "closed"}
         application={selectedApplication}
         open={detailOpen}
+        notes={selectedId ? (getNotes(selectedId) ?? []) : []}
+        notesLoading={selectedId ? isLoading(selectedId) : false}
+        onNotesChange={(nextNotes) => {
+          if (selectedId) setNotes(selectedId, nextNotes);
+        }}
         onOpenChange={handleDetailOpenChange}
         onApplicationChange={handleApplicationChange}
         onRequestDelete={requestDelete}
@@ -335,6 +350,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
               application={application}
               scrollHoverLocked={scrollHoverLocked}
               onOpen={() => openDetail(application)}
+              onPrefetchNotes={() => prefetch(application.id)}
               onStatusChange={(status) => void handleStatusChange(application.id, status)}
             />
           ))
@@ -348,11 +364,13 @@ function ApplicationCard({
   application,
   scrollHoverLocked,
   onOpen,
+  onPrefetchNotes,
   onStatusChange,
 }: {
   application: JobApplication;
   scrollHoverLocked: boolean;
   onOpen: () => void;
+  onPrefetchNotes: () => void;
   onStatusChange: (status: ApplicationStatus) => void;
 }) {
   const title = application.title || application.url;
@@ -374,6 +392,8 @@ function ApplicationCard({
         )}
         aria-label={`View details for ${title}`}
         onClick={onOpen}
+        onMouseEnter={onPrefetchNotes}
+        onFocus={onPrefetchNotes}
       />
       <CardHeader className="pointer-events-none relative z-10 flex flex-row items-start justify-between gap-3 space-y-0 py-4">
         <div className="min-w-0 flex-1 space-y-1 text-left">
