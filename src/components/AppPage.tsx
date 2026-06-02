@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createApplication, deleteApplication, listApplications, parseJobUrl, updateApplication } from "@/api";
 import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
+import { JobDescriptionLink } from "@/components/JobDescriptionLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -311,15 +312,7 @@ function ApplicationCard({
             {postingUrl ? (
               <>
                 <span aria-hidden="true">·</span>
-                <a
-                  href={postingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="pointer-events-auto text-xs text-blue-600 underline underline-offset-4 hover:no-underline dark:text-blue-400"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  Job Description
-                </a>
+                <JobDescriptionLink url={postingUrl} className="pointer-events-auto" stopPropagation />
               </>
             ) : null}
           </CardDescription>

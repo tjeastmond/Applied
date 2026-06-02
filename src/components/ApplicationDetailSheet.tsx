@@ -9,6 +9,7 @@ import {
   updateApplication,
 } from "@/api";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
+import { JobDescriptionLink } from "@/components/JobDescriptionLink";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
@@ -186,14 +187,7 @@ export function ApplicationDetailSheet({
             {postingUrl ? (
               <>
                 <span aria-hidden="true">·</span>
-                <a
-                  href={postingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 underline underline-offset-4 hover:no-underline dark:text-blue-400"
-                >
-                  Job Description
-                </a>
+                <JobDescriptionLink url={postingUrl} />
               </>
             ) : null}
           </SheetDescription>
