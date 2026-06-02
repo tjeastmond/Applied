@@ -61,78 +61,52 @@ export function ApplicationFormFields({
         <FieldError>{urlInvalid && "Job posting URL is required."}</FieldError>
       </Field>
 
-      <Field>
-        <FieldLabel htmlFor="linkedinUrl">Company LinkedIn URL</FieldLabel>
+      <Field data-invalid={titleInvalid || undefined}>
+        <FieldLabel htmlFor="title">
+          Title <RequiredMark />
+        </FieldLabel>
         <Input
-          id="linkedinUrl"
-          type="url"
-          placeholder="https://linkedin.com/…"
-          value={form.linkedinUrl ?? ""}
-          onChange={(e) => updateField("linkedinUrl", e.target.value)}
+          id="title"
+          placeholder="Senior Engineer"
+          value={form.title ?? ""}
+          aria-invalid={titleInvalid}
+          onChange={(e) => updateField("title", e.target.value)}
         />
+        <FieldError>{titleInvalid && "Title is required."}</FieldError>
       </Field>
 
       {stackedTitleCompany ? (
-        <>
-          <Field data-invalid={titleInvalid || undefined}>
-            <FieldLabel htmlFor="title">
-              Title <RequiredMark />
-            </FieldLabel>
-            <Input
-              id="title"
-              placeholder="Senior Engineer"
-              value={form.title ?? ""}
-              aria-invalid={titleInvalid}
-              onChange={(e) => updateField("title", e.target.value)}
-            />
-            <FieldError>{titleInvalid && "Title is required."}</FieldError>
-          </Field>
-          <Field data-invalid={companyInvalid || undefined}>
-            <FieldLabel htmlFor="company">
-              Company <RequiredMark />
-            </FieldLabel>
-            <Input
-              id="company"
-              placeholder="Acme Inc."
-              value={form.company ?? ""}
-              aria-invalid={companyInvalid}
-              onChange={(e) => updateField("company", e.target.value)}
-            />
-            <FieldError>{companyInvalid && "Company is required."}</FieldError>
-          </Field>
-        </>
-      ) : (
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field data-invalid={titleInvalid || undefined}>
-            <FieldLabel htmlFor="title">
-              Title <RequiredMark />
-            </FieldLabel>
-            <Input
-              id="title"
-              placeholder="Senior Engineer"
-              value={form.title ?? ""}
-              aria-invalid={titleInvalid}
-              onChange={(e) => updateField("title", e.target.value)}
-            />
-            <FieldError>{titleInvalid && "Title is required."}</FieldError>
-          </Field>
-          <Field data-invalid={companyInvalid || undefined}>
-            <FieldLabel htmlFor="company">
-              Company <RequiredMark />
-            </FieldLabel>
-            <Input
-              id="company"
-              placeholder="Acme Inc."
-              value={form.company ?? ""}
-              aria-invalid={companyInvalid}
-              onChange={(e) => updateField("company", e.target.value)}
-            />
-            <FieldError>{companyInvalid && "Company is required."}</FieldError>
-          </Field>
-        </div>
-      )}
+        <Field data-invalid={companyInvalid || undefined}>
+          <FieldLabel htmlFor="company">
+            Company <RequiredMark />
+          </FieldLabel>
+          <Input
+            id="company"
+            placeholder="Acme Inc."
+            value={form.company ?? ""}
+            aria-invalid={companyInvalid}
+            onChange={(e) => updateField("company", e.target.value)}
+          />
+          <FieldError>{companyInvalid && "Company is required."}</FieldError>
+        </Field>
+      ) : null}
 
       <div className="grid gap-5 sm:grid-cols-2">
+        {!stackedTitleCompany ? (
+          <Field data-invalid={companyInvalid || undefined}>
+            <FieldLabel htmlFor="company">
+              Company <RequiredMark />
+            </FieldLabel>
+            <Input
+              id="company"
+              placeholder="Acme Inc."
+              value={form.company ?? ""}
+              aria-invalid={companyInvalid}
+              onChange={(e) => updateField("company", e.target.value)}
+            />
+            <FieldError>{companyInvalid && "Company is required."}</FieldError>
+          </Field>
+        ) : null}
         <Field data-invalid={appliedInvalid || undefined}>
           <FieldLabel htmlFor="appliedAt">
             Applied <RequiredMark />
@@ -165,9 +139,20 @@ export function ApplicationFormFields({
         ) : null}
       </div>
 
+      <Field>
+        <FieldLabel htmlFor="linkedinUrl">Company LinkedIn URL</FieldLabel>
+        <Input
+          id="linkedinUrl"
+          type="url"
+          placeholder="https://linkedin.com/…"
+          value={form.linkedinUrl ?? ""}
+          onChange={(e) => updateField("linkedinUrl", e.target.value)}
+        />
+      </Field>
+
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="recruiterName">Recruiter Name</FieldLabel>
+          <FieldLabel htmlFor="recruiterName">Contact Name</FieldLabel>
           <Input
             id="recruiterName"
             placeholder="Jane Doe"
