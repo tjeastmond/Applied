@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { createApplication, deleteApplication, listApplications, parseJobUrl, updateApplication } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -13,10 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldError, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
-import { Textarea } from "@/components/ui/textarea";
 import {
   applicationToForm,
   emptyForm,
@@ -26,7 +24,6 @@ import {
   type FormState,
 } from "@/lib/applicationForm";
 import type { JobApplication } from "@/types";
-import { cn } from "@/lib/utils";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -56,7 +53,7 @@ function ApplicationFormFields({
     <FieldGroup>
       <Field data-invalid={urlInvalid || undefined}>
         <FieldLabel htmlFor="url">
-          Job posting URL <RequiredMark />
+          Job Posting URL <RequiredMark />
         </FieldLabel>
         <InputGroup>
           <InputGroupInput
@@ -76,10 +73,8 @@ function ApplicationFormFields({
         <FieldError>{urlInvalid && "Job posting URL is required."}</FieldError>
       </Field>
 
-      <FieldSeparator>Job details</FieldSeparator>
-
       <Field>
-        <FieldLabel htmlFor="linkedinUrl">LinkedIn URL</FieldLabel>
+        <FieldLabel htmlFor="linkedinUrl">Company LinkedIn URL</FieldLabel>
         <Input
           id="linkedinUrl"
           type="url"
@@ -133,47 +128,30 @@ function ApplicationFormFields({
         <FieldError>{appliedInvalid && "Apply date is required."}</FieldError>
       </Field>
 
-      <FieldSeparator>Recruiter</FieldSeparator>
-
-      <Field orientation="horizontal">
-        <Checkbox
-          id="viaRecruiter"
-          checked={Boolean(form.viaRecruiter)}
-          onCheckedChange={(checked) => updateField("viaRecruiter", checked === true)}
-        />
-        <FieldLabel htmlFor="viaRecruiter" className="font-normal">
-          Via recruiter / headhunter
-        </FieldLabel>
-      </Field>
-
-      {form.viaRecruiter ? (
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Field>
-            <FieldLabel htmlFor="recruiterName">Recruiter name</FieldLabel>
-            <Input
-              id="recruiterName"
-              placeholder="Jane Doe"
-              value={form.recruiterName ?? ""}
-              onChange={(e) => updateField("recruiterName", e.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="recruiterFirm">Recruiter firm</FieldLabel>
-            <Input
-              id="recruiterFirm"
-              placeholder="TechRecruit LLC"
-              value={form.recruiterFirm ?? ""}
-              onChange={(e) => updateField("recruiterFirm", e.target.value)}
-            />
-          </Field>
-        </div>
-      ) : null}
-
-      <FieldSeparator>Contact</FieldSeparator>
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field>
+          <FieldLabel htmlFor="recruiterName">Recruiter Name</FieldLabel>
+          <Input
+            id="recruiterName"
+            placeholder="Jane Doe"
+            value={form.recruiterName ?? ""}
+            onChange={(e) => updateField("recruiterName", e.target.value)}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="recruiterFirm">Recruiter Firm</FieldLabel>
+          <Input
+            id="recruiterFirm"
+            placeholder="TechRecruit LLC"
+            value={form.recruiterFirm ?? ""}
+            onChange={(e) => updateField("recruiterFirm", e.target.value)}
+          />
+        </Field>
+      </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="contactEmail">Contact email</FieldLabel>
+          <FieldLabel htmlFor="contactEmail">Contact Email</FieldLabel>
           <Input
             id="contactEmail"
             type="email"
@@ -183,7 +161,7 @@ function ApplicationFormFields({
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="contactPhone">Contact phone</FieldLabel>
+          <FieldLabel htmlFor="contactPhone">Contact Phone</FieldLabel>
           <Input
             id="contactPhone"
             type="tel"
@@ -193,19 +171,6 @@ function ApplicationFormFields({
           />
         </Field>
       </div>
-
-      <FieldSeparator>Notes</FieldSeparator>
-
-      <Field>
-        <FieldLabel htmlFor="notes">Notes</FieldLabel>
-        <Textarea
-          id="notes"
-          className="min-h-28"
-          placeholder="Interview notes, comp discussion, follow-ups…"
-          value={form.notes ?? ""}
-          onChange={(e) => updateField("notes", e.target.value)}
-        />
-      </Field>
     </FieldGroup>
   );
 }
@@ -329,18 +294,17 @@ export default function App() {
       <header className="mb-10 flex flex-col items-center justify-between gap-4 sm:flex-row">
         <div className="text-center sm:text-left">
           <h1 className="text-3xl font-bold tracking-tight">Applied.dev</h1>
-          <p className="text-muted-foreground mt-2 text-sm">Track the jobs you&apos;ve applied to.</p>
         </div>
         <Button type="button" onClick={openAddForm}>
           <PlusIcon data-icon="inline-start" />
-          Add application
+          Add Application
         </Button>
       </header>
 
       <Dialog open={formOpen} onOpenChange={handleFormOpenChange}>
         <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 shadow-lg shadow-black/10 sm:max-w-2xl">
           <DialogHeader className="border-b px-6 py-4">
-            <DialogTitle>{form.id ? "Edit application" : "Add application"}</DialogTitle>
+            <DialogTitle>{form.id ? "Edit Application" : "Add Application"}</DialogTitle>
             <DialogDescription>
               Fields marked with <RequiredMark /> are required.
             </DialogDescription>
@@ -371,7 +335,7 @@ export default function App() {
               className="bg-green-600 text-white hover:bg-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30"
               onClick={() => void handleSave()}
             >
-              {isSaving ? "Saving…" : form.id ? "Update application" : "Save application"}
+              {isSaving ? "Saving…" : form.id ? "Update Application" : "Save Application"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -385,7 +349,7 @@ export default function App() {
               <p className="text-muted-foreground text-sm">No applications yet.</p>
               <Button type="button" variant="outline" onClick={openAddForm}>
                 <PlusIcon data-icon="inline-start" />
-                Add your first application
+                Add Your First Application
               </Button>
             </CardContent>
           </Card>
@@ -404,36 +368,6 @@ export default function App() {
   );
 }
 
-function JobDescriptionDialog({
-  html,
-  open,
-  onOpenChange,
-}: {
-  html: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(85vh,640px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b px-6 py-4">
-          <DialogTitle>Job description</DialogTitle>
-        </DialogHeader>
-        <div
-          className={cn(
-            "full-jd text-muted-foreground overflow-y-auto px-6 py-4 text-sm",
-            "[&_h2]:text-foreground [&_h3]:text-foreground [&_h4]:text-foreground",
-            "[&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold",
-            "[&_h3]:mt-3 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold",
-            "[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5",
-          )}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function ApplicationCard({
   application,
   onEdit,
@@ -443,45 +377,57 @@ function ApplicationCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const [jdOpen, setJdOpen] = useState(false);
   const title = application.title || application.url;
-  const metadata = [application.company, formatDate(application.appliedAt)].filter(Boolean);
+  const appliedLabel = formatDate(application.appliedAt);
+  const postingUrl = application.url.trim();
 
   return (
-    <>
-      <Card className="gap-0 py-0 transition-shadow hover:shadow-md hover:shadow-black/5">
-        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 py-4">
-          <div className="space-y-1">
-            <CardTitle className="text-base">{title}</CardTitle>
-            <CardDescription className="flex flex-wrap items-center gap-x-1.5">
-              <span>{metadata.join(" · ")}</span>
-              {application.fullJd ? (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <button
-                    type="button"
-                    className="text-foreground hover:text-primary underline-offset-4 hover:underline"
-                    onClick={() => setJdOpen(true)}
-                  >
-                    job description
-                  </button>
-                </>
-              ) : null}
-            </CardDescription>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={onEdit}>
-              Edit
-            </Button>
-            <Button type="button" variant="outline" size="sm" className="text-destructive" onClick={onDelete}>
-              Delete
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
-      {application.fullJd ? (
-        <JobDescriptionDialog html={application.fullJd} open={jdOpen} onOpenChange={setJdOpen} />
-      ) : null}
-    </>
+    <Card className="gap-0 py-0 transition-shadow hover:shadow-md hover:shadow-black/5">
+      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 py-4">
+        <div className="space-y-1">
+          <CardTitle className="text-base">{title}</CardTitle>
+          <CardDescription className="flex flex-wrap items-center gap-x-1.5">
+            {application.company ? (
+              <>
+                <span>{application.company}</span>
+                <span aria-hidden="true">·</span>
+              </>
+            ) : null}
+            <span>{appliedLabel}</span>
+            {postingUrl ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <a
+                  href={postingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 underline underline-offset-4 hover:no-underline dark:text-blue-400"
+                >
+                  Job Description
+                </a>
+              </>
+            ) : null}
+          </CardDescription>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            type="button"
+            size="sm"
+            className="bg-green-600 text-white hover:bg-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30"
+            onClick={onEdit}
+          >
+            Edit
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="bg-red-600 text-white hover:bg-red-700 focus-visible:border-red-700 focus-visible:ring-red-600/30"
+            onClick={onDelete}
+          >
+            Delete
+          </Button>
+        </div>
+      </CardHeader>
+    </Card>
   );
 }

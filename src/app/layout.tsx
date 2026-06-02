@@ -4,7 +4,7 @@ import "@/styles.css";
 
 export const metadata: Metadata = {
   title: "Applied.dev",
-  description: "Track the jobs you've applied to.",
+  description: "Job application tracker",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

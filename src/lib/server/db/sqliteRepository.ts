@@ -14,7 +14,6 @@ type ApplicationRow = {
   recruiter_firm: string | null;
   contact_email: string | null;
   contact_phone: string | null;
-  notes: string | null;
   full_jd: string | null;
   status: JobApplication["status"];
   created_at: string;
@@ -40,7 +39,6 @@ function rowToApplication(row: ApplicationRow): JobApplication {
     recruiterFirm: row.recruiter_firm,
     contactEmail: row.contact_email,
     contactPhone: row.contact_phone,
-    notes: row.notes,
     fullJd: row.full_jd,
     status: row.status,
     createdAt: row.created_at,
@@ -56,17 +54,25 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-const LIST_SQL = `SELECT * FROM applications ORDER BY applied_at DESC, created_at DESC`;
-const GET_BY_ID_SQL = `SELECT * FROM applications WHERE id = ?`;
+const LIST_SQL = `SELECT
+  id, url, linkedin_url, title, company, applied_at,
+  via_recruiter, recruiter_name, recruiter_firm,
+  contact_email, contact_phone, full_jd, status, created_at, updated_at
+FROM applications ORDER BY applied_at DESC, created_at DESC`;
+const GET_BY_ID_SQL = `SELECT
+  id, url, linkedin_url, title, company, applied_at,
+  via_recruiter, recruiter_name, recruiter_firm,
+  contact_email, contact_phone, full_jd, status, created_at, updated_at
+FROM applications WHERE id = ?`;
 const INSERT_SQL = `INSERT INTO applications (
   id, url, linkedin_url, title, company, applied_at,
   via_recruiter, recruiter_name, recruiter_firm,
-  contact_email, contact_phone, notes, full_jd, status,
+  contact_email, contact_phone, full_jd, status,
   created_at, updated_at
 ) VALUES (
   $id, $url, $linkedin_url, $title, $company, $applied_at,
   $via_recruiter, $recruiter_name, $recruiter_firm,
-  $contact_email, $contact_phone, $notes, $full_jd, $status,
+  $contact_email, $contact_phone, $full_jd, $status,
   $created_at, $updated_at
 )`;
 const UPDATE_SQL = `UPDATE applications SET
@@ -80,7 +86,6 @@ const UPDATE_SQL = `UPDATE applications SET
   recruiter_firm = $recruiter_firm,
   contact_email = $contact_email,
   contact_phone = $contact_phone,
-  notes = $notes,
   full_jd = $full_jd,
   status = $status,
   updated_at = $updated_at
@@ -124,7 +129,6 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
       recruiter_firm: viaRecruiter ? trimOrNull(input.recruiterFirm) : null,
       contact_email: trimOrNull(input.contactEmail),
       contact_phone: trimOrNull(input.contactPhone),
-      notes: trimOrNull(input.notes),
       full_jd: trimOrNull(input.fullJd),
       status: input.status ?? "applied",
       created_at: timestamp,
@@ -169,7 +173,6 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
         : null,
       contact_email: input.contactEmail !== undefined ? trimOrNull(input.contactEmail) : existing.contact_email,
       contact_phone: input.contactPhone !== undefined ? trimOrNull(input.contactPhone) : existing.contact_phone,
-      notes: input.notes !== undefined ? trimOrNull(input.notes) : existing.notes,
       full_jd: input.fullJd !== undefined ? trimOrNull(input.fullJd) : existing.full_jd,
       status: input.status ?? existing.status,
       updated_at: nowIso(),
@@ -187,7 +190,6 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
       recruiter_firm: updated.recruiter_firm,
       contact_email: updated.contact_email,
       contact_phone: updated.contact_phone,
-      notes: updated.notes,
       full_jd: updated.full_jd,
       status: updated.status,
       updated_at: updated.updated_at,

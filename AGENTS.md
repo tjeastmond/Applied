@@ -144,7 +144,6 @@ applied.dev/
 | `recruiterFirm` | `string \| null`    | Only when `viaRecruiter`                                                         |
 | `contactEmail`  | `string \| null`    |                                                                                  |
 | `contactPhone`  | `string \| null`    |                                                                                  |
-| `notes`         | `string \| null`    | User-written notes (separate from parsed JD)                                     |
 | `fullJd`        | `string \| null`    | Parsed job description — cleaned minimal HTML                                    |
 | `status`        | `ApplicationStatus` | `"applied" \| "interviewing" \| "rejected" \| "offer"` — defaults to `"applied"` |
 | `createdAt`     | `string`            | ISO timestamp                                                                    |
@@ -153,6 +152,21 @@ applied.dev/
 **SQLite column mapping:** snake_case in DB (`linkedin_url`, `applied_at`, `full_jd`, etc.); camelCase in TypeScript via `rowToApplication()`.
 
 **List order:** `applied_at DESC, created_at DESC`.
+
+### `ApplicationNote` (`src/types.ts`)
+
+Many notes per application, stored in `application_notes` (not on the application form).
+
+| Field             | Type     | Notes                                      |
+| ----------------- | -------- | ------------------------------------------ |
+| `id`              | `string` | UUID                                       |
+| `applicationId`   | `string` | FK → `applications.id` (cascade on delete) |
+| `content`         | `string` | Note body                                  |
+| `createdAt`       | `string` | ISO timestamp                              |
+
+Repository: `getNoteRepository()` in `src/lib/server/db.ts` (`create`, `listByApplicationId`). UI/API for adding notes is not wired yet.
+
+Legacy `applications.notes` values are migrated into `application_notes` on startup.
 
 ### Schema migrations
 
@@ -377,7 +391,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 - Dev server runs on port 3000 by default (`PORT` env overrides for production)
 - Tooling includes Prettier, ESLint, and Vitest (run via `pnpm`)
 - Required application form fields: job posting URL, title, company, apply date; all other fields are optional
-- Parsed job postings store cleaned minimal HTML in `full_jd`, separate from user notes
+- Parsed job postings store cleaned minimal HTML in `full_jd`; user notes live in `application_notes`
 - SQLite persistence via better-sqlite3 (`data/applied.db` by default)
 - Git workflow uses Conventional Commits for branch names, commit messages, and PR titles
 - Deployable to Vercel; thin auth later; SQLite for now, Postgres possible later

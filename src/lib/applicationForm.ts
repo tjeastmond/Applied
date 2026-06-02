@@ -18,7 +18,6 @@ export function emptyForm(): FormState {
     recruiterFirm: "",
     contactEmail: "",
     contactPhone: "",
-    notes: "",
     fullJd: "",
     status: "applied",
   };
@@ -48,18 +47,20 @@ export function formatDate(value: string): string {
 }
 
 export function formToInput(form: FormState): CreateJobApplicationInput {
+  const hasRecruiterInfo =
+    (form.recruiterName?.trim().length ?? 0) > 0 || (form.recruiterFirm?.trim().length ?? 0) > 0;
+
   return {
     url: form.url.trim(),
     linkedinUrl: form.linkedinUrl?.trim() || null,
     title: form.title?.trim() ?? "",
     company: form.company?.trim() ?? "",
     appliedAt: form.appliedAt?.trim() ?? today(),
-    viaRecruiter: Boolean(form.viaRecruiter),
-    recruiterName: form.viaRecruiter ? form.recruiterName?.trim() || null : null,
-    recruiterFirm: form.viaRecruiter ? form.recruiterFirm?.trim() || null : null,
+    viaRecruiter: hasRecruiterInfo,
+    recruiterName: hasRecruiterInfo ? form.recruiterName?.trim() || null : null,
+    recruiterFirm: hasRecruiterInfo ? form.recruiterFirm?.trim() || null : null,
     contactEmail: form.contactEmail?.trim() || null,
     contactPhone: form.contactPhone?.trim() || null,
-    notes: form.notes?.trim() || null,
     fullJd: form.fullJd?.trim() || null,
     status: form.status ?? "applied",
   };
@@ -78,7 +79,6 @@ export function applicationToForm(application: JobApplication): FormState {
     recruiterFirm: application.recruiterFirm ?? "",
     contactEmail: application.contactEmail ?? "",
     contactPhone: application.contactPhone ?? "",
-    notes: application.notes ?? "",
     fullJd: application.fullJd ?? "",
     status: application.status,
   };

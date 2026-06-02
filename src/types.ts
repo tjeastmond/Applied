@@ -12,7 +12,6 @@ export interface JobApplication {
   recruiterFirm: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
-  notes: string | null;
   fullJd: string | null;
   status: ApplicationStatus;
   createdAt: string;
@@ -30,7 +29,6 @@ export interface CreateJobApplicationInput {
   recruiterFirm?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
-  notes?: string | null;
   fullJd?: string | null;
   status?: ApplicationStatus;
 }
@@ -48,3 +46,10 @@ export type ParseJobUrlFailure = {
 };
 
 export type ParseJobUrlResult = ParseJobUrlSuccess | ParseJobUrlFailure;
+
+export interface ApplicationNote {
+  id: string;
+  applicationId: string;
+  content: string;
+  createdAt: string;
+}

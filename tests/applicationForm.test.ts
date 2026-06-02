@@ -20,7 +20,6 @@ describe("isFormValid", () => {
     form.company = "Acme";
     form.appliedAt = "2026-06-01";
     form.linkedinUrl = "";
-    form.notes = "";
     expect(isFormValid(form)).toBe(true);
   });
 });
