@@ -171,7 +171,7 @@ Many notes per application, stored in `application_notes` (not on the applicatio
 | `content`       | `string` | Note body                                  |
 | `createdAt`     | `string` | ISO timestamp                              |
 
-Repository: `getNoteRepository()` in `src/lib/server/db.ts` (`create`, `listByApplicationId`). UI/API for adding notes is not wired yet.
+Repository: `getNoteRepository()` in `src/lib/server/db.ts` (`create`, `listByApplicationId`, `deleteForApplication`). Notes are managed in `ApplicationDetailSheet` (add/list/delete).
 
 Legacy `applications.notes` values are migrated into `application_notes` on startup.
 
@@ -187,15 +187,18 @@ Legacy `applications.notes` values are migrated into `application_notes` on star
 
 All endpoints return JSON unless noted. Errors: `{ "error": "message" }` with 4xx status.
 
-| Method   | Path                    | Body                                 | Response                |
-| -------- | ----------------------- | ------------------------------------ | ----------------------- |
-| `GET`    | `/api/applications`     | —                                    | `JobApplication[]`      |
-| `POST`   | `/api/applications`     | `CreateJobApplicationInput`          | `JobApplication` (201)  |
-| `PATCH`  | `/api/applications/:id` | `Partial<CreateJobApplicationInput>` | `JobApplication` or 404 |
-| `DELETE` | `/api/applications/:id` | —                                    | 204 or 404              |
-| `POST`   | `/api/jobs/parse`       | `{ "url": string }`                  | `ParseJobUrlResult`     |
+| Method   | Path                                  | Body                                 | Response                |
+| -------- | ------------------------------------- | ------------------------------------ | ----------------------- |
+| `GET`    | `/api/applications`                   | —                                    | `JobApplication[]`      |
+| `POST`   | `/api/applications`                   | `CreateJobApplicationInput`          | `JobApplication` (201)  |
+| `PATCH`  | `/api/applications/:id`               | `Partial<CreateJobApplicationInput>` | `JobApplication` or 404 |
+| `DELETE` | `/api/applications/:id`               | —                                    | 204 or 404              |
+| `GET`    | `/api/applications/:id/notes`         | —                                    | `ApplicationNote[]`     |
+| `POST`   | `/api/applications/:id/notes`         | `{ "content": string }`              | `ApplicationNote` (201) |
+| `DELETE` | `/api/applications/:id/notes/:noteId` | —                                    | 204 or 404              |
+| `POST`   | `/api/jobs/parse`                     | `{ "url": string }`                  | `ParseJobUrlResult`     |
 
-**Create validation** (`src/lib/server/validation.ts`): `url`, `title`, `company`, `appliedAt` must be non-empty strings.
+**Create validation** (`src/lib/schemas/application.ts` via Zod): `url`, `title`, `company`, `appliedAt` required; optional fields sanitized on persist.
 
 **Parse response:**
 

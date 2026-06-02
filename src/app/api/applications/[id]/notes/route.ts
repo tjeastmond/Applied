@@ -1,38 +1,31 @@
-import { getNoteRepository, getRepository } from "@/lib/server/db";
+import { getNoteRepository } from "@/lib/server/db";
+import {
+  applicationNotFoundResponse,
+  type ApplicationIdRouteContext,
+  requireApplicationId,
+} from "@/lib/server/applicationRouteHelpers";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
 import { createApplicationNoteSchema } from "@/lib/schemas/note";
-import { parseUuid } from "@/lib/schemas/common";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-type RouteContext = { params: Promise<{ id: string }> };
-
-async function requireApplicationId(rawId: string): Promise<string | null> {
-  const id = parseUuid(rawId);
-  if (!id) {
-    return null;
-  }
-  const application = await getRepository().getById(id);
-  return application ? id : null;
-}
-
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(_request: Request, context: ApplicationIdRouteContext) {
   const { id: rawId } = await context.params;
   const applicationId = await requireApplicationId(rawId);
   if (!applicationId) {
-    return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    return applicationNotFoundResponse();
   }
 
   const notes = await getNoteRepository().listByApplicationId(applicationId);
   return NextResponse.json(notes);
 }
 
-export async function POST(request: Request, context: RouteContext) {
+export async function POST(request: Request, context: ApplicationIdRouteContext) {
   const { id: rawId } = await context.params;
   const applicationId = await requireApplicationId(rawId);
   if (!applicationId) {
-    return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    return applicationNotFoundResponse();
   }
 
   const parsed = await parseRequestBody(request, createApplicationNoteSchema);

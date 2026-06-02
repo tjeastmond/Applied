@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createApplication, deleteApplication, listApplications, parseJobUrl, updateApplication } from "@/api";
+import { createApplication, deleteApplication, updateApplication } from "@/api";
 import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
 import { JobDescriptionLink } from "@/components/JobDescriptionLink";
@@ -25,14 +25,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useApplicationFormActions } from "@/hooks/useApplicationFormActions";
+import { removeApplication, upsertApplication } from "@/lib/applicationsList";
+import { emptyForm, formatDate, type FormState } from "@/lib/applicationForm";
 import { errorMessage } from "@/lib/errorMessage";
-import { emptyForm, formatDate, formToInput, isFormValid, mergeParseResult, type FormState } from "@/lib/applicationForm";
 import {
   isEditableKeyboardTarget,
   isModKeyChord,
   modKShortcutDescription,
   modKShortcutLabel,
 } from "@/lib/keyboardShortcut";
+import { toastMessages } from "@/lib/toastMessages";
 import type { JobApplication } from "@/types";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -43,13 +46,36 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   const [applications, setApplications] = useState(initialApplications);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isParsing, setIsParsing] = useState(false);
-  const [showValidation, setShowValidation] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const valid = isFormValid(form);
+  const handleApplicationChange = useCallback((application: JobApplication) => {
+    setApplications((prev) => upsertApplication(prev, application));
+  }, []);
+
+  const { updateField, isParsing, isSaving, requiredValidation, parse, save, setShowValidation } =
+    useApplicationFormActions({
+      form,
+      setForm: setForm as React.Dispatch<React.SetStateAction<FormState | null>>,
+      onSave: async (input, currentForm) => {
+        if (currentForm.id) {
+          return updateApplication(currentForm.id, input);
+        }
+        return createApplication(input);
+      },
+      onApplicationChange: handleApplicationChange,
+    });
+
+  const resetForm = useCallback(() => {
+    setForm(emptyForm());
+    setShowValidation(false);
+  }, [setShowValidation]);
+
+  const closeForm = useCallback(() => {
+    setFormOpen(false);
+    resetForm();
+  }, [resetForm]);
+
   const selectedApplication = useMemo(
     () => applications.find((application) => application.id === selectedId) ?? null,
     [applications, selectedId],
@@ -63,19 +89,10 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     setApplications(initialApplications);
   }, [initialApplications]);
 
-  const refresh = useCallback(async () => {
-    setApplications(await listApplications());
-  }, []);
-
-  function resetForm() {
-    setForm(emptyForm());
-    setShowValidation(false);
-  }
-
   const openAddForm = useCallback(() => {
     resetForm();
     setFormOpen(true);
-  }, []);
+  }, [setShowValidation]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -100,62 +117,10 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     }
   }
 
-  function closeForm() {
-    setFormOpen(false);
-    resetForm();
-  }
-
   function handleFormOpenChange(open: boolean) {
     setFormOpen(open);
     if (!open) {
       resetForm();
-    }
-  }
-
-  function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  async function handleParse() {
-    if (!form.url.trim()) return;
-    setIsParsing(true);
-    try {
-      const result = await parseJobUrl(form.url.trim());
-      if (result.ok) {
-        setForm((prev) => mergeParseResult(prev, result));
-        toast.success("Job details parsed. Review and save when ready.");
-      } else {
-        toast.error(result.error);
-      }
-    } catch (error) {
-      toast.error(errorMessage(error, "Failed to parse URL"));
-    } finally {
-      setIsParsing(false);
-    }
-  }
-
-  async function handleSave() {
-    if (!valid) {
-      setShowValidation(true);
-      toast.error("Please fill in all required fields.");
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const input = formToInput(form);
-      if (form.id) {
-        await updateApplication(form.id, input);
-        toast.success("Application updated.");
-      } else {
-        await createApplication(input);
-        toast.success("Application saved.");
-      }
-      closeForm();
-      await refresh();
-    } catch (error) {
-      toast.error(errorMessage(error, "Failed to save application"));
-    } finally {
-      setIsSaving(false);
     }
   }
 
@@ -176,16 +141,16 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     try {
       await deleteApplication(id);
       setPendingDeleteId(null);
+      setApplications((prev) => removeApplication(prev, id));
       if (form.id === id) {
         closeForm();
       }
       if (selectedId === id) {
         handleDetailOpenChange(false);
       }
-      toast.success("Application deleted.");
-      await refresh();
+      toast.success(toastMessages.applicationDeleted);
     } catch (error) {
-      toast.error(errorMessage(error, "Failed to delete application"));
+      toast.error(errorMessage(error, toastMessages.deleteApplicationFailed));
     } finally {
       setIsDeleting(false);
     }
@@ -212,7 +177,11 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
             className="flex min-h-0 flex-1 flex-col"
             onSubmit={(e) => {
               e.preventDefault();
-              void handleSave();
+              void (async () => {
+                if (await save()) {
+                  closeForm();
+                }
+              })();
             }}
           >
             <DialogHeader className="border-b px-6 py-4">
@@ -225,28 +194,17 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
               <ApplicationFormFields
                 variant="minimal"
                 form={form}
-                showValidation={showValidation}
+                requiredValidation={requiredValidation}
                 isParsing={isParsing}
                 updateField={updateField}
-                onParse={() => void handleParse()}
+                onParse={() => void parse()}
               />
             </div>
             <DialogFooter className="mx-0 mb-0 gap-3 px-6 py-4">
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={closeForm}
-              >
+              <Button type="button" variant="cancelOutline" size="lg" onClick={closeForm}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                size="lg"
-                disabled={isSaving}
-                className="bg-green-600 text-white hover:bg-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30"
-              >
+              <Button type="submit" variant="save" size="lg" disabled={isSaving}>
                 {isSaving ? "Saving…" : "Save Application"}
               </Button>
             </DialogFooter>
@@ -258,7 +216,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
         application={selectedApplication}
         open={detailOpen}
         onOpenChange={handleDetailOpenChange}
-        onSaved={refresh}
+        onApplicationChange={handleApplicationChange}
       />
 
       <AlertDialog open={pendingDeleteId !== null} onOpenChange={handleDeleteDialogOpenChange}>
@@ -272,17 +230,10 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel
-              disabled={isDeleting}
-              className="border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            >
+            <AlertDialogCancel disabled={isDeleting} variant="cancelOutline">
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isDeleting}
-              className="bg-red-600 text-white hover:bg-red-700 focus-visible:border-red-700 focus-visible:ring-red-600/30"
-              onClick={() => void confirmDelete()}
-            >
+            <AlertDialogAction disabled={isDeleting} variant="destructiveSolid" onClick={() => void confirmDelete()}>
               {isDeleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -360,20 +311,10 @@ function ApplicationCard({
           </CardDescription>
         </div>
         <div className="pointer-events-auto flex shrink-0 gap-2">
-          <Button
-            type="button"
-            size="sm"
-            className="bg-green-600 text-white hover:bg-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30"
-            onClick={onOpen}
-          >
+          <Button type="button" size="sm" variant="save" onClick={onOpen}>
             Edit
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            className="bg-red-600 text-white hover:bg-red-700 focus-visible:border-red-700 focus-visible:ring-red-600/30"
-            onClick={onDelete}
-          >
+          <Button type="button" size="sm" variant="destructiveSolid" onClick={onDelete}>
             Delete
           </Button>
         </div>

@@ -2,6 +2,7 @@
 
 import type { MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
+import { toastMessages } from "@/lib/toastMessages";
 import { cn } from "@/lib/utils";
 import { CopyIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -26,9 +27,9 @@ export function JobDescriptionLink({ url, className, stopPropagation = false }: 
     stopBubble(event);
     try {
       await navigator.clipboard.writeText(trimmed);
-      toast.success("Job description URL copied.");
+      toast.success(toastMessages.jobUrlCopied);
     } catch {
-      toast.error("Failed to copy URL.");
+      toast.error(toastMessages.jobUrlCopyFailed);
     }
   }
 

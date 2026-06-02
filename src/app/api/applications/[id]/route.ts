@@ -1,19 +1,21 @@
 import { getRepository } from "@/lib/server/db";
+import {
+  applicationNotFoundResponse,
+  type ApplicationIdRouteContext,
+  requireApplicationId,
+} from "@/lib/server/applicationRouteHelpers";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
 import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
 import { patchJobApplicationSchema } from "@/lib/schemas/application";
-import { parseUuid } from "@/lib/schemas/common";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-type RouteContext = { params: Promise<{ id: string }> };
-
-export async function PATCH(request: Request, context: RouteContext) {
+export async function PATCH(request: Request, context: ApplicationIdRouteContext) {
   const { id: rawId } = await context.params;
-  const id = parseUuid(rawId);
+  const id = await requireApplicationId(rawId);
   if (!id) {
-    return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    return applicationNotFoundResponse();
   }
 
   const parsed = await parseRequestBody(request, patchJobApplicationSchema);
@@ -23,21 +25,21 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const updated = await getRepository().update(id, sanitizeApplicationInput(parsed.data));
   if (!updated) {
-    return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    return applicationNotFoundResponse();
   }
   return NextResponse.json(updated);
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(_request: Request, context: ApplicationIdRouteContext) {
   const { id: rawId } = await context.params;
-  const id = parseUuid(rawId);
+  const id = await requireApplicationId(rawId);
   if (!id) {
-    return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    return applicationNotFoundResponse();
   }
 
   const deleted = await getRepository().delete(id);
   if (!deleted) {
-    return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    return applicationNotFoundResponse();
   }
   return new NextResponse(null, { status: 204 });
 }

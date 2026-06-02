@@ -1,30 +1,27 @@
-import { getNoteRepository, getRepository } from "@/lib/server/db";
-import { parseUuid } from "@/lib/schemas/common";
+import { getNoteRepository } from "@/lib/server/db";
+import {
+  applicationNotFoundResponse,
+  type ApplicationNoteRouteContext,
+  parseRouteUuid,
+  requireApplicationId,
+} from "@/lib/server/applicationRouteHelpers";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-type RouteContext = { params: Promise<{ id: string; noteId: string }> };
-
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(_request: Request, context: ApplicationNoteRouteContext) {
   const { id: rawId, noteId: rawNoteId } = await context.params;
-  const id = parseUuid(rawId);
-  const noteId = parseUuid(rawNoteId);
-  if (!id || !noteId) {
+  const noteId = parseRouteUuid(rawNoteId);
+  if (!noteId) {
     return NextResponse.json({ error: "Note not found" }, { status: 404 });
   }
 
-  const application = await getRepository().getById(id);
-  if (!application) {
-    return NextResponse.json({ error: "Application not found" }, { status: 404 });
+  const applicationId = await requireApplicationId(rawId);
+  if (!applicationId) {
+    return applicationNotFoundResponse();
   }
 
-  const notes = await getNoteRepository().listByApplicationId(id);
-  if (!notes.some((note) => note.id === noteId)) {
-    return NextResponse.json({ error: "Note not found" }, { status: 404 });
-  }
-
-  const deleted = await getNoteRepository().delete(noteId);
+  const deleted = await getNoteRepository().deleteForApplication(applicationId, noteId);
   if (!deleted) {
     return NextResponse.json({ error: "Note not found" }, { status: 404 });
   }

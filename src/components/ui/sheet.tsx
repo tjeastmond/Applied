@@ -53,7 +53,7 @@ function SheetContent({
         data-slot="sheet-content"
         data-side={side}
         className={cn(
-          "bg-popover text-popover-foreground fixed z-50 flex flex-col gap-4 bg-clip-padding text-sm shadow-lg outline-none duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
+          "bg-popover text-popover-foreground fixed z-50 flex flex-col gap-4 bg-clip-padding text-sm shadow-lg duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] outline-none",
           "data-open:animate-in data-closed:animate-out",
           "data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:max-h-[96vh] data-[side=bottom]:rounded-t-2xl data-[side=bottom]:border-t",
           "data-[side=bottom]:data-open:slide-in-from-bottom data-[side=bottom]:data-closed:slide-out-to-bottom",

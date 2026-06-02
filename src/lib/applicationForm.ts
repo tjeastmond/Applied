@@ -13,7 +13,6 @@ export type FormState = {
   title: string;
   company: string;
   appliedAt: string;
-  viaRecruiter: boolean;
   recruiterName: string;
   recruiterFirm: string;
   contactEmail: string;
@@ -33,7 +32,6 @@ export function emptyForm(): FormState {
     title: "",
     company: "",
     appliedAt: today(),
-    viaRecruiter: false,
     recruiterName: "",
     recruiterFirm: "",
     contactEmail: "",
@@ -43,41 +41,71 @@ export function emptyForm(): FormState {
   };
 }
 
-export function isFormValid(form: FormState): boolean {
-  return requiredApplicationFieldsSchema.safeParse({
+export const REQUIRED_FORM_FIELDS = ["url", "title", "company", "appliedAt"] as const;
+
+export type RequiredFormField = (typeof REQUIRED_FORM_FIELDS)[number];
+
+const REQUIRED_FIELD_MESSAGES: Record<RequiredFormField, string> = {
+  url: "Job Description URL is required.",
+  title: "Title is required.",
+  company: "Company is required.",
+  appliedAt: "Apply date is required.",
+};
+
+function requiredFieldsFromForm(form: FormState) {
+  return {
     url: form.url,
     title: form.title,
     company: form.company,
     appliedAt: form.appliedAt,
-  }).success;
-}
-
-export function mergeParseResult(form: FormState, result: Pick<ParseJobUrlSuccess, "title" | "company" | "fullJd">): FormState {
-  return {
-    ...form,
-    title: result.title ?? form.title,
-    company: result.company ?? form.company,
-    fullJd: result.fullJd ?? form.fullJd,
   };
 }
 
-export function truncate(text: string, max = 120): string {
-  if (text.length <= max) return text;
-  return `${text.slice(0, max).trim()}…`;
+function emptyRequiredInvalid(): Record<RequiredFormField, boolean> {
+  return { url: false, title: false, company: false, appliedAt: false };
 }
 
-export function formatDate(value: string): string {
-  const date = new Date(`${value}T00:00:00`);
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+export type RequiredValidationState = {
+  invalid: Record<RequiredFormField, boolean>;
+  errors: Partial<Record<RequiredFormField, string>>;
+};
+
+export function getRequiredValidationState(form: FormState, showValidation: boolean): RequiredValidationState {
+  if (!showValidation) {
+    return { invalid: emptyRequiredInvalid(), errors: {} };
+  }
+
+  const result = requiredApplicationFieldsSchema.safeParse(requiredFieldsFromForm(form));
+  if (result.success) {
+    return { invalid: emptyRequiredInvalid(), errors: {} };
+  }
+
+  const invalid = emptyRequiredInvalid();
+  const errors: Partial<Record<RequiredFormField, string>> = {};
+
+  for (const issue of result.error.issues) {
+    const field = issue.path[0];
+    if (typeof field !== "string" || !(field in REQUIRED_FIELD_MESSAGES)) {
+      continue;
+    }
+    const key = field as RequiredFormField;
+    if (errors[key]) {
+      continue;
+    }
+    invalid[key] = true;
+    errors[key] = REQUIRED_FIELD_MESSAGES[key];
+  }
+
+  return { invalid, errors };
 }
 
-export function formToInput(form: FormState): ParsedCreateJobApplicationInput {
+export function isFormValid(form: FormState): boolean {
+  return requiredApplicationFieldsSchema.safeParse(requiredFieldsFromForm(form)).success;
+}
+
+function buildCreateInput(form: FormState) {
   const hasRecruiterInfo = Boolean(form.recruiterName.trim()) || Boolean(form.recruiterFirm.trim());
-  const result = createJobApplicationSchema.safeParse({
+  return {
     url: form.url,
     title: form.title,
     company: form.company,
@@ -90,12 +118,73 @@ export function formToInput(form: FormState): ParsedCreateJobApplicationInput {
     contactPhone: form.contactPhone,
     fullJd: form.fullJd,
     status: form.status,
-  });
+  };
+}
 
+export function safeFormToInput(
+  form: FormState,
+): { ok: true; data: ParsedCreateJobApplicationInput } | { ok: false; error: string } {
+  const result = createJobApplicationSchema.safeParse(buildCreateInput(form));
   if (!result.success) {
-    throw new Error(formatZodError(result.error));
+    return { ok: false, error: formatZodError(result.error) };
   }
+  return { ok: true, data: result.data };
+}
 
+export function isFormPristine(form: FormState, application: JobApplication): boolean {
+  const baseline = applicationToForm(application);
+  return (
+    form.url === baseline.url &&
+    form.linkedinUrl === baseline.linkedinUrl &&
+    form.title === baseline.title &&
+    form.company === baseline.company &&
+    form.appliedAt === baseline.appliedAt &&
+    form.recruiterName === baseline.recruiterName &&
+    form.recruiterFirm === baseline.recruiterFirm &&
+    form.contactEmail === baseline.contactEmail &&
+    form.contactPhone === baseline.contactPhone &&
+    form.fullJd === baseline.fullJd &&
+    form.status === baseline.status
+  );
+}
+
+export function mergeParseResult(
+  form: FormState,
+  result: Pick<ParseJobUrlSuccess, "title" | "company" | "fullJd">,
+): FormState {
+  return {
+    ...form,
+    title: result.title ?? form.title,
+    company: result.company ?? form.company,
+    fullJd: result.fullJd ?? form.fullJd,
+  };
+}
+
+export function formatDate(value: string): string {
+  const date = new Date(`${value}T00:00:00`);
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export function formatNoteTimestamp(value: string): string {
+  const date = new Date(value);
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export function formToInput(form: FormState): ParsedCreateJobApplicationInput {
+  const result = safeFormToInput(form);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
   return result.data;
 }
 
@@ -107,7 +196,6 @@ export function applicationToForm(application: JobApplication): FormState {
     title: application.title ?? "",
     company: application.company ?? "",
     appliedAt: application.appliedAt,
-    viaRecruiter: application.viaRecruiter,
     recruiterName: application.recruiterName ?? "",
     recruiterFirm: application.recruiterFirm ?? "",
     contactEmail: application.contactEmail ?? "",

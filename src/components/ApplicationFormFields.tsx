@@ -1,7 +1,7 @@
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
-import type { FormState } from "@/lib/applicationForm";
+import type { FormState, RequiredValidationState } from "@/lib/applicationForm";
 import type { ApplicationStatus } from "@/types";
 
 function RequiredMark() {
@@ -17,7 +17,7 @@ const STATUS_OPTIONS: { value: ApplicationStatus; label: string }[] = [
 
 export function ApplicationFormFields({
   form,
-  showValidation,
+  requiredValidation,
   isParsing,
   variant = "full",
   showStatus = false,
@@ -26,7 +26,7 @@ export function ApplicationFormFields({
   onParse,
 }: {
   form: FormState;
-  showValidation: boolean;
+  requiredValidation: RequiredValidationState;
   isParsing: boolean;
   variant?: "minimal" | "full";
   showStatus?: boolean;
@@ -35,13 +35,10 @@ export function ApplicationFormFields({
   onParse: () => void;
 }) {
   const minimal = variant === "minimal";
-  const urlInvalid = showValidation && !form.url.trim();
-  const titleInvalid = showValidation && !form.title.trim();
-  const companyInvalid = showValidation && !form.company.trim();
-  const appliedInvalid = showValidation && !form.appliedAt.trim();
+  const { invalid, errors } = requiredValidation;
 
   const companyField = (
-    <Field data-invalid={companyInvalid || undefined}>
+    <Field data-invalid={invalid.company || undefined}>
       <FieldLabel htmlFor="company">
         Company <RequiredMark />
       </FieldLabel>
@@ -49,16 +46,16 @@ export function ApplicationFormFields({
         id="company"
         placeholder="Acme Inc."
         value={form.company}
-        aria-invalid={companyInvalid}
+        aria-invalid={invalid.company}
         onChange={(e) => updateField("company", e.target.value)}
       />
-      <FieldError>{companyInvalid && "Company is required."}</FieldError>
+      <FieldError>{errors.company}</FieldError>
     </Field>
   );
 
   return (
     <FieldGroup>
-      <Field data-invalid={urlInvalid || undefined}>
+      <Field data-invalid={invalid.url || undefined}>
         <FieldLabel htmlFor="url">
           Job Description URL <RequiredMark />
         </FieldLabel>
@@ -68,7 +65,7 @@ export function ApplicationFormFields({
             type="url"
             placeholder="https://…"
             value={form.url}
-            aria-invalid={urlInvalid}
+            aria-invalid={invalid.url}
             onChange={(e) => updateField("url", e.target.value)}
           />
           <InputGroupAddon align="inline-end">
@@ -77,10 +74,10 @@ export function ApplicationFormFields({
             </InputGroupButton>
           </InputGroupAddon>
         </InputGroup>
-        <FieldError>{urlInvalid && "Job Description URL is required."}</FieldError>
+        <FieldError>{errors.url}</FieldError>
       </Field>
 
-      <Field data-invalid={titleInvalid || undefined}>
+      <Field data-invalid={invalid.title || undefined}>
         <FieldLabel htmlFor="title">
           Title <RequiredMark />
         </FieldLabel>
@@ -88,17 +85,17 @@ export function ApplicationFormFields({
           id="title"
           placeholder="Senior Engineer"
           value={form.title}
-          aria-invalid={titleInvalid}
+          aria-invalid={invalid.title}
           onChange={(e) => updateField("title", e.target.value)}
         />
-        <FieldError>{titleInvalid && "Title is required."}</FieldError>
+        <FieldError>{errors.title}</FieldError>
       </Field>
 
       {stackedTitleCompany ? companyField : null}
 
       <div className="grid gap-5 sm:grid-cols-2">
         {!stackedTitleCompany ? companyField : null}
-        <Field data-invalid={appliedInvalid || undefined}>
+        <Field data-invalid={invalid.appliedAt || undefined}>
           <FieldLabel htmlFor="appliedAt">
             Applied <RequiredMark />
           </FieldLabel>
@@ -106,17 +103,17 @@ export function ApplicationFormFields({
             id="appliedAt"
             type="date"
             value={form.appliedAt}
-            aria-invalid={appliedInvalid}
+            aria-invalid={invalid.appliedAt}
             onChange={(e) => updateField("appliedAt", e.target.value)}
           />
-          <FieldError>{appliedInvalid && "Apply date is required."}</FieldError>
+          <FieldError>{errors.appliedAt}</FieldError>
         </Field>
         {showStatus && !minimal ? (
           <Field>
             <FieldLabel htmlFor="status">Status</FieldLabel>
             <select
               id="status"
-              className="border-input bg-background focus-visible:border-blue-500 focus-visible:ring-0 aria-invalid:border-destructive aria-invalid:focus-visible:border-destructive h-9 w-full rounded-md border px-2.5 text-sm outline-none"
+              className="border-input bg-background aria-invalid:border-destructive aria-invalid:focus-visible:border-destructive h-9 w-full rounded-md border px-2.5 text-sm outline-none focus-visible:border-blue-500 focus-visible:ring-0"
               value={form.status}
               onChange={(e) => updateField("status", e.target.value as ApplicationStatus)}
             >
@@ -132,60 +129,60 @@ export function ApplicationFormFields({
 
       {minimal ? null : (
         <>
-      <Field>
-        <FieldLabel htmlFor="linkedinUrl">Company LinkedIn URL</FieldLabel>
-        <Input
-          id="linkedinUrl"
-          type="url"
-          placeholder="https://linkedin.com/…"
-          value={form.linkedinUrl ?? ""}
-          onChange={(e) => updateField("linkedinUrl", e.target.value)}
-        />
-      </Field>
+          <Field>
+            <FieldLabel htmlFor="linkedinUrl">Company LinkedIn URL</FieldLabel>
+            <Input
+              id="linkedinUrl"
+              type="url"
+              placeholder="https://linkedin.com/…"
+              value={form.linkedinUrl ?? ""}
+              onChange={(e) => updateField("linkedinUrl", e.target.value)}
+            />
+          </Field>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="recruiterName">Contact Name</FieldLabel>
-          <Input
-            id="recruiterName"
-            placeholder="Jane Doe"
-            value={form.recruiterName ?? ""}
-            onChange={(e) => updateField("recruiterName", e.target.value)}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="recruiterFirm">Recruiter Firm</FieldLabel>
-          <Input
-            id="recruiterFirm"
-            placeholder="TechRecruit LLC"
-            value={form.recruiterFirm ?? ""}
-            onChange={(e) => updateField("recruiterFirm", e.target.value)}
-          />
-        </Field>
-      </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="recruiterName">Contact Name</FieldLabel>
+              <Input
+                id="recruiterName"
+                placeholder="Jane Doe"
+                value={form.recruiterName ?? ""}
+                onChange={(e) => updateField("recruiterName", e.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="recruiterFirm">Recruiter Firm</FieldLabel>
+              <Input
+                id="recruiterFirm"
+                placeholder="TechRecruit LLC"
+                value={form.recruiterFirm ?? ""}
+                onChange={(e) => updateField("recruiterFirm", e.target.value)}
+              />
+            </Field>
+          </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="contactEmail">Contact Email</FieldLabel>
-          <Input
-            id="contactEmail"
-            type="email"
-            placeholder="name@company.com"
-            value={form.contactEmail ?? ""}
-            onChange={(e) => updateField("contactEmail", e.target.value)}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="contactPhone">Contact Phone</FieldLabel>
-          <Input
-            id="contactPhone"
-            type="tel"
-            placeholder="555-123-4567"
-            value={form.contactPhone ?? ""}
-            onChange={(e) => updateField("contactPhone", e.target.value)}
-          />
-        </Field>
-      </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="contactEmail">Contact Email</FieldLabel>
+              <Input
+                id="contactEmail"
+                type="email"
+                placeholder="name@company.com"
+                value={form.contactEmail ?? ""}
+                onChange={(e) => updateField("contactEmail", e.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="contactPhone">Contact Phone</FieldLabel>
+              <Input
+                id="contactPhone"
+                type="tel"
+                placeholder="555-123-4567"
+                value={form.contactPhone ?? ""}
+                onChange={(e) => updateField("contactPhone", e.target.value)}
+              />
+            </Field>
+          </div>
         </>
       )}
     </FieldGroup>

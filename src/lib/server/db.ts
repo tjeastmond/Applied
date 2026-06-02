@@ -46,3 +46,10 @@ export function getNoteRepository(): ApplicationNoteRepository {
   }
   return globalForDb.noteRepository;
 }
+
+/** Point route handlers at an in-memory DB during tests. */
+export function useTestDatabase(db: Database.Database): void {
+  globalForDb.db = db;
+  globalForDb.repository = new SqliteJobApplicationRepository(db);
+  globalForDb.noteRepository = new SqliteApplicationNoteRepository(db);
+}

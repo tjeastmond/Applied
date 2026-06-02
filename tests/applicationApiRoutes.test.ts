@@ -1,0 +1,70 @@
+import { describe, expect, test, beforeEach } from "vitest";
+import { createJobApplicationSchema } from "@/lib/schemas/application";
+import { openDatabase } from "@/lib/server/db/migrate";
+import { getRepository, getNoteRepository, useTestDatabase } from "@/lib/server/db";
+import { GET as getNotes, POST as postNote } from "@/app/api/applications/[id]/notes/route";
+import { DELETE as deleteNote } from "@/app/api/applications/[id]/notes/[noteId]/route";
+import { PATCH as patchApplication } from "@/app/api/applications/[id]/route";
+
+const missingApplicationId = "00000000-0000-4000-a000-000000000099";
+
+describe("application API routes", () => {
+  beforeEach(() => {
+    useTestDatabase(openDatabase(":memory:"));
+  });
+
+  test("PATCH returns 404 for unknown application before validating body", async () => {
+    const response = await patchApplication(
+      new Request("http://localhost/api/applications/x", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Should Not Apply" }),
+      }),
+      { params: Promise.resolve({ id: missingApplicationId }) },
+    );
+
+    expect(response.status).toBe(404);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("Application not found");
+  });
+
+  test("notes GET, POST, and scoped DELETE", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/live",
+        title: "Live",
+        company: "Co",
+        appliedAt: "2026-06-02",
+      }),
+    );
+
+    const listResponse = await getNotes(new Request("http://localhost"), {
+      params: Promise.resolve({ id: app.id }),
+    });
+    expect(listResponse.status).toBe(200);
+    expect(await listResponse.json()).toEqual([]);
+
+    const createResponse = await postNote(
+      new Request("http://localhost", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Follow up Friday" }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+    expect(createResponse.status).toBe(201);
+    const note = (await createResponse.json()) as { id: string; content: string };
+    expect(note.content).toBe("Follow up Friday");
+
+    const deleteResponse = await deleteNote(new Request("http://localhost", { method: "DELETE" }), {
+      params: Promise.resolve({ id: app.id, noteId: note.id }),
+    });
+    expect(deleteResponse.status).toBe(204);
+    expect(await getNoteRepository().listByApplicationId(app.id)).toHaveLength(0);
+
+    const missingResponse = await deleteNote(new Request("http://localhost", { method: "DELETE" }), {
+      params: Promise.resolve({ id: app.id, noteId: note.id }),
+    });
+    expect(missingResponse.status).toBe(404);
+  });
+});

@@ -14,6 +14,53 @@ import {
 
 const titleSchema = requiredPlainTextSchema("title", 200).transform((value) => normalizeJobTitle(value) ?? value);
 
+type RecruiterRefineValue = {
+  viaRecruiter?: boolean;
+  recruiterName?: string | null;
+  recruiterFirm?: string | null;
+};
+
+function addRecruiterFieldsWhenNotViaRecruiterIssues(
+  value: RecruiterRefineValue,
+  ctx: z.RefinementCtx,
+  mode: "create" | "patch",
+) {
+  if (mode === "create") {
+    if (value.viaRecruiter) return;
+    if (value.recruiterName) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["recruiterName"],
+        message: "recruiterName must be null when viaRecruiter is false",
+      });
+    }
+    if (value.recruiterFirm) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["recruiterFirm"],
+        message: "recruiterFirm must be null when viaRecruiter is false",
+      });
+    }
+    return;
+  }
+
+  if (value.viaRecruiter !== false) return;
+  if (value.recruiterName !== undefined && value.recruiterName !== null) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["recruiterName"],
+      message: "recruiterName must be null when viaRecruiter is false",
+    });
+  }
+  if (value.recruiterFirm !== undefined && value.recruiterFirm !== null) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["recruiterFirm"],
+      message: "recruiterFirm must be null when viaRecruiter is false",
+    });
+  }
+}
+
 export const requiredApplicationFieldsSchema = z.strictObject({
   url: requiredHttpUrlSchema,
   title: titleSchema,
@@ -37,21 +84,7 @@ export const createJobApplicationSchema = z
     status: applicationStatusSchema.optional(),
   })
   .superRefine((value, ctx) => {
-    if (value.viaRecruiter) return;
-    if (value.recruiterName) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["recruiterName"],
-        message: "recruiterName must be null when viaRecruiter is false",
-      });
-    }
-    if (value.recruiterFirm) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["recruiterFirm"],
-        message: "recruiterFirm must be null when viaRecruiter is false",
-      });
-    }
+    addRecruiterFieldsWhenNotViaRecruiterIssues(value, ctx, "create");
   });
 
 export const patchJobApplicationSchema = z
@@ -70,22 +103,7 @@ export const patchJobApplicationSchema = z
     status: applicationStatusSchema.optional(),
   })
   .superRefine((value, ctx) => {
-    if (value.viaRecruiter === false) {
-      if (value.recruiterName !== undefined && value.recruiterName !== null) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["recruiterName"],
-          message: "recruiterName must be null when viaRecruiter is false",
-        });
-      }
-      if (value.recruiterFirm !== undefined && value.recruiterFirm !== null) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["recruiterFirm"],
-          message: "recruiterFirm must be null when viaRecruiter is false",
-        });
-      }
-    }
+    addRecruiterFieldsWhenNotViaRecruiterIssues(value, ctx, "patch");
   });
 
 export type CreateJobApplicationInput = z.input<typeof createJobApplicationSchema>;

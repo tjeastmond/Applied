@@ -33,6 +33,10 @@ describe("SqliteApplicationNoteRepository", () => {
     expect(deleted).toBe(true);
     expect(await notes.listByApplicationId(application.id)).toHaveLength(1);
 
+    expect(await notes.deleteForApplication(crypto.randomUUID(), second.id)).toBe(false);
+    expect(await notes.deleteForApplication(application.id, second.id)).toBe(true);
+    expect(await notes.deleteForApplication(application.id, second.id)).toBe(false);
+
     await applications.delete(application.id);
     expect(await notes.listByApplicationId(application.id)).toHaveLength(0);
   });

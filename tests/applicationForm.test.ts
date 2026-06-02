@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { emptyForm, formToInput, isFormValid } from "../src/lib/applicationForm";
+import {
+  applicationToForm,
+  emptyForm,
+  formToInput,
+  getRequiredValidationState,
+  isFormPristine,
+  isFormValid,
+  safeFormToInput,
+} from "../src/lib/applicationForm";
+import type { JobApplication } from "../src/types";
 
 describe("isFormValid", () => {
   it("requires url, title, company, and appliedAt", () => {
@@ -21,6 +30,94 @@ describe("isFormValid", () => {
     form.appliedAt = "2026-06-01";
     form.linkedinUrl = "";
     expect(isFormValid(form)).toBe(true);
+  });
+});
+
+describe("getRequiredValidationState", () => {
+  it("returns no invalid fields when showValidation is false", () => {
+    const state = getRequiredValidationState(emptyForm(), false);
+    expect(state.invalid).toEqual({ url: false, title: false, company: false, appliedAt: false });
+    expect(state.errors).toEqual({});
+  });
+
+  it("marks empty required fields invalid when showValidation is true", () => {
+    const form = emptyForm();
+    form.appliedAt = "";
+    const state = getRequiredValidationState(form, true);
+    expect(state.invalid).toEqual({ url: true, title: true, company: true, appliedAt: true });
+    expect(state.errors.url).toBe("Job Description URL is required.");
+    expect(state.errors.title).toBe("Title is required.");
+    expect(state.errors.company).toBe("Company is required.");
+    expect(state.errors.appliedAt).toBe("Apply date is required.");
+  });
+});
+
+describe("safeFormToInput", () => {
+  it("returns parsed data for a valid form", () => {
+    const form = emptyForm();
+    form.url = "https://jobs.example.com";
+    form.title = "Engineer";
+    form.company = "Acme";
+    form.appliedAt = "2026-06-01";
+
+    const result = safeFormToInput(form);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.title).toBe("Engineer");
+    }
+  });
+
+  it("returns an error for invalid required fields", () => {
+    const result = safeFormToInput(emptyForm());
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("isFormPristine", () => {
+  it("returns true when the form matches the application", () => {
+    const application: JobApplication = {
+      id: "id-1",
+      url: "https://jobs.example.com",
+      linkedinUrl: null,
+      title: "Engineer",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+      viaRecruiter: false,
+      recruiterName: null,
+      recruiterFirm: null,
+      contactEmail: null,
+      contactPhone: null,
+      fullJd: null,
+      status: "applied",
+      createdAt: "2026-06-01T00:00:00.000Z",
+      updatedAt: "2026-06-01T00:00:00.000Z",
+    };
+
+    expect(isFormPristine(applicationToForm(application), application)).toBe(true);
+  });
+
+  it("returns false after the user edits a field", () => {
+    const application: JobApplication = {
+      id: "id-1",
+      url: "https://jobs.example.com",
+      linkedinUrl: null,
+      title: "Engineer",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+      viaRecruiter: false,
+      recruiterName: null,
+      recruiterFirm: null,
+      contactEmail: null,
+      contactPhone: null,
+      fullJd: null,
+      status: "applied",
+      createdAt: "2026-06-01T00:00:00.000Z",
+      updatedAt: "2026-06-01T00:00:00.000Z",
+    };
+
+    const form = applicationToForm(application);
+    form.title = "Staff Engineer";
+    expect(isFormPristine(form, application)).toBe(false);
   });
 });
 

@@ -1,4 +1,5 @@
 import { parseHTML } from "linkedom";
+import { errorMessage } from "@/lib/errorMessage";
 import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
 import type { ParseJobUrlResult } from "@/types";
 import { buildFullJd } from "./extractFullJd";
@@ -102,7 +103,7 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
     }
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "Failed to fetch URL",
+      error: errorMessage(error, "Failed to fetch URL"),
     };
   } finally {
     clearTimeout(timeout);
