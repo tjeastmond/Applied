@@ -53,8 +53,13 @@ export function ApplicationDetailSheet({
   const [jdOpen, setJdOpen] = useState(false);
 
   const applicationId = application?.id ?? null;
+  const applicationUpdatedAt = application?.updatedAt ?? null;
   const applicationRef = useRef(application);
   applicationRef.current = application;
+  const formRef = useRef(form);
+  formRef.current = form;
+  const syncedUpdatedAtRef = useRef<string | null>(null);
+  const syncedApplicationIdRef = useRef<string | null>(null);
 
   const loadNotes = useCallback(async (id: string) => {
     try {
@@ -78,35 +83,45 @@ export function ApplicationDetailSheet({
       onApplicationChange: (updated) => {
         onApplicationChange(updated);
         setForm(applicationToForm(updated));
+        syncedUpdatedAtRef.current = updated.updatedAt;
       },
     });
 
   useEffect(() => {
     if (!applicationId || !open) {
+      syncedUpdatedAtRef.current = null;
+      syncedApplicationIdRef.current = null;
       return;
     }
+
     const currentApplication = applicationRef.current;
     if (!currentApplication || currentApplication.id !== applicationId) {
       return;
     }
-    setForm(applicationToForm(currentApplication));
-    setShowValidation(false);
-    setNewNote("");
-    setJdOpen(false);
-    void loadNotes(applicationId);
-  }, [applicationId, open, loadNotes, setShowValidation]);
 
-  useEffect(() => {
-    if (!applicationId || !open || !application || !form) {
+    const isInitialLoad = syncedApplicationIdRef.current !== applicationId;
+
+    if (isInitialLoad) {
+      setForm(applicationToForm(currentApplication));
+      syncedApplicationIdRef.current = applicationId;
+      syncedUpdatedAtRef.current = currentApplication.updatedAt;
+      setShowValidation(false);
+      setNewNote("");
+      setJdOpen(false);
+      void loadNotes(applicationId);
       return;
     }
-    if (form.id !== application.id) {
+
+    if (syncedUpdatedAtRef.current === currentApplication.updatedAt) {
       return;
     }
-    if (isFormPristine(form, application)) {
-      setForm(applicationToForm(application));
+
+    const currentForm = formRef.current;
+    if (currentForm && currentForm.id === currentApplication.id && isFormPristine(currentForm, currentApplication)) {
+      setForm(applicationToForm(currentApplication));
     }
-  }, [application?.updatedAt, application, applicationId, form, open]);
+    syncedUpdatedAtRef.current = currentApplication.updatedAt;
+  }, [applicationId, applicationUpdatedAt, open, loadNotes, setShowValidation]);
 
   const pendingNote = useMemo(() => notes.find((note) => note.id === pendingNoteId) ?? null, [notes, pendingNoteId]);
 
