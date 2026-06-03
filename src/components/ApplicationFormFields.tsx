@@ -3,6 +3,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { ApplicationStatusPicker } from "@/components/ApplicationStatusPicker";
+import { Separator } from "@/components/ui/separator";
 import { normalizePastedJobUrl, type FormState, type RequiredValidationState } from "@/lib/applicationForm";
 import type { ApplicationStatus } from "@/types";
 
@@ -25,7 +26,7 @@ export function ApplicationFormFields({
   form: FormState;
   requiredValidation: RequiredValidationState;
   isParsing: boolean;
-  variant?: "minimal" | "full";
+  variant?: "minimal" | "full" | "detail";
   showStatus?: boolean;
   stackedTitleCompany?: boolean;
   autoParseOnUrlPaste?: boolean;
@@ -34,6 +35,8 @@ export function ApplicationFormFields({
   onParse: (urlOverride?: string) => void;
 }) {
   const minimal = variant === "minimal";
+  const detail = variant === "detail";
+  const fullBleedSeparatorClassName = detail ? "-mx-6" : undefined;
   const { invalid, errors } = requiredValidation;
 
   const companyField = (
@@ -58,8 +61,8 @@ export function ApplicationFormFields({
         <FieldLabel htmlFor="url">
           Job Description URL <RequiredMark />
         </FieldLabel>
-        <InputGroup>
-          <InputGroupInput
+        {detail ? (
+          <Input
             ref={urlInputRef}
             id="url"
             type="url"
@@ -67,31 +70,45 @@ export function ApplicationFormFields({
             value={form.url}
             aria-invalid={invalid.url}
             onChange={(e) => updateField("url", e.target.value)}
-            onPaste={
-              autoParseOnUrlPaste
-                ? (e) => {
-                    const pastedUrl = normalizePastedJobUrl(e.clipboardData.getData("text"));
-                    if (!pastedUrl || isParsing) return;
-                    e.preventDefault();
-                    updateField("url", pastedUrl);
-                    if (pastedUrl === form.url.trim()) return;
-                    onParse(pastedUrl);
-                  }
-                : undefined
-            }
           />
-          <InputGroupAddon align="inline-end">
-            <InputGroupButton
-              variant="secondary"
-              disabled={isParsing || !form.url.trim()}
-              onClick={() => onParse()}
-            >
-              {isParsing ? "Parsing…" : "Parse"}
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
+        ) : (
+          <InputGroup>
+            <InputGroupInput
+              ref={urlInputRef}
+              id="url"
+              type="url"
+              placeholder="https://…"
+              value={form.url}
+              aria-invalid={invalid.url}
+              onChange={(e) => updateField("url", e.target.value)}
+              onPaste={
+                autoParseOnUrlPaste
+                  ? (e) => {
+                      const pastedUrl = normalizePastedJobUrl(e.clipboardData.getData("text"));
+                      if (!pastedUrl || isParsing) return;
+                      e.preventDefault();
+                      updateField("url", pastedUrl);
+                      if (pastedUrl === form.url.trim()) return;
+                      onParse(pastedUrl);
+                    }
+                  : undefined
+              }
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                variant="secondary"
+                disabled={isParsing || !form.url.trim()}
+                onClick={() => onParse()}
+              >
+                {isParsing ? "Parsing…" : "Parse"}
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        )}
         <FieldError>{errors.url}</FieldError>
       </Field>
+
+      {detail ? <Separator className={fullBleedSeparatorClassName} /> : null}
 
       <Field data-invalid={invalid.title || undefined}>
         <FieldLabel htmlFor="title">
@@ -137,8 +154,9 @@ export function ApplicationFormFields({
 
       {minimal ? null : (
         <>
+          <Separator className={fullBleedSeparatorClassName} />
           <Field>
-            <FieldLabel htmlFor="linkedinUrl">Company LinkedIn URL</FieldLabel>
+            <FieldLabel htmlFor="linkedinUrl">Company LinkedIn</FieldLabel>
             <Input
               id="linkedinUrl"
               type="url"
@@ -159,12 +177,13 @@ export function ApplicationFormFields({
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="recruiterFirm">Recruiter Firm</FieldLabel>
+              <FieldLabel htmlFor="contactPhone">Contact Phone</FieldLabel>
               <Input
-                id="recruiterFirm"
-                placeholder="TechRecruit LLC"
-                value={form.recruiterFirm ?? ""}
-                onChange={(e) => updateField("recruiterFirm", e.target.value)}
+                id="contactPhone"
+                type="tel"
+                placeholder="555-123-4567"
+                value={form.contactPhone ?? ""}
+                onChange={(e) => updateField("contactPhone", e.target.value)}
               />
             </Field>
           </div>
@@ -181,13 +200,12 @@ export function ApplicationFormFields({
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="contactPhone">Contact Phone</FieldLabel>
+              <FieldLabel htmlFor="recruiterFirm">Recruiter Firm</FieldLabel>
               <Input
-                id="contactPhone"
-                type="tel"
-                placeholder="555-123-4567"
-                value={form.contactPhone ?? ""}
-                onChange={(e) => updateField("contactPhone", e.target.value)}
+                id="recruiterFirm"
+                placeholder="TechRecruit LLC"
+                value={form.recruiterFirm ?? ""}
+                onChange={(e) => updateField("recruiterFirm", e.target.value)}
               />
             </Field>
           </div>

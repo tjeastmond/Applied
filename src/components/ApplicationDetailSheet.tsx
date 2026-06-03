@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createApplicationNote, deleteApplicationNote, updateApplication } from "@/api";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
-import { JobDescriptionLink } from "@/components/JobDescriptionLink";
+import { ApplicationMetadataLine } from "@/components/ApplicationMetadataLine";
+import { NoteContent } from "@/components/NoteContent";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { useApplicationFormActions } from "@/hooks/useApplicationFormActions";
 import {
@@ -70,7 +71,7 @@ export function ApplicationDetailSheet({
   const formRef = useRef(form);
   formRef.current = form;
   const syncedUpdatedAtRef = useRef<string | null>(null);
-  const [syncedApplicationId, setSyncedApplicationId] = useState<string | null>(null);
+  const syncedApplicationIdRef = useRef<string | null>(null);
 
   const { updateField, isParsing, isSaving, requiredValidation, valid, parse, save, setShowValidation } =
     useApplicationFormActions({
@@ -91,13 +92,15 @@ export function ApplicationDetailSheet({
       },
     });
 
-  if (!open || !applicationId || !application || application.id !== applicationId) {
-    if (syncedApplicationId !== null) {
-      setSyncedApplicationId(null);
-      syncedUpdatedAtRef.current = null;
+  useEffect(() => {
+    if (!open || !applicationId || !application || application.id !== applicationId) {
+      syncedApplicationIdRef.current = null;
+      return;
     }
-  } else if (syncedApplicationId !== applicationId) {
-    setSyncedApplicationId(applicationId);
+
+    if (syncedApplicationIdRef.current === applicationId) return;
+
+    syncedApplicationIdRef.current = applicationId;
     setForm(applicationToForm(application));
     syncedUpdatedAtRef.current = application.updatedAt;
     setShowValidation(false);
@@ -106,7 +109,7 @@ export function ApplicationDetailSheet({
     setPendingNoteId(null);
     setIsAddingNote(false);
     setIsDeletingNote(false);
-  }
+  }, [application, applicationId, open, setShowValidation]);
 
   useEffect(() => {
     if (!open || !applicationId || !application || application.id !== applicationId) return;
@@ -131,7 +134,7 @@ export function ApplicationDetailSheet({
       const note = await createApplicationNote(applicationId, newNote);
       if (applicationRef.current?.id !== applicationId) return;
       setNewNote("");
-      onNotesChange([note, ...notes]);
+      onNotesChange([...notes, note]);
       toast.success(toastMessages.noteAdded);
     } catch (error) {
       toast.error(errorMessage(error, toastMessages.noteAddFailed));
@@ -183,6 +186,8 @@ export function ApplicationDetailSheet({
     application?.company ||
     "Application";
   const postingUrl = (formMatchesApplication ? form.url.trim() : "") || application?.url.trim() || "";
+  const companyLinkedInUrl =
+    (formMatchesApplication ? form.linkedinUrl.trim() : "") || application?.linkedinUrl?.trim() || "";
   const fullJd = (formMatchesApplication ? form.fullJd.trim() : "") || application?.fullJd?.trim() || "";
 
   return (
@@ -196,9 +201,9 @@ export function ApplicationDetailSheet({
       >
         <SheetContent
           side="right"
-          className="flex w-[60vw] max-w-[60vw] min-w-[60vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[60vw]"
+          className="border-border flex w-[60vw] max-w-[60vw] min-w-[60vw] flex-col gap-0 overflow-hidden border-l p-0 sm:max-w-[60vw]"
         >
-          <SheetHeader className="gap-2 border-b px-6 py-4">
+          <SheetHeader className="gap-2 border-b border-border px-6 py-4">
             <SheetTitle className="pr-8 text-lg">
               {postingUrl ? (
                 <a
@@ -214,52 +219,50 @@ export function ApplicationDetailSheet({
                 headerTitle
               )}
             </SheetTitle>
-            <SheetDescription className="flex flex-wrap items-center gap-x-1.5">
-              {(formMatchesApplication ? form.company.trim() : "") || application?.company ? (
-                <>
-                  <span>{(formMatchesApplication ? form.company.trim() : "") || application?.company}</span>
-                  <span aria-hidden="true">·</span>
-                </>
-              ) : null}
-              {application ? <span>{formatDate(application.appliedAt)}</span> : null}
-              {postingUrl ? (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <JobDescriptionLink url={postingUrl} />
-                </>
-              ) : null}
-            </SheetDescription>
+            <ApplicationMetadataLine
+              variant="sheet"
+              company={
+                application
+                  ? (formMatchesApplication ? form.company.trim() : "") || application.company
+                  : null
+              }
+              appliedLabel={application ? formatDate(application.appliedAt) : ""}
+              linkedinUrl={application ? companyLinkedInUrl : null}
+              postingUrl={application ? postingUrl : null}
+            />
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex-1 overflow-y-auto">
             {form && formMatchesApplication ? (
-              <div className="space-y-8">
-                <section>
-                  <h3 className="mb-4 text-sm font-semibold tracking-wide uppercase">Details</h3>
+              <>
+                <div className="px-6 py-4">
                   <ApplicationFormFields
                     form={form}
                     requiredValidation={requiredValidation}
                     isParsing={isParsing}
+                    variant="detail"
                     showStatus
                     stackedTitleCompany
                     updateField={updateField}
                     onParse={() => void parse()}
                   />
-                </section>
+                </div>
 
                 <Separator />
 
-                <section className="space-y-4">
-                  <h3 className="text-sm font-semibold tracking-wide uppercase">Notes</h3>
-                  {notesLoading && notes.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">Loading notes…</p>
-                  ) : notes.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No notes yet.</p>
-                  ) : (
+                <div className="px-6 py-6">
+                  <section className="space-y-4">
+                    <h3 className="text-sm font-semibold tracking-wide uppercase">Notes</h3>
+                    {notesLoading && notes.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">Loading notes…</p>
+                    ) : null}
+                    {!notesLoading && notes.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">No notes yet.</p>
+                    ) : null}
                     <ul className="space-y-3">
                       {notes.map((note) => (
                         <li key={note.id} className="bg-muted/40 rounded-lg border px-3 py-3 text-sm">
-                          <p className="whitespace-pre-wrap">{note.content}</p>
+                          <NoteContent content={note.content} />
                           <div className="mt-1 flex items-center justify-between gap-2">
                             <p className="text-muted-foreground text-xs">{formatNoteTimestamp(note.createdAt)}</p>
                             <div className="flex shrink-0 items-center gap-0.5">
@@ -288,55 +291,60 @@ export function ApplicationDetailSheet({
                           </div>
                         </li>
                       ))}
+                      <li>
+                        <Textarea
+                          placeholder="Add a note…"
+                          value={newNote}
+                          rows={3}
+                          onChange={(e) => setNewNote(e.target.value)}
+                        />
+                      </li>
+                      <li>
+                        <Button
+                          type="button"
+                          variant="saveOutline"
+                          className="self-start"
+                          disabled={isAddingNote || !newNote.trim()}
+                          onClick={() => void handleAddNote()}
+                        >
+                          {isAddingNote ? "Adding…" : "Add Note"}
+                        </Button>
+                      </li>
                     </ul>
-                  )}
-                  <div className="space-y-2">
-                    <Textarea
-                      placeholder="Add a note…"
-                      value={newNote}
-                      rows={3}
-                      onChange={(e) => setNewNote(e.target.value)}
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={isAddingNote || !newNote.trim()}
-                      onClick={() => void handleAddNote()}
-                    >
-                      {isAddingNote ? "Adding…" : "Add note"}
-                    </Button>
-                  </div>
-                </section>
+                  </section>
+                </div>
 
                 <Separator />
 
-                <section>
-                  <Collapsible open={jdOpen} onOpenChange={setJdOpen}>
-                    <CollapsibleTrigger className="hover:bg-muted/60 flex w-full items-center justify-between gap-2 rounded-lg border px-4 py-3 text-left text-sm font-semibold tracking-wide uppercase transition-colors">
-                      Job Description
-                      <ChevronDownIcon
-                        className={`size-4 shrink-0 transition-transform ${jdOpen ? "rotate-180" : ""}`}
-                      />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pt-3">
-                      {fullJd ? (
-                        <div
-                          className="job-description-html bg-muted/30 max-h-[min(50vh,28rem)] overflow-y-auto rounded-lg border p-4"
-                          dangerouslySetInnerHTML={{ __html: fullJd }}
+                <div className="px-6 py-6">
+                  <section>
+                    <Collapsible open={jdOpen} onOpenChange={setJdOpen}>
+                      <CollapsibleTrigger className="hover:bg-muted/60 flex w-full items-center justify-between gap-2 rounded-lg border px-4 py-3 text-left text-sm font-semibold tracking-wide uppercase transition-colors">
+                        Scraped Job Description
+                        <ChevronDownIcon
+                          className={`size-4 shrink-0 transition-transform ${jdOpen ? "rotate-180" : ""}`}
                         />
-                      ) : (
-                        <p className="text-muted-foreground text-sm">
-                          No parsed job description. Use Parse on the job URL to fetch one.
-                        </p>
-                      )}
-                    </CollapsibleContent>
-                  </Collapsible>
-                </section>
-              </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-3">
+                        {fullJd ? (
+                          <div
+                            className="job-description-html bg-muted/30 max-h-[min(50vh,28rem)] overflow-y-auto rounded-lg border p-4"
+                            dangerouslySetInnerHTML={{ __html: fullJd }}
+                          />
+                        ) : (
+                          <p className="text-muted-foreground text-sm">
+                            No parsed job description. Use Parse on the job URL to fetch one.
+                          </p>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </section>
+                </div>
+              </>
             ) : null}
           </div>
 
-          <SheetFooter className="border-t px-6 py-4 sm:flex-row sm:justify-between">
+          <SheetFooter className="border-t border-border px-6 py-4 sm:flex-row sm:justify-between">
             <Button
               type="button"
               variant="destructiveSolid"

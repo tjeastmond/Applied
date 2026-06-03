@@ -18,6 +18,8 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         save: "border-green-600 bg-green-600 text-white hover:border-green-700 hover:bg-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30",
+        saveOutline:
+          "border-green-600 bg-transparent text-green-600 hover:border-green-700 hover:bg-green-600/10 hover:text-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30 dark:border-green-500 dark:text-green-400 dark:hover:border-green-400 dark:hover:bg-green-500/15 dark:hover:text-green-300",
         destructiveSolid:
           "bg-red-600 text-white hover:bg-red-700 focus-visible:border-red-700 focus-visible:ring-red-600/30",
         cancelOutline:
