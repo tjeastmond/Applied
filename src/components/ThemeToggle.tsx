@@ -13,6 +13,7 @@ export function ThemeToggle() {
       type="button"
       variant="outline"
       size="icon"
+      className="header-toolbar-outline"
       onClick={toggleTheme}
       aria-label={isLight ? "Switch to dark mode" : "Switch to light mode"}
       title={isLight ? "Dark Mode" : "Light Mode"}

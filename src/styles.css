@@ -159,6 +159,11 @@
   .job-description-html a[href] {
     @apply text-blue-600 dark:text-blue-400;
   }
+
+  /* Main page header toolbar — outline buttons need more edge contrast on near-black */
+  .header-toolbar-outline {
+    @apply transition-[background-color,border-color,box-shadow,color] duration-150 dark:border-white/38 dark:bg-white/[0.08] dark:hover:border-white/60 dark:hover:bg-accent dark:hover:text-accent-foreground dark:hover:shadow-[0_0_0_1px_oklch(1_0_0/0.18)] dark:aria-expanded:border-white/60 dark:aria-expanded:bg-accent dark:aria-expanded:text-accent-foreground dark:aria-expanded:shadow-[0_0_0_1px_oklch(1_0_0/0.18)];
+  }
 }
 
 @layer base {

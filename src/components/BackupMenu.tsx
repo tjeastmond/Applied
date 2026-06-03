@@ -120,9 +120,16 @@ export function BackupMenu({ onImported }: BackupMenuProps) {
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button type="button" variant="outline" disabled={exporting}>
-              <DatabaseIcon data-icon="inline-start" />
-              Backup
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="header-toolbar-outline"
+              disabled={exporting}
+              aria-label="Backup"
+              title="Backup"
+            >
+              <DatabaseIcon />
             </Button>
           }
         />
