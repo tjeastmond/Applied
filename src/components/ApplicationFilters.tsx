@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type RefObject } from "react";
 import { CompanyFilter } from "@/components/CompanyFilter";
 import { StatusFilter } from "@/components/StatusFilter";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ export const ApplicationFilters = memo(function ApplicationFilters({
   onSearchQueryChange,
   onClearFilters,
   hasActiveFilters,
+  searchInputRef,
   className,
 }: {
   companies: string[];
@@ -31,6 +32,7 @@ export const ApplicationFilters = memo(function ApplicationFilters({
   onSearchQueryChange: (query: string) => void;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
+  searchInputRef?: RefObject<HTMLInputElement | null>;
   className?: string;
 }) {
   return (
@@ -38,6 +40,7 @@ export const ApplicationFilters = memo(function ApplicationFilters({
       <div className="relative">
         <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
         <Input
+          ref={searchInputRef}
           type="search"
           value={searchQuery}
           onChange={(event) => onSearchQueryChange(event.target.value)}

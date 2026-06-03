@@ -27,8 +27,10 @@ import { filterApplications, hasActiveApplicationFilters } from "@/lib/applicati
 import { uniqueCompanyNames } from "@/lib/companyFilter";
 import { errorMessage } from "@/lib/errorMessage";
 import {
+  consumeDoubleEscape,
   isEditableKeyboardTarget,
   isModKeyChord,
+  isSearchFocusSlash,
   modKShortcutDescription,
   modKShortcutLabel,
 } from "@/lib/keyboardShortcut";
@@ -51,6 +53,8 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   const [selectedStatuses, setSelectedStatuses] = useState<Set<ApplicationStatus>>(() => new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const applicationsListRef = useRef<HTMLDivElement>(null);
+  const lastEscapeAtRef = useRef<number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const {
     prefetch,
     prefetchMany,
@@ -152,6 +156,21 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [openAddForm]);
+
+  useEffect(() => {
+    if (applications.length === 0) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (!isSearchFocusSlash(event)) return;
+      if (formOpen || detailOpen || pendingDeleteId !== null) return;
+      if (isEditableKeyboardTarget(event.target)) return;
+      event.preventDefault();
+      searchInputRef.current?.focus();
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [applications.length, detailOpen, formOpen, pendingDeleteId]);
 
   const handleOpenApplication = useCallback(
     (id: string) => {
@@ -287,6 +306,30 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     setSearchQuery("");
   }, []);
 
+  useEffect(() => {
+    if (!hasActiveFilters || applications.length === 0) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (formOpen || detailOpen || pendingDeleteId !== null) {
+        lastEscapeAtRef.current = null;
+        return;
+      }
+      if (!consumeDoubleEscape(event, lastEscapeAtRef)) return;
+      event.preventDefault();
+      clearFilters();
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    applications.length,
+    clearFilters,
+    detailOpen,
+    formOpen,
+    hasActiveFilters,
+    pendingDeleteId,
+  ]);
+
   return (
     <div className="mx-auto min-h-screen max-w-3xl px-4 py-10 sm:px-6">
       <header className="mb-10 flex flex-col items-center justify-between gap-4 sm:flex-row">
@@ -368,6 +411,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
               onSearchQueryChange={setSearchQuery}
               onClearFilters={clearFilters}
               hasActiveFilters={hasActiveFilters}
+              searchInputRef={searchInputRef}
             />
             <div className="py-3">
               <Separator />
