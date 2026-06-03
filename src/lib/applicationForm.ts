@@ -41,6 +41,15 @@ export function emptyForm(): FormState {
   };
 }
 
+export function isProbablyHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export const REQUIRED_FORM_FIELDS = ["url", "title", "company", "appliedAt"] as const;
 
 export type RequiredFormField = (typeof REQUIRED_FORM_FIELDS)[number];

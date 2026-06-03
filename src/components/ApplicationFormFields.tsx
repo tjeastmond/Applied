@@ -2,7 +2,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { ApplicationStatusPicker } from "@/components/ApplicationStatusPicker";
-import type { FormState, RequiredValidationState } from "@/lib/applicationForm";
+import { isProbablyHttpUrl, type FormState, type RequiredValidationState } from "@/lib/applicationForm";
 import type { ApplicationStatus } from "@/types";
 
 function RequiredMark() {
@@ -16,6 +16,7 @@ export function ApplicationFormFields({
   variant = "full",
   showStatus = false,
   stackedTitleCompany = false,
+  autoParseOnUrlPaste = false,
   updateField,
   onParse,
 }: {
@@ -25,8 +26,9 @@ export function ApplicationFormFields({
   variant?: "minimal" | "full";
   showStatus?: boolean;
   stackedTitleCompany?: boolean;
+  autoParseOnUrlPaste?: boolean;
   updateField: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
-  onParse: () => void;
+  onParse: (urlOverride?: string) => void;
 }) {
   const minimal = variant === "minimal";
   const { invalid, errors } = requiredValidation;
@@ -61,6 +63,15 @@ export function ApplicationFormFields({
             value={form.url}
             aria-invalid={invalid.url}
             onChange={(e) => updateField("url", e.target.value)}
+            onPaste={
+              autoParseOnUrlPaste
+                ? (e) => {
+                    const pasted = e.clipboardData.getData("text").trim();
+                    if (!isProbablyHttpUrl(pasted) || isParsing) return;
+                    requestAnimationFrame(() => onParse(pasted));
+                  }
+                : undefined
+            }
           />
           <InputGroupAddon align="inline-end">
             <InputGroupButton variant="secondary" disabled={isParsing || !form.url.trim()} onClick={onParse}>

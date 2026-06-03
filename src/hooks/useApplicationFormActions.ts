@@ -53,12 +53,13 @@ export function useApplicationFormActions({
     [setForm],
   );
 
-  const parse = useCallback(async () => {
-    if (!form?.url.trim()) return;
-    const scopeId = form.id;
+  const parse = useCallback(async (urlOverride?: string) => {
+    const url = (urlOverride ?? form?.url ?? "").trim();
+    if (!url) return;
+    const scopeId = form?.id;
     setIsParsing(true);
     try {
-      const result = await parseJobUrl(form.url.trim());
+      const result = await parseJobUrl(url);
       if (result.ok) {
         setForm((prev) => {
           if (!prev || (scopeId !== undefined && prev.id !== scopeId)) return prev;

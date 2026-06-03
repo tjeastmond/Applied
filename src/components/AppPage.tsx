@@ -284,11 +284,12 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
             <div className="overflow-y-auto px-6 py-4">
               <ApplicationFormFields
                 variant="minimal"
+                autoParseOnUrlPaste
                 form={form}
                 requiredValidation={requiredValidation}
                 isParsing={isParsing}
                 updateField={updateField}
-                onParse={() => void parse()}
+                onParse={(url) => void parse(url)}
               />
             </div>
             <DialogFooter className="mx-0 mb-0 gap-3 px-6 py-4">

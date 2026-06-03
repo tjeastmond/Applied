@@ -6,9 +6,23 @@ import {
   getRequiredValidationState,
   isFormPristine,
   isFormValid,
+  isProbablyHttpUrl,
   safeFormToInput,
 } from "../src/lib/applicationForm";
 import type { JobApplication } from "../src/types";
+
+describe("isProbablyHttpUrl", () => {
+  it("accepts http and https URLs", () => {
+    expect(isProbablyHttpUrl("https://jobs.example.com/role")).toBe(true);
+    expect(isProbablyHttpUrl("http://jobs.example.com")).toBe(true);
+  });
+
+  it("rejects non-URLs and non-http schemes", () => {
+    expect(isProbablyHttpUrl("not-a-url")).toBe(false);
+    expect(isProbablyHttpUrl("javascript:alert(1)")).toBe(false);
+    expect(isProbablyHttpUrl("")).toBe(false);
+  });
+});
 
 describe("isFormValid", () => {
   it("requires url, title, company, and appliedAt", () => {
