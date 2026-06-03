@@ -7,9 +7,10 @@ function docFromHtml(html: string): Document {
 }
 
 describe("isJobBoardHost", () => {
-  it("recognizes Y Combinator and Ashby hosts", () => {
+  it("recognizes Y Combinator, Ashby, and Paraform hosts", () => {
     expect(isJobBoardHost("www.ycombinator.com")).toBe(true);
     expect(isJobBoardHost("jobs.ashbyhq.com")).toBe(true);
+    expect(isJobBoardHost("www.paraform.com")).toBe(true);
     expect(isJobBoardHost("careers.stripe.com")).toBe(false);
   });
 });
@@ -46,5 +47,33 @@ describe("extractJobCompany", () => {
     });
 
     expect(company).toBe("Linear");
+  });
+
+  it("extracts the hiring company from Paraform share pages", () => {
+    const document = docFromHtml(`<html><head>
+      <meta property="og:title" content="Staff Engineer at Ramp" />
+      <script id="__NEXT_DATA__" type="application/json">{
+        "props": {
+          "pageProps": {
+            "initialRoleData": {
+              "name": "Staff Engineer",
+              "company": { "name": "Ramp" }
+            }
+          }
+        }
+      }</script>
+    </head></html>`);
+
+    const company = extractJobCompany(
+      new URL("https://www.paraform.com/share/ramp/cm123abc"),
+      document,
+      {
+        siteName: "Paraform",
+        applicationName: null,
+        hostnameFallback: "Paraform",
+      },
+    );
+
+    expect(company).toBe("Ramp");
   });
 });

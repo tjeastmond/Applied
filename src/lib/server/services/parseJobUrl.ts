@@ -4,6 +4,7 @@ import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
 import type { ParseJobUrlResult } from "@/types";
 import { buildFullJd } from "./extractFullJd";
 import { extractJobCompany } from "./extractJobCompany";
+import { extractParaformRole, isParaformHost } from "./extractParaformRole";
 
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -75,7 +76,10 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
     const html = await response.text();
     const { document } = parseHTML(html);
 
+    const paraformRole = isParaformHost(url.hostname) ? extractParaformRole(document) : null;
+
     const rawTitle =
+      paraformRole?.title ??
       getMetaContent(document, "og:title") ??
       document.querySelector("title")?.textContent?.trim() ??
       document.querySelector("h1")?.textContent?.trim() ??

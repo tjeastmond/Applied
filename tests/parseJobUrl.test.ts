@@ -177,4 +177,75 @@ describe("parseJobUrl", () => {
     if (!result.ok) return;
     expect(result.company).toBe("Ramp");
   });
+
+  it("extracts title and company from Paraform /share/ job pages", async () => {
+    const html = `<!doctype html><html><head>
+      <meta property="og:title" content="Staff Engineer at Ramp" />
+      <script id="__NEXT_DATA__" type="application/json">{
+        "props": {
+          "pageProps": {
+            "initialRoleData": {
+              "name": "Staff Engineer",
+              "company": { "name": "Ramp" }
+            }
+          }
+        }
+      }</script>
+    </head><body>
+      <div class="-mb-1 font-normal text-neutral-700">Ramp</div>
+      <div class="mt-1 text-2xl font-book">Staff Engineer</div>
+    </body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+
+    const result = await parseJobUrl("https://www.paraform.com/share/ramp/cm123abc");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.title).toBe("Staff Engineer");
+    expect(result.company).toBe("Ramp");
+  });
+
+  it("extracts title and company from Paraform /company/ job pages", async () => {
+    const html = `<!doctype html><html><head>
+      <title>Security Engineer at Acme Corp</title>
+      <meta property="og:title" content="Acme Corp" />
+      <script id="__NEXT_DATA__" type="application/json">{
+        "props": {
+          "pageProps": {
+            "page_title": "Security Engineer at Acme Corp",
+            "company_name": "Acme Corp",
+            "baseRole": { "name": "Security Engineer" },
+            "baseCompany": { "name": "Acme Corp" }
+          }
+        }
+      }</script>
+      <script type="application/ld+json">{
+        "@type": "JobPosting",
+        "title": "Security Engineer",
+        "hiringOrganization": { "name": "Acme Corp" }
+      }</script>
+    </head><body></body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+
+    const result = await parseJobUrl("https://www.paraform.com/company/acme-corp/cm123abc");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.title).toBe("Security Engineer");
+    expect(result.company).toBe("Acme Corp");
+  });
 });
