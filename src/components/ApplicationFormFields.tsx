@@ -145,6 +145,7 @@ export function ApplicationFormFields({
           <Field>
             <FieldLabel>Status</FieldLabel>
             <ApplicationStatusPicker
+              size="field"
               status={form.status}
               onStatusChange={(value: ApplicationStatus) => updateField("status", value)}
             />

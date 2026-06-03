@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,15 +18,18 @@ import {
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 
-export function ApplicationStatusPicker({
+export const ApplicationStatusPicker = memo(function ApplicationStatusPicker({
   status,
   onStatusChange,
   disabled = false,
+  size = "tag",
   className,
 }: {
   status: ApplicationStatus;
   onStatusChange: (status: ApplicationStatus) => void;
   disabled?: boolean;
+  /** `tag` — compact pill on cards; `field` — matches `h-8` form inputs in the sheet */
+  size?: "tag" | "field";
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -57,8 +60,17 @@ export function ApplicationStatusPicker({
     setOpen(false);
   }
 
+  const isFieldSize = size === "field";
+
+  const chevronClassName = cn(
+    "shrink-0 opacity-70 transition-transform duration-200",
+    isFieldSize ? "size-3.5" : "size-3",
+    open && "rotate-180",
+  );
+
   const triggerClassName = cn(
-    "inline-flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors outline-none focus-visible:ring-3 aria-expanded:ring-2 disabled:pointer-events-none disabled:opacity-50",
+    "inline-flex cursor-pointer items-center rounded-md border px-2.5 font-medium transition-colors outline-none focus-visible:ring-3 aria-expanded:ring-2 disabled:pointer-events-none disabled:opacity-50",
+    isFieldSize ? "h-8 w-full justify-between gap-2 text-sm" : "h-6 shrink-0 gap-1 text-xs",
     statusTagClassName(displayStatus),
     className,
   );
@@ -67,13 +79,13 @@ export function ApplicationStatusPicker({
     return (
       <span className={triggerClassName} aria-hidden="true">
         {statusLabel(displayStatus)}
-        <ChevronDownIcon className="size-3 opacity-70" />
+        <ChevronDownIcon className="size-3 shrink-0 opacity-70" />
       </span>
     );
   }
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger
         disabled={disabled}
         className={triggerClassName}
@@ -81,7 +93,7 @@ export function ApplicationStatusPicker({
         onPointerDown={stopCardClick}
       >
         {statusLabel(displayStatus)}
-        <ChevronDownIcon className="size-3 opacity-70" />
+        <ChevronDownIcon className={chevronClassName} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-40 rounded-md" onClick={stopCardClick}>
         <DropdownMenuRadioGroup value={displayStatus} onValueChange={handleStatusSelect}>
@@ -100,4 +112,4 @@ export function ApplicationStatusPicker({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+});
