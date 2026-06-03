@@ -31,6 +31,11 @@ export function ApplicationStatusPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [displayStatus, setDisplayStatus] = useState(status);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setDisplayStatus(status);
@@ -52,15 +57,26 @@ export function ApplicationStatusPicker({
     setOpen(false);
   }
 
+  const triggerClassName = cn(
+    "inline-flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors outline-none focus-visible:ring-3 aria-expanded:ring-2 disabled:pointer-events-none disabled:opacity-50",
+    statusTagClassName(displayStatus),
+    className,
+  );
+
+  if (!mounted) {
+    return (
+      <span className={triggerClassName} aria-hidden="true">
+        {statusLabel(displayStatus)}
+        <ChevronDownIcon className="size-3 opacity-70" />
+      </span>
+    );
+  }
+
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         disabled={disabled}
-        className={cn(
-          "inline-flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors outline-none focus-visible:ring-3 aria-expanded:ring-2 disabled:pointer-events-none disabled:opacity-50",
-          statusTagClassName(displayStatus),
-          className,
-        )}
+        className={triggerClassName}
         onClick={stopCardClick}
         onPointerDown={stopCardClick}
       >
