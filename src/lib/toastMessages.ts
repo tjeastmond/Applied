@@ -21,4 +21,8 @@ export const toastMessages = {
   jobUrlCopyFailed: "Failed to copy URL.",
   allJobUrlsCopied: "All job URLs copied.",
   allJobUrlsCopyFailed: "Failed to copy job URLs.",
+  backupExported: "Backup downloaded.",
+  backupExportFailed: "Failed to export backup.",
+  backupImported: "Backup imported.",
+  backupImportFailed: "Failed to import backup.",
 } as const;

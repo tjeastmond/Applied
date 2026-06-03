@@ -29,12 +29,7 @@ import {
 import { useApplicationFormActions } from "@/hooks/useApplicationFormActions";
 import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
 import { removeApplication, upsertApplication } from "@/lib/applicationsList";
-import {
-  emptyForm,
-  formatDate,
-  normalizeClipboardOnlyJobUrl,
-  type FormState,
-} from "@/lib/applicationForm";
+import { emptyForm, formatDate, normalizeClipboardOnlyJobUrl, type FormState } from "@/lib/applicationForm";
 import { errorMessage } from "@/lib/errorMessage";
 import {
   isEditableKeyboardTarget,
@@ -45,6 +40,7 @@ import {
 import { toastMessages } from "@/lib/toastMessages";
 import { cn } from "@/lib/utils";
 import type { ApplicationStatus, JobApplication } from "@/types";
+import { BackupMenu } from "@/components/BackupMenu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CopyIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -61,8 +57,15 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   const [scrollHoverLocked, setScrollHoverLocked] = useState(false);
   const addFormUrlInputRef = useRef<HTMLInputElement>(null);
   const parseRef = useRef<(urlOverride?: string) => Promise<void>>(async () => {});
-  const { prefetch, prefetchMany, getNotes, isLoading, setNotes, removeApplication: clearNotesCache } =
-    useApplicationNotesCache();
+  const {
+    prefetch,
+    prefetchMany,
+    getNotes,
+    isLoading,
+    setNotes,
+    removeApplication: clearNotesCache,
+    clearAll: clearNotesCacheAll,
+  } = useApplicationNotesCache();
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
@@ -272,6 +275,16 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     }
   }
 
+  function handleBackupImported(nextApplications: JobApplication[]) {
+    setApplications(nextApplications);
+    clearNotesCacheAll();
+    prefetchMany(nextApplications.map((application) => application.id));
+    setSelectedId(null);
+    setDetailOpen(false);
+    setFormOpen(false);
+    resetForm();
+  }
+
   return (
     <div className="mx-auto min-h-screen max-w-3xl px-4 py-10 sm:px-6">
       <header className="mb-10 flex flex-col items-center justify-between gap-4 sm:flex-row">
@@ -280,6 +293,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
           <ThemeToggle />
+          <BackupMenu onImported={handleBackupImported} />
           <Button
             type="button"
             variant="outline"
@@ -431,7 +445,7 @@ function ApplicationCard({
       className={cn(
         "relative gap-0 py-0 transition-colors",
         !scrollHoverLocked &&
-          "hover:bg-muted/50 hover:shadow-md hover:shadow-black/5 dark:hover:bg-secondary dark:hover:shadow-black/30",
+          "hover:bg-muted/50 dark:hover:bg-secondary hover:shadow-md hover:shadow-black/5 dark:hover:shadow-black/30",
       )}
     >
       <button

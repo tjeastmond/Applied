@@ -47,6 +47,16 @@ export function getNoteRepository(): ApplicationNoteRepository {
   return globalForDb.noteRepository;
 }
 
+export function getDatabase(): Database.Database {
+  return getDb();
+}
+
+/** Drop cached repositories so they are recreated after schema/data changes. */
+export function resetRepositories(): void {
+  globalForDb.repository = undefined;
+  globalForDb.noteRepository = undefined;
+}
+
 /** Point route handlers at an in-memory DB during tests. */
 export function useTestDatabase(db: Database.Database): void {
   globalForDb.db = db;

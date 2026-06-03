@@ -68,3 +68,52 @@ export function deleteApplicationNote(applicationId: string, noteId: string): Pr
     method: "DELETE",
   });
 }
+
+export type ImportBackupMode = "replace" | "upsert";
+
+export type ImportBackupResult = {
+  applications: JobApplication[];
+  imported: {
+    applications: number;
+    notes: number;
+  };
+};
+
+function parseContentDispositionFilename(header: string | null): string | null {
+  if (!header) return null;
+  const match = header.match(/filename="([^"]+)"/);
+  return match?.[1] ?? null;
+}
+
+export async function exportBackup(format: "sql" | "json"): Promise<{ blob: Blob; filename: string }> {
+  const response = await fetch(`/api/backup/export?format=${format}`);
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `Export failed (${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const filename =
+    parseContentDispositionFilename(response.headers.get("Content-Disposition")) ??
+    `applied-backup.${format === "sql" ? "sql" : "json"}`;
+
+  return { blob, filename };
+}
+
+export async function importBackup(file: File, mode: ImportBackupMode): Promise<ImportBackupResult> {
+  const formData = new FormData();
+  formData.set("file", file);
+  formData.set("mode", mode);
+
+  const response = await fetch("/api/backup/import", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `Import failed (${response.status})`);
+  }
+
+  return (await response.json()) as ImportBackupResult;
+}
