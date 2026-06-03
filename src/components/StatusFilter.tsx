@@ -10,48 +10,44 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toggleCompanySelection } from "@/lib/companyFilter";
+import {
+  APPLICATION_STATUS_OPTIONS,
+  statusDotClassName,
+  statusLabel,
+  type ApplicationStatus,
+} from "@/lib/applicationStatus";
+import { toggleStatusSelection } from "@/lib/statusFilter";
 import { FILTER_TRIGGER_BUTTON_CLASS } from "@/lib/filterControls";
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon, ListFilterIcon } from "lucide-react";
 
-export const CompanyFilter = memo(function CompanyFilter({
-  companies,
-  selectedCompanies,
-  onSelectedCompaniesChange,
+export const StatusFilter = memo(function StatusFilter({
+  selectedStatuses,
+  onSelectedStatusesChange,
   className,
-  disabled = false,
 }: {
-  companies: string[];
-  selectedCompanies: Set<string>;
-  onSelectedCompaniesChange: (next: Set<string>) => void;
+  selectedStatuses: Set<ApplicationStatus>;
+  onSelectedStatusesChange: (next: Set<ApplicationStatus>) => void;
   className?: string;
-  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const activeCount = selectedCompanies.size;
+  const activeCount = selectedStatuses.size;
+  const singleStatus = activeCount === 1 ? selectedStatuses.values().next().value : undefined;
   const label =
     activeCount === 0
-      ? "Filter by company"
-      : activeCount === 1
-        ? [...selectedCompanies][0]
-        : `${activeCount} companies`;
-
-  function handleOpenChange(next: boolean) {
-    if (disabled) return;
-    setOpen(next);
-  }
+      ? "Filter by status"
+      : activeCount === 1 && singleStatus
+        ? statusLabel(singleStatus)
+        : `${activeCount} statuses`;
 
   return (
-    <DropdownMenu open={open} onOpenChange={handleOpenChange} modal={false}>
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger
-        disabled={disabled}
         render={
           <Button
             type="button"
             variant="outline"
             size="default"
-            disabled={disabled}
             className={cn(FILTER_TRIGGER_BUTTON_CLASS, className)}
           >
             <span className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -69,16 +65,19 @@ export const CompanyFilter = memo(function CompanyFilter({
       />
       <DropdownMenuContent align="start">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Company</DropdownMenuLabel>
-          {companies.map((company) => (
+          <DropdownMenuLabel>Status</DropdownMenuLabel>
+          {APPLICATION_STATUS_OPTIONS.map((option) => (
             <DropdownMenuCheckboxItem
-              key={company}
-              checked={selectedCompanies.has(company)}
+              key={option.value}
+              checked={selectedStatuses.has(option.value)}
               onCheckedChange={(checked) =>
-                onSelectedCompaniesChange(toggleCompanySelection(selectedCompanies, company, checked === true))
+                onSelectedStatusesChange(
+                  toggleStatusSelection(selectedStatuses, option.value, checked === true),
+                )
               }
             >
-              {company}
+              <span className={cn("size-2 shrink-0 rounded-full", statusDotClassName(option.value))} />
+              {option.label}
             </DropdownMenuCheckboxItem>
           ))}
         </DropdownMenuGroup>

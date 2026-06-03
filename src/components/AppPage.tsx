@@ -6,10 +6,11 @@ import { AddApplicationDialog } from "@/components/AddApplicationDialog";
 import { ApplicationCard } from "@/components/ApplicationCard";
 import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
 import { BackupMenu } from "@/components/BackupMenu";
-import { CompanyFilter } from "@/components/CompanyFilter";
+import { ApplicationFilters } from "@/components/ApplicationFilters";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +23,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
 import { removeApplication, upsertApplication } from "@/lib/applicationsList";
-import { filterApplicationsByCompanies, uniqueCompanyNames } from "@/lib/companyFilter";
+import { filterApplications, hasActiveApplicationFilters } from "@/lib/applicationFilters";
+import { uniqueCompanyNames } from "@/lib/companyFilter";
 import { errorMessage } from "@/lib/errorMessage";
 import {
   isEditableKeyboardTarget,
@@ -46,6 +48,8 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(() => new Set());
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<ApplicationStatus>>(() => new Set());
+  const [searchQuery, setSearchQuery] = useState("");
   const applicationsListRef = useRef<HTMLDivElement>(null);
   const {
     prefetch,
@@ -99,8 +103,22 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   }, [selectedId, notesByApplicationId, isLoading]);
   const companyNames = useMemo(() => uniqueCompanyNames(applications), [applications]);
   const filteredApplications = useMemo(
-    () => filterApplicationsByCompanies(applications, selectedCompanies),
-    [applications, selectedCompanies],
+    () =>
+      filterApplications(applications, {
+        selectedCompanies,
+        selectedStatuses,
+        searchQuery,
+      }),
+    [applications, selectedCompanies, selectedStatuses, searchQuery],
+  );
+  const hasActiveFilters = useMemo(
+    () =>
+      hasActiveApplicationFilters({
+        selectedCompanies,
+        selectedStatuses,
+        searchQuery,
+      }),
+    [selectedCompanies, selectedStatuses, searchQuery],
   );
 
   useEffect(() => {
@@ -263,15 +281,17 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     [setNotes],
   );
 
-  const clearCompanyFilter = useCallback(() => {
+  const clearFilters = useCallback(() => {
     setSelectedCompanies(new Set());
+    setSelectedStatuses(new Set());
+    setSearchQuery("");
   }, []);
 
   return (
     <div className="mx-auto min-h-screen max-w-3xl px-4 py-10 sm:px-6">
       <header className="mb-10 flex flex-col items-center justify-between gap-4 sm:flex-row">
         <div className="text-center sm:text-left">
-          <h1 className="text-3xl font-bold tracking-tight">Applied.dev</h1>
+          <h1 className="text-3xl font-bold tracking-tight">APPLIED</h1>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
           <ThemeToggle />
@@ -336,18 +356,24 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
       </AlertDialog>
 
       <section className="space-y-4">
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold">Applications</h2>
-          {companyNames.length > 0 ? (
-            <div className="h-8">
-              <CompanyFilter
-                companies={companyNames}
-                selectedCompanies={selectedCompanies}
-                onSelectedCompaniesChange={setSelectedCompanies}
-              />
+        {applications.length > 0 ? (
+          <>
+            <ApplicationFilters
+              companies={companyNames}
+              selectedCompanies={selectedCompanies}
+              onSelectedCompaniesChange={setSelectedCompanies}
+              selectedStatuses={selectedStatuses}
+              onSelectedStatusesChange={setSelectedStatuses}
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              onClearFilters={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+            />
+            <div className="py-3">
+              <Separator />
             </div>
-          ) : null}
-        </div>
+          </>
+        ) : null}
         <div ref={applicationsListRef} className="group/list space-y-4">
           {applications.length === 0 ? (
             <Card className="shadow-sm shadow-black/5">
@@ -365,8 +391,8 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
           ) : filteredApplications.length === 0 ? (
             <Card className="shadow-sm shadow-black/5">
               <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-                <p className="text-muted-foreground text-sm">No applications match the selected companies.</p>
-                <Button type="button" variant="outline" size="sm" onClick={clearCompanyFilter}>
+                <p className="text-muted-foreground text-sm">No applications match the current filters.</p>
+                <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
                   Clear filters
                 </Button>
               </CardContent>
