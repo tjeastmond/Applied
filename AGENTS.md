@@ -11,7 +11,7 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 - Add applications in a Shadcn Dialog modal; view/edit in `ApplicationDetailSheet` (card click): notes oldest-first, linkify http(s) URLs in note body, copy/delete on note date row (muted ghost icons), green-styled Add Note save
 - Cmd+K (Mac) / Ctrl+K (Windows) opens the new application modal
 - Save/submit buttons green; Cancel uses `cancelOutline` (red border, transparent background, light red tint on hover) in modals and sheets
-- Form inputs: blue border on focus without a gray focus ring; red border (`aria-invalid`) on required fields left empty after a failed submit
+- Form inputs: blue border on focus without a gray focus ring; red border (`aria-invalid`) on required fields left empty after a failed submit; keep toolbar search inputs and filter dropdown triggers at the same height (`h-8` via `FILTER_CONTROL_HEIGHT_CLASS` in `src/lib/filterControls.ts`) so they line up in a row; filter row uses equal-width company/status columns plus a always-visible clear-filters icon button (grayed out with `cursor-not-allowed` when nothing is filtered)
 - Add-application dialog: hide notes (manage in detail drawer); no section dividers; recruiter/contact fields optional by default; auto-parse on URL paste; on open, clipboard-only URL prefill, parse, then blur the URL field
 - Label the field "Company LinkedIn URL"; use "Contact Name" for the recruiter name field; when `linkedinUrl` is set, show a LinkedIn link before Job Description on cards and sheet via `ApplicationMetadataLine`
 - Use Shadcn Alert Dialog for delete confirmations, not `window.confirm`; no edit/delete on application cards — delete only from the detail drawer
