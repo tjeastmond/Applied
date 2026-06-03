@@ -24,6 +24,8 @@ const buttonVariants = cva(
           "bg-red-600 text-white hover:bg-red-700 focus-visible:border-red-700 focus-visible:ring-red-600/30",
         cancelOutline:
           "border-destructive bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive/80 focus-visible:border-destructive focus-visible:ring-destructive/20 dark:hover:bg-destructive/15",
+        warnOutline:
+          "border-orange-600 bg-transparent text-orange-600 hover:border-orange-700 hover:bg-orange-600/10 hover:text-orange-700 focus-visible:border-orange-700 focus-visible:ring-orange-600/30 dark:border-orange-500 dark:text-orange-400 dark:hover:border-orange-400 dark:hover:bg-orange-500/15 dark:hover:text-orange-300",
         link: "text-primary",
       },
       size: {

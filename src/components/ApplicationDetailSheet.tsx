@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createApplicationNote, deleteApplicationNote, updateApplication } from "@/api";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
 import { ApplicationMetadataLine } from "@/components/ApplicationMetadataLine";
@@ -70,6 +70,8 @@ export function ApplicationDetailSheet({
   const [pendingNoteId, setPendingNoteId] = useState<string | null>(null);
   const [isDeletingNote, setIsDeletingNote] = useState(false);
   const [jdOpen, setJdOpen] = useState(false);
+  const [unsavedCloseDialogOpen, setUnsavedCloseDialogOpen] = useState(false);
+  const [isSavingBeforeClose, setIsSavingBeforeClose] = useState(false);
 
   const applicationId = application?.id ?? null;
   const applicationUpdatedAt = application?.updatedAt ?? null;
@@ -116,6 +118,8 @@ export function ApplicationDetailSheet({
     setPendingNoteId(null);
     setIsAddingNote(false);
     setIsDeletingNote(false);
+    setUnsavedCloseDialogOpen(false);
+    setIsSavingBeforeClose(false);
   }, [application, applicationId, open, setShowValidation]);
 
   useEffect(() => {
@@ -199,6 +203,51 @@ export function ApplicationDetailSheet({
     return !isFormPristine(form, application);
   }, [form, application, formMatchesApplication]);
 
+  const closeSheet = useCallback(() => {
+    setUnsavedCloseDialogOpen(false);
+    onOpenChange(false);
+  }, [onOpenChange]);
+
+  const requestClose = useCallback(() => {
+    if (isFormDirty) {
+      setUnsavedCloseDialogOpen(true);
+      return;
+    }
+    closeSheet();
+  }, [closeSheet, isFormDirty]);
+
+  const handleSheetOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen) {
+        onOpenChange(true);
+        return;
+      }
+      requestClose();
+    },
+    [onOpenChange, requestClose],
+  );
+
+  const handleUnsavedCloseDialogOpenChange = useCallback((dialogOpen: boolean) => {
+    if (!dialogOpen && !isSavingBeforeClose) {
+      setUnsavedCloseDialogOpen(false);
+    }
+  }, [isSavingBeforeClose]);
+
+  const handleDiscardUnsavedChanges = useCallback(() => {
+    closeSheet();
+  }, [closeSheet]);
+
+  const handleSaveBeforeClose = useCallback(async () => {
+    setIsSavingBeforeClose(true);
+    try {
+      const saved = await save();
+      if (!saved) return;
+      closeSheet();
+    } finally {
+      setIsSavingBeforeClose(false);
+    }
+  }, [closeSheet, save]);
+
   useEffect(() => {
     if (!open) return;
 
@@ -230,7 +279,7 @@ export function ApplicationDetailSheet({
     <>
       <Sheet
         open={open}
-        onOpenChange={onOpenChange}
+        onOpenChange={handleSheetOpenChange}
         onOpenChangeComplete={(isOpen) => {
           if (!isOpen) onCloseComplete?.();
         }}
@@ -297,7 +346,7 @@ export function ApplicationDetailSheet({
                     ) : null}
                     <ul className="space-y-3">
                       {notes.map((note) => (
-                        <li key={note.id} className="bg-muted/40 rounded-lg border px-3 py-3 text-sm">
+                        <li key={note.id} className="bg-muted/40 min-w-0 overflow-hidden rounded-lg border px-3 py-3 text-sm">
                           <NoteContent content={note.content} />
                           <div className="mt-1 flex items-center justify-between gap-2">
                             <p className="text-muted-foreground text-xs">{formatNoteTimestamp(note.createdAt)}</p>
@@ -397,7 +446,7 @@ export function ApplicationDetailSheet({
               Delete
             </Button>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={requestClose}>
                 Close
               </Button>
               <Button
@@ -416,6 +465,37 @@ export function ApplicationDetailSheet({
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={unsavedCloseDialogOpen} onOpenChange={handleUnsavedCloseDialogOpenChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved edits. Save before closing, close without saving, or keep editing?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+            <AlertDialogCancel disabled={isSavingBeforeClose} variant="cancelOutline">
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              variant="warnOutline"
+              disabled={isSavingBeforeClose}
+              onClick={handleDiscardUnsavedChanges}
+            >
+              Don&apos;t Save
+            </Button>
+            <AlertDialogAction
+              disabled={isSavingBeforeClose || !valid}
+              variant="save"
+              onClick={() => void handleSaveBeforeClose()}
+            >
+              {isSavingBeforeClose ? "Saving…" : "Save Now"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={pendingNoteId !== null} onOpenChange={handleNoteDeleteDialogOpenChange}>
         <AlertDialogContent>
