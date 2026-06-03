@@ -6,6 +6,7 @@ export const toastMessages = {
   saveFailed: "Failed to save application",
   applicationSaved: "Application saved.",
   applicationUpdated: "Application updated.",
+  noChanges: "No changes.",
   applicationDeleted: "Application deleted.",
   deleteApplicationFailed: "Failed to delete application",
   statusUpdateFailed: "Failed to update status",

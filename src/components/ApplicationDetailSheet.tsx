@@ -200,12 +200,16 @@ export function ApplicationDetailSheet({
   }, [form, application, formMatchesApplication]);
 
   useEffect(() => {
-    if (!open || !isFormDirty) return;
+    if (!open) return;
 
     function onKeyDown(event: KeyboardEvent) {
       if (!isModKeyChord(event, "s")) return;
       event.preventDefault();
       if (isSaving) return;
+      if (!isFormDirty) {
+        toast.info(toastMessages.noChanges);
+        return;
+      }
       void save();
     }
 
