@@ -7,6 +7,7 @@ import {
   isFormPristine,
   isFormValid,
   isProbablyHttpUrl,
+  normalizeClipboardOnlyJobUrl,
   normalizePastedJobUrl,
   safeFormToInput,
 } from "../src/lib/applicationForm";
@@ -40,6 +41,23 @@ describe("normalizePastedJobUrl", () => {
 
   it("returns null for non-URL text", () => {
     expect(normalizePastedJobUrl("not a url")).toBeNull();
+  });
+});
+
+describe("normalizeClipboardOnlyJobUrl", () => {
+  it("normalizes a single URL from the clipboard", () => {
+    expect(normalizeClipboardOnlyJobUrl("https://jobs.example.com/role")).toBe(
+      "https://jobs.example.com/role",
+    );
+    expect(normalizeClipboardOnlyJobUrl("  www.jobs.example.com/role  ")).toBe(
+      "https://www.jobs.example.com/role",
+    );
+  });
+
+  it("returns null when the clipboard has extra lines or non-URL text", () => {
+    expect(normalizeClipboardOnlyJobUrl("https://jobs.example.com\nnotes")).toBeNull();
+    expect(normalizeClipboardOnlyJobUrl("see https://jobs.example.com")).toBeNull();
+    expect(normalizeClipboardOnlyJobUrl("not a url")).toBeNull();
   });
 });
 

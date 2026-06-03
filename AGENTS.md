@@ -13,7 +13,7 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 - Save/submit buttons green; Cancel buttons red/destructive in modals and sheets
 - Form inputs: blue border on focus without a gray focus ring; red border (`aria-invalid`) on required fields left empty after a failed submit
 - Title case for UI labels and button text
-- Hide notes on the add-application dialog; manage notes in the detail drawer; no form section dividers; recruiter/contact fields visible by default (optional)
+- Add-application dialog: hide notes (manage in detail drawer); no section dividers; recruiter/contact fields optional by default; auto-parse on URL paste; on open, clipboard-only URL prefill, parse, then blur the URL field
 - Label the field "Company LinkedIn URL"; use "Contact Name" for the recruiter name field
 - Do not edit attached plan files when implementing plans
 - Use Shadcn Alert Dialog for delete confirmations, not `window.confirm`; no edit/delete on application cards — delete only from the detail drawer
@@ -396,7 +396,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 ## Learned Workspace Facts
 
-- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx`
+- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (clipboard-only URL prefill on new-application open; paste-to-parse via `ApplicationFormFields`)
 - Stack: Next.js App Router, Node.js, pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI, self-hosted Roboto Mono
 - `pnpm dev` runs `scripts/dev-clean.sh` (wipes `.next` then starts Turbopack on port 3000)
 - Tooling includes Prettier, ESLint, and Vitest (run via `pnpm`)
@@ -404,7 +404,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 - Parsed job postings store cleaned minimal HTML in `full_jd`; user notes live in `application_notes` (many per application)
 - SQLite persistence via better-sqlite3 (`data/applied.db` by default)
 - API request bodies are validated with Zod and sanitized before persistence
-- `normalizeJobTitle()` strips trailing suffixes such as ` | Y Combinator` on parse and save
+- Job URL parse uses `extractJobCompany`: Y Combinator (`ycombinator.com`) and Ashby (`jobs.ashbyhq.com`) are job boards, not employers; `normalizeJobTitle()` strips trailing board suffixes on parse/save
 - Application statuses: `applied`, `interviewing`, `rejected`, `offer`, `passed` — managed via `ApplicationStatusPicker` on cards and in the detail drawer
 - Application detail uses `ApplicationDetailSheet` at 60vw width, sliding in from the right with blurred backdrop
 - Deployable to Vercel; thin auth later; SQLite for now, Postgres possible later

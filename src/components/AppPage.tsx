@@ -29,7 +29,12 @@ import {
 import { useApplicationFormActions } from "@/hooks/useApplicationFormActions";
 import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
 import { removeApplication, upsertApplication } from "@/lib/applicationsList";
-import { emptyForm, formatDate, type FormState } from "@/lib/applicationForm";
+import {
+  emptyForm,
+  formatDate,
+  normalizeClipboardOnlyJobUrl,
+  type FormState,
+} from "@/lib/applicationForm";
 import { errorMessage } from "@/lib/errorMessage";
 import {
   isEditableKeyboardTarget,
@@ -53,6 +58,8 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [scrollHoverLocked, setScrollHoverLocked] = useState(false);
+  const addFormUrlInputRef = useRef<HTMLInputElement>(null);
+  const parseRef = useRef<(urlOverride?: string) => Promise<void>>(async () => {});
   const { prefetch, prefetchMany, getNotes, isLoading, setNotes, removeApplication: clearNotesCache } =
     useApplicationNotesCache();
 
@@ -87,6 +94,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
       },
       onApplicationChange: handleApplicationChange,
     });
+  parseRef.current = parse;
 
   const resetForm = useCallback(() => {
     setForm(emptyForm());
@@ -130,6 +138,33 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [openAddForm]);
+
+  useEffect(() => {
+    if (!formOpen) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        const url = normalizeClipboardOnlyJobUrl(text);
+        if (!url || cancelled) return;
+
+        await parseRef.current(url);
+        if (cancelled) return;
+
+        requestAnimationFrame(() => {
+          addFormUrlInputRef.current?.blur();
+        });
+      } catch {
+        // Clipboard unavailable or denied — user can paste manually.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [formOpen]);
 
   function openDetail(application: JobApplication) {
     prefetch(application.id, { notifyOnError: true });
@@ -285,6 +320,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
               <ApplicationFormFields
                 variant="minimal"
                 autoParseOnUrlPaste
+                urlInputRef={addFormUrlInputRef}
                 form={form}
                 requiredValidation={requiredValidation}
                 isParsing={isParsing}

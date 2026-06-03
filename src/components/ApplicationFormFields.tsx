@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
@@ -17,6 +18,7 @@ export function ApplicationFormFields({
   showStatus = false,
   stackedTitleCompany = false,
   autoParseOnUrlPaste = false,
+  urlInputRef,
   updateField,
   onParse,
 }: {
@@ -27,6 +29,7 @@ export function ApplicationFormFields({
   showStatus?: boolean;
   stackedTitleCompany?: boolean;
   autoParseOnUrlPaste?: boolean;
+  urlInputRef?: Ref<HTMLInputElement>;
   updateField: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
   onParse: (urlOverride?: string) => void;
 }) {
@@ -57,6 +60,7 @@ export function ApplicationFormFields({
         </FieldLabel>
         <InputGroup>
           <InputGroupInput
+            ref={urlInputRef}
             id="url"
             type="url"
             placeholder="https://…"
@@ -70,6 +74,7 @@ export function ApplicationFormFields({
                     if (!pastedUrl || isParsing) return;
                     e.preventDefault();
                     updateField("url", pastedUrl);
+                    if (pastedUrl === form.url.trim()) return;
                     onParse(pastedUrl);
                   }
                 : undefined

@@ -60,6 +60,13 @@ export function normalizePastedJobUrl(value: string): string | null {
   return isProbablyHttpUrl(withScheme) ? withScheme : null;
 }
 
+/** Like {@link normalizePastedJobUrl}, but only when the clipboard text is a single URL (no extra lines or prose). */
+export function normalizeClipboardOnlyJobUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed || /[\r\n]/.test(trimmed)) return null;
+  return normalizePastedJobUrl(trimmed);
+}
+
 export const REQUIRED_FORM_FIELDS = ["url", "title", "company", "appliedAt"] as const;
 
 export type RequiredFormField = (typeof REQUIRED_FORM_FIELDS)[number];

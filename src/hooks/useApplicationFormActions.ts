@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { parseJobUrl } from "@/api";
 import { errorMessage } from "@/lib/errorMessage";
 import {
@@ -38,6 +38,7 @@ export function useApplicationFormActions({
   const [isParsing, setIsParsing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
+  const parseInFlightUrlRef = useRef<string | null>(null);
 
   const valid = useMemo(() => form !== null && isFormValid(form), [form]);
 
@@ -56,8 +57,14 @@ export function useApplicationFormActions({
   const parse = useCallback(async (urlOverride?: string) => {
     const url = (typeof urlOverride === "string" ? urlOverride : (form?.url ?? "")).trim();
     if (!url) return;
+    if (parseInFlightUrlRef.current === url) return;
+
     const scopeId = form?.id;
+    parseInFlightUrlRef.current = url;
     setIsParsing(true);
+    if (typeof urlOverride === "string") {
+      setForm((prev) => (prev ? { ...prev, url: url.trim() } : prev));
+    }
     try {
       const result = await parseJobUrl(url);
       if (result.ok) {
@@ -74,6 +81,9 @@ export function useApplicationFormActions({
     } catch (error) {
       toast.error(errorMessage(error, toastMessages.parseUrlFailed));
     } finally {
+      if (parseInFlightUrlRef.current === url) {
+        parseInFlightUrlRef.current = null;
+      }
       setIsParsing(false);
     }
   }, [form?.id, form?.url, parseSuccessMessage, setForm]);
