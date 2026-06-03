@@ -12,6 +12,24 @@ export function modKShortcutDescription(): string {
   return `${modifier}+K opens the new application modal`;
 }
 
+export function modSShortcutLabel(): string {
+  return isMacPlatform() ? "⌘S" : "Ctrl+S";
+}
+
+export function modSShortcutDescription(): string {
+  const modifier = isMacPlatform() ? "Command" : "Ctrl";
+  return `${modifier}+S saves application changes`;
+}
+
+export function modEnterShortcutLabel(): string {
+  return isMacPlatform() ? "⌘↵" : "Ctrl+↵";
+}
+
+export function modEnterShortcutDescription(): string {
+  const modifier = isMacPlatform() ? "Command" : "Ctrl";
+  return `${modifier}+Enter adds the note`;
+}
+
 export function isModKeyChord(event: KeyboardEvent, key: string): boolean {
   if (event.key.toLowerCase() !== key.toLowerCase()) return false;
   return event.metaKey || event.ctrlKey;

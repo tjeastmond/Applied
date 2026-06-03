@@ -18,4 +18,14 @@ describe("isModKeyChord", () => {
   it("ignores K without modifier", () => {
     expect(isModKeyChord(keyEvent({ key: "k" }), "k")).toBe(false);
   });
+
+  it("matches Meta+S and Ctrl+S", () => {
+    expect(isModKeyChord(keyEvent({ key: "s", metaKey: true }), "s")).toBe(true);
+    expect(isModKeyChord(keyEvent({ key: "S", ctrlKey: true }), "s")).toBe(true);
+  });
+
+  it("matches Meta+Enter and Ctrl+Enter", () => {
+    expect(isModKeyChord(keyEvent({ key: "Enter", metaKey: true }), "Enter")).toBe(true);
+    expect(isModKeyChord(keyEvent({ key: "Enter", ctrlKey: true }), "Enter")).toBe(true);
+  });
 });

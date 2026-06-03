@@ -29,6 +29,13 @@ import {
   type FormState,
 } from "@/lib/applicationForm";
 import { errorMessage } from "@/lib/errorMessage";
+import {
+  isModKeyChord,
+  modEnterShortcutDescription,
+  modEnterShortcutLabel,
+  modSShortcutDescription,
+  modSShortcutLabel,
+} from "@/lib/keyboardShortcut";
 import { toastMessages } from "@/lib/toastMessages";
 import type { ApplicationNote, JobApplication } from "@/types";
 import { ChevronDownIcon, CopyIcon, ExternalLinkIcon, Trash2Icon } from "lucide-react";
@@ -143,6 +150,13 @@ export function ApplicationDetailSheet({
     }
   }
 
+  function handleNewNoteKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (!isModKeyChord(event.nativeEvent, "Enter")) return;
+    event.preventDefault();
+    if (isAddingNote || !newNote.trim()) return;
+    void handleAddNote();
+  }
+
   async function handleCopyNote(content: string) {
     try {
       await navigator.clipboard.writeText(content);
@@ -180,6 +194,24 @@ export function ApplicationDetailSheet({
   }
 
   const formMatchesApplication = form?.id === applicationId;
+  const isFormDirty = useMemo(() => {
+    if (!form || !application || !formMatchesApplication) return false;
+    return !isFormPristine(form, application);
+  }, [form, application, formMatchesApplication]);
+
+  useEffect(() => {
+    if (!open || !isFormDirty) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (!isModKeyChord(event, "s")) return;
+      event.preventDefault();
+      if (isSaving) return;
+      void save();
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, isFormDirty, isSaving, save]);
   const headerTitle =
     (formMatchesApplication ? form.title.trim() : "") ||
     application?.title ||
@@ -297,6 +329,7 @@ export function ApplicationDetailSheet({
                           value={newNote}
                           rows={3}
                           onChange={(e) => setNewNote(e.target.value)}
+                          onKeyDown={handleNewNoteKeyDown}
                         />
                       </li>
                       <li>
@@ -305,9 +338,13 @@ export function ApplicationDetailSheet({
                           variant="saveOutline"
                           className="self-start"
                           disabled={isAddingNote || !newNote.trim()}
+                          title={modEnterShortcutDescription()}
                           onClick={() => void handleAddNote()}
                         >
                           {isAddingNote ? "Adding…" : "Add Note"}
+                          <kbd className="border-green-600/30 text-green-700/80 pointer-events-none hidden rounded border bg-green-600/10 px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline dark:text-green-400/90">
+                            {modEnterShortcutLabel()}
+                          </kbd>
                         </Button>
                       </li>
                     </ul>
@@ -359,8 +396,17 @@ export function ApplicationDetailSheet({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Close
               </Button>
-              <Button type="button" variant="save" disabled={isSaving || !valid} onClick={() => void save()}>
+              <Button
+                type="button"
+                variant="save"
+                disabled={isSaving || !valid}
+                title={modSShortcutDescription()}
+                onClick={() => void save()}
+              >
                 {isSaving ? "Saving…" : "Save changes"}
+                <kbd className="bg-primary-foreground/15 text-primary-foreground/90 pointer-events-none hidden rounded px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline">
+                  {modSShortcutLabel()}
+                </kbd>
               </Button>
             </div>
           </SheetFooter>
