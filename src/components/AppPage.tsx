@@ -45,6 +45,7 @@ import {
 import { toastMessages } from "@/lib/toastMessages";
 import { cn } from "@/lib/utils";
 import type { ApplicationStatus, JobApplication } from "@/types";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { CopyIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -278,6 +279,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
           <h1 className="text-3xl font-bold tracking-tight">Applied.dev</h1>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
+          <ThemeToggle />
           <Button
             type="button"
             variant="outline"
@@ -428,7 +430,7 @@ function ApplicationCard({
     <Card
       className={cn(
         "relative gap-0 py-0 transition-colors",
-        !scrollHoverLocked && "hover:bg-muted/50 hover:shadow-md hover:shadow-black/5",
+        !scrollHoverLocked && "hover:bg-muted/50 hover:shadow-md hover:shadow-black/5 dark:hover:shadow-black/30",
       )}
     >
       <button
