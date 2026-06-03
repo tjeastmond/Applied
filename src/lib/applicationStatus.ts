@@ -1,10 +1,11 @@
-export const APPLICATION_STATUSES = ["applied", "interviewing", "rejected", "offer", "passed"] as const;
+export const APPLICATION_STATUSES = ["applied", "interviewing", "waiting", "rejected", "offer", "passed"] as const;
 
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 
 const STATUS_OPTIONS_BY_VALUE: { value: ApplicationStatus; label: string }[] = [
   { value: "applied", label: "Applied" },
   { value: "interviewing", label: "Interviewing" },
+  { value: "waiting", label: "Waiting" },
   { value: "rejected", label: "Rejected" },
   { value: "offer", label: "Offer" },
   { value: "passed", label: "Passed" },
@@ -22,6 +23,8 @@ const STATUS_TAG_CLASSES: Record<ApplicationStatus, string> = {
     "border-slate-200 bg-slate-100 text-slate-700 aria-expanded:ring-slate-300/50 focus-visible:border-slate-300 focus-visible:ring-slate-300/40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200",
   interviewing:
     "border-blue-200 bg-blue-100 text-blue-800 aria-expanded:ring-blue-300/50 focus-visible:border-blue-300 focus-visible:ring-blue-300/40 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200",
+  waiting:
+    "border-amber-200 bg-amber-100 text-amber-900 aria-expanded:ring-amber-300/50 focus-visible:border-amber-300 focus-visible:ring-amber-300/40 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200",
   rejected:
     "border-red-200 bg-red-100 text-red-800 aria-expanded:ring-red-300/50 focus-visible:border-red-300 focus-visible:ring-red-300/40 dark:border-red-900 dark:bg-red-950 dark:text-red-200",
   offer:
@@ -33,6 +36,7 @@ const STATUS_TAG_CLASSES: Record<ApplicationStatus, string> = {
 const STATUS_DOT_CLASSES: Record<ApplicationStatus, string> = {
   applied: "bg-slate-500",
   interviewing: "bg-blue-500",
+  waiting: "bg-amber-500",
   rejected: "bg-red-500",
   offer: "bg-green-600",
   passed: "bg-violet-500",

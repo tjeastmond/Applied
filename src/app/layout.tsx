@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 import "@/styles.css";
 
 export const metadata: Metadata = {
-  title: "Applied.dev",
+  title: "APPLIED.",
   description: "Job application tracker",
 };
 
