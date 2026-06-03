@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createApplication, deleteApplication, updateApplication } from "@/api";
 import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
@@ -49,6 +49,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   const [applications, setApplications] = useState(initialApplications);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const detailClosingIdRef = useRef<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [scrollHoverLocked, setScrollHoverLocked] = useState(false);
@@ -139,8 +140,17 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   function handleDetailOpenChange(open: boolean) {
     setDetailOpen(open);
     if (!open) {
-      setSelectedId(null);
+      detailClosingIdRef.current = selectedId;
+    } else {
+      detailClosingIdRef.current = null;
     }
+  }
+
+  function handleDetailCloseComplete() {
+    const closingId = detailClosingIdRef.current;
+    if (closingId === null) return;
+    detailClosingIdRef.current = null;
+    setSelectedId((current) => (current === closingId ? null : current));
   }
 
   function handleFormOpenChange(open: boolean) {
@@ -294,7 +304,6 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
       </Dialog>
 
       <ApplicationDetailSheet
-        key={selectedId ?? "closed"}
         application={selectedApplication}
         open={detailOpen}
         notes={selectedId ? (getNotes(selectedId) ?? []) : []}
@@ -303,6 +312,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
           if (selectedId) setNotes(selectedId, nextNotes);
         }}
         onOpenChange={handleDetailOpenChange}
+        onCloseComplete={handleDetailCloseComplete}
         onApplicationChange={handleApplicationChange}
         onRequestDelete={requestDelete}
       />

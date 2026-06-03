@@ -40,6 +40,7 @@ export function ApplicationDetailSheet({
   notesLoading,
   onNotesChange,
   onOpenChange,
+  onCloseComplete,
   onApplicationChange,
   onRequestDelete,
 }: {
@@ -49,6 +50,7 @@ export function ApplicationDetailSheet({
   notesLoading: boolean;
   onNotesChange: (notes: ApplicationNote[]) => void;
   onOpenChange: (open: boolean) => void;
+  onCloseComplete?: () => void;
   onApplicationChange: (application: JobApplication) => void;
   onRequestDelete: (id: string) => void;
 }) {
@@ -176,7 +178,13 @@ export function ApplicationDetailSheet({
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet
+        open={open}
+        onOpenChange={onOpenChange}
+        onOpenChangeComplete={(isOpen) => {
+          if (!isOpen) onCloseComplete?.();
+        }}
+      >
         <SheetContent
           side="right"
           className="flex w-[60vw] max-w-[60vw] min-w-[60vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[60vw]"
