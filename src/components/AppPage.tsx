@@ -398,15 +398,27 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
               </CardContent>
             </Card>
           ) : (
-            filteredApplications.map((application) => (
-              <ApplicationCard
-                key={application.id}
-                application={application}
-                onOpen={handleOpenApplication}
-                onPrefetchNotes={handlePrefetchNotes}
-                onStatusChange={handleStatusChange}
-              />
-            ))
+            <>
+              {filteredApplications.map((application) => (
+                <ApplicationCard
+                  key={application.id}
+                  application={application}
+                  onOpen={handleOpenApplication}
+                  onPrefetchNotes={handlePrefetchNotes}
+                  onStatusChange={handleStatusChange}
+                />
+              ))}
+              <div className="py-3">
+                <Separator />
+              </div>
+              <p className="text-muted-foreground text-sm">
+                <a href="mailto:hello@swoo.io" className="text-blue-600 dark:text-blue-400">
+                  hello@swoo.io
+                </a>
+                {" · "}
+                © 2026 · MIT License
+              </p>
+            </>
           )}
         </div>
       </section>
