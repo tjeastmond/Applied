@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createApplication, deleteApplication, updateApplication } from "@/api";
 import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
+import { ApplicationMetadataLine } from "@/components/ApplicationMetadataLine";
 import { ApplicationStatusPicker } from "@/components/ApplicationStatusPicker";
-import { JobDescriptionLink } from "@/components/JobDescriptionLink";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -448,21 +448,14 @@ function ApplicationCard({
       <CardHeader className="pointer-events-none relative z-10 flex flex-row items-start justify-between gap-3 space-y-0 py-4">
         <div className="min-w-0 flex-1 space-y-1 text-left">
           <CardTitle className="text-base">{title}</CardTitle>
-          <CardDescription className="flex flex-wrap items-center gap-x-1.5">
-            {application.company ? (
-              <>
-                <span>{application.company}</span>
-                <span aria-hidden="true">·</span>
-              </>
-            ) : null}
-            <span>{appliedLabel}</span>
-            {postingUrl ? (
-              <>
-                <span aria-hidden="true">·</span>
-                <JobDescriptionLink url={postingUrl} className="pointer-events-auto" stopPropagation />
-              </>
-            ) : null}
-          </CardDescription>
+          <ApplicationMetadataLine
+            variant="card"
+            company={application.company}
+            appliedLabel={appliedLabel}
+            linkedinUrl={application.linkedinUrl}
+            postingUrl={postingUrl}
+            stopPropagation
+          />
         </div>
         <ApplicationStatusPicker
           className="pointer-events-auto"
