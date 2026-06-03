@@ -22,7 +22,7 @@ const buttonVariants = cva(
           "bg-red-600 text-white hover:bg-red-700 focus-visible:border-red-700 focus-visible:ring-red-600/30",
         cancelOutline:
           "border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive border-border bg-background",
-        link: "text-primary underline-offset-4 hover:underline",
+        link: "text-primary",
       },
       size: {
         default: "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",

@@ -155,6 +155,10 @@
   .job-description-html strong {
     @apply font-semibold;
   }
+
+  .job-description-html a[href] {
+    @apply text-blue-600 dark:text-blue-400;
+  }
 }
 
 @layer base {
@@ -169,5 +173,27 @@
   }
   button:not(:disabled) {
     cursor: pointer;
+  }
+
+  a[href] {
+    @apply relative inline-block max-w-full no-underline;
+    text-decoration: none;
+  }
+
+  a[href]:not(.link-plain)::after {
+    content: "";
+    @apply pointer-events-none absolute left-0 h-px w-full origin-left scale-x-0 bg-current transition-transform duration-300 ease-out;
+    bottom: -0.25rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    a[href]:not(.link-plain)::after {
+      transition: none;
+    }
+  }
+
+  a[href]:not(.link-plain):hover::after,
+  a[href]:not(.link-plain):focus-visible::after {
+    @apply scale-x-100;
   }
 }

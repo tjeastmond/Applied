@@ -30,7 +30,7 @@ import {
 import { errorMessage } from "@/lib/errorMessage";
 import { toastMessages } from "@/lib/toastMessages";
 import type { ApplicationNote, JobApplication } from "@/types";
-import { ChevronDownIcon, Trash2Icon } from "lucide-react";
+import { ChevronDownIcon, ExternalLinkIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 export function ApplicationDetailSheet({
@@ -189,16 +189,17 @@ export function ApplicationDetailSheet({
           side="right"
           className="flex w-[60vw] max-w-[60vw] min-w-[60vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[60vw]"
         >
-          <SheetHeader className="border-b px-6 py-4">
+          <SheetHeader className="gap-2 border-b px-6 py-4">
             <SheetTitle className="pr-8 text-lg">
               {postingUrl ? (
                 <a
                   href={postingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-foreground/80 underline underline-offset-4"
+                  className="link-plain inline-flex items-center gap-1.5 hover:text-foreground/80"
                 >
-                  {headerTitle}
+                  <span>{headerTitle}</span>
+                  <ExternalLinkIcon className="size-[0.95em] shrink-0 opacity-70" aria-hidden="true" />
                 </a>
               ) : (
                 headerTitle

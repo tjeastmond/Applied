@@ -39,7 +39,7 @@ export function JobDescriptionLink({ url, className, stopPropagation = false }: 
         href={trimmed}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-xs text-blue-600 underline underline-offset-4 hover:no-underline dark:text-blue-400"
+        className="text-xs text-blue-600 dark:text-blue-400"
         onClick={stopBubble}
       >
         Job Description

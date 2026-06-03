@@ -430,7 +430,8 @@ function ApplicationCard({
     <Card
       className={cn(
         "relative gap-0 py-0 transition-colors",
-        !scrollHoverLocked && "hover:bg-muted/50 hover:shadow-md hover:shadow-black/5 dark:hover:shadow-black/30",
+        !scrollHoverLocked &&
+          "hover:bg-muted/50 hover:shadow-md hover:shadow-black/5 dark:hover:bg-secondary dark:hover:shadow-black/30",
       )}
     >
       <button
