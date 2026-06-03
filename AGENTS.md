@@ -8,15 +8,15 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 
 - Use Shadcn UI for frontend components
 - Show status feedback with Sonner toasts in the top-right corner; success toasts pastel green with darker green border, errors red — not inline alert banners
-- Add applications in a Shadcn Dialog modal; view/edit in `ApplicationDetailSheet` (card click): notes oldest-first, linkify http(s) URLs in note body, copy/delete on note date row (muted ghost icons), green-styled Add Note save
+- Add applications in a Shadcn Dialog modal; view/edit in `ApplicationDetailSheet` (card click): notes oldest-first, linkify http(s) URLs in note body, copy/delete on note date row (muted ghost icons), green-styled Add Note save; Cmd/Ctrl+S saves dirty application fields when the sheet is open; Cmd/Ctrl+Enter saves a new note
 - Cmd+K (Mac) / Ctrl+K (Windows) opens the new application modal
 - Save/submit buttons green; Cancel uses `cancelOutline` (red border, transparent background, light red tint on hover) in modals and sheets
-- Form inputs: blue border on focus without a gray focus ring; red border (`aria-invalid`) on required fields left empty after a failed submit; keep toolbar search inputs and filter dropdown triggers at the same height (`h-8` via `FILTER_CONTROL_HEIGHT_CLASS` in `src/lib/filterControls.ts`) so they line up in a row; filter row uses equal-width company/status columns plus a always-visible clear-filters icon button (grayed out with `cursor-not-allowed` when nothing is filtered)
+- Form inputs: blue border on focus without a gray focus ring; red border (`aria-invalid`) on required fields left empty after a failed submit; date inputs use a muted calendar picker icon; list filters in `ApplicationFilters`: search above equal-width company/status multi-selects with fixed trigger widths, animated chevrons, and no layout shift when menus open; always-visible clear-filters icon button (`cancelOutline` when active, muted X when disabled, `cursor-not-allowed` on wrapper when inactive); `Separator` below the filter block; keep controls `h-8` via `FILTER_CONTROL_HEIGHT_CLASS` in `src/lib/filterControls.ts`
 - Add-application dialog: hide notes (manage in detail drawer); no section dividers; recruiter/contact fields optional by default; auto-parse on URL paste; on open, clipboard-only URL prefill, parse, then blur the URL field
 - Label the field "Company LinkedIn URL"; use "Contact Name" for the recruiter name field; when `linkedinUrl` is set, show a LinkedIn link before Job Description on cards and sheet via `ApplicationMetadataLine`
 - Use Shadcn Alert Dialog for delete confirmations, not `window.confirm`; no edit/delete on application cards — delete only from the detail drawer
-- Application cards use color-coded `ApplicationStatusPicker` (tag-like dropdown, closes on select; Applied first, then alphabetical); job URLs via `JobDescriptionLink` with copy icon; drawer overlay blurs background; header has Copy All URLs and Backup menu
-- Light/dark theme toggle in header (Lucide Sun/Moon); persist choice in `localStorage` (`applied-dev-theme`); default light
+- Application cards use color-coded `ApplicationStatusPicker` (tag-like dropdown, closes on select; Applied first, then alphabetical); job URLs via `JobDescriptionLink` with copy icon; drawer overlay blurs background; header has icon-only `BackupMenu` (database icon), Copy All URLs, and Add Application
+- Light/dark theme toggle in header (Lucide Sun/Moon); persist choice in `localStorage` (`applied-dev-theme`); default light; dark-mode header toolbar outline buttons use `header-toolbar-outline` in `styles.css` for lighter borders and visible hover
 - Links: no default underline; left-to-right underline animates on hover/focus for `a[href]`; sheet header job title uses `link-plain` plus `ExternalLinkIcon` (no animated underline)
 
 ---
@@ -396,7 +396,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 ## Learned Workspace Facts
 
-- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (header: `ThemeToggle`, `BackupMenu`, Copy All URLs; clipboard-only URL prefill on new-application open)
+- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (header: `APPLIED` title, `ThemeToggle`, icon-only `BackupMenu`, Copy All URLs; `ApplicationFilters` for company/status/search via `filterApplications`; notes prefetched on load and sheet open through `useApplicationNotesCache`; clipboard-only URL prefill on new-application open)
 - Stack: Next.js App Router, Node.js, pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI, self-hosted Roboto Mono
 - `pnpm dev` runs `scripts/dev-clean.sh` (wipes `.next` then starts Turbopack on port 3000)
 - Required application form fields: job posting URL, title, company, apply date; all other fields are optional
