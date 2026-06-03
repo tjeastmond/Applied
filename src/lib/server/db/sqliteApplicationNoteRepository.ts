@@ -22,7 +22,7 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-const LIST_BY_APPLICATION_SQL = `SELECT * FROM application_notes WHERE application_id = ? ORDER BY created_at DESC`;
+const LIST_BY_APPLICATION_SQL = `SELECT * FROM application_notes WHERE application_id = ? ORDER BY created_at ASC, rowid ASC`;
 const INSERT_SQL = `INSERT INTO application_notes (id, application_id, content, created_at) VALUES (?, ?, ?, ?)`;
 const DELETE_SQL = `DELETE FROM application_notes WHERE id = ?`;
 const DELETE_FOR_APPLICATION_SQL = `DELETE FROM application_notes WHERE id = ? AND application_id = ?`;
