@@ -66,12 +66,14 @@ export const ApplicationFilters = memo(function ApplicationFilters({
         >
           <Button
             type="button"
-            variant={hasActiveFilters ? "cancelOutline" : "outline"}
+            variant="outline"
             size="icon"
             disabled={!hasActiveFilters}
             className={cn(
               "active:translate-y-0",
               !hasActiveFilters && "disabled:opacity-100 [&_svg]:text-muted-foreground",
+              hasActiveFilters &&
+                "border-border bg-destructive/20 text-white hover:border-border hover:bg-destructive/25 hover:text-white [&_svg]:text-white dark:border-input dark:hover:border-input",
             )}
             onClick={onClearFilters}
             aria-label="Clear filters"

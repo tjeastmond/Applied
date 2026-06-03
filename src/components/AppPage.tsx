@@ -460,7 +460,14 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
                   hello@swoo.io
                 </a>
                 {" · "}
-                © 2026 · MIT License
+                <a
+                  href="https://github.com/tjeastmond/Applied/blob/main/LICENSE"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400"
+                >
+                  MIT License
+                </a>
               </p>
             </>
           )}
