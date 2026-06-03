@@ -8,16 +8,16 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 
 - Use Shadcn UI for frontend components
 - Show status feedback with Sonner toasts in the top-right corner; success toasts pastel green with darker green border, errors red — not inline alert banners
-- Add new applications in a Shadcn Dialog modal; view and edit existing applications in the `ApplicationDetailSheet` drawer (card click)
+- Add applications in a Shadcn Dialog modal; view/edit in `ApplicationDetailSheet` (card click): notes oldest-first, linkify http(s) URLs in note body, copy/delete on note date row (muted ghost icons), green-styled Add Note save
 - Cmd+K (Mac) / Ctrl+K (Windows) opens the new application modal
-- Save/submit buttons green; Cancel buttons red/destructive in modals and sheets
+- Save/submit buttons green; Cancel uses `cancelOutline` (red border, transparent background, light red tint on hover) in modals and sheets
 - Form inputs: blue border on focus without a gray focus ring; red border (`aria-invalid`) on required fields left empty after a failed submit
-- Title case for UI labels and button text
 - Add-application dialog: hide notes (manage in detail drawer); no section dividers; recruiter/contact fields optional by default; auto-parse on URL paste; on open, clipboard-only URL prefill, parse, then blur the URL field
-- Label the field "Company LinkedIn URL"; use "Contact Name" for the recruiter name field
-- Do not edit attached plan files when implementing plans
+- Label the field "Company LinkedIn URL"; use "Contact Name" for the recruiter name field; when `linkedinUrl` is set, show a LinkedIn link before Job Description on cards and sheet via `ApplicationMetadataLine`
 - Use Shadcn Alert Dialog for delete confirmations, not `window.confirm`; no edit/delete on application cards — delete only from the detail drawer
-- Application cards use color-coded `ApplicationStatusPicker` (tag-like dropdown, closes on select; Applied first, then alphabetical); job URLs via `JobDescriptionLink` with copy icon; drawer overlay blurs background; header has Copy All URLs button
+- Application cards use color-coded `ApplicationStatusPicker` (tag-like dropdown, closes on select; Applied first, then alphabetical); job URLs via `JobDescriptionLink` with copy icon; drawer overlay blurs background; header has Copy All URLs and Backup menu
+- Light/dark theme toggle in header (Lucide Sun/Moon); persist choice in `localStorage` (`applied-dev-theme`); default light
+- Links: no default underline; left-to-right underline animates on hover/focus for `a[href]`; sheet header job title uses `link-plain` plus `ExternalLinkIcon` (no animated underline)
 
 ---
 
@@ -396,15 +396,15 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 ## Learned Workspace Facts
 
-- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (clipboard-only URL prefill on new-application open; paste-to-parse via `ApplicationFormFields`)
+- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (header: `ThemeToggle`, `BackupMenu`, Copy All URLs; clipboard-only URL prefill on new-application open)
 - Stack: Next.js App Router, Node.js, pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI, self-hosted Roboto Mono
 - `pnpm dev` runs `scripts/dev-clean.sh` (wipes `.next` then starts Turbopack on port 3000)
-- Tooling includes Prettier, ESLint, and Vitest (run via `pnpm`)
 - Required application form fields: job posting URL, title, company, apply date; all other fields are optional
 - Parsed job postings store cleaned minimal HTML in `full_jd`; user notes live in `application_notes` (many per application)
 - SQLite persistence via better-sqlite3 (`data/applied.db` by default)
 - API request bodies are validated with Zod and sanitized before persistence
 - Job URL parse uses `extractJobCompany`: Y Combinator (`ycombinator.com`) and Ashby (`jobs.ashbyhq.com`) are job boards, not employers; `normalizeJobTitle()` strips trailing board suffixes on parse/save
 - Application statuses: `applied`, `interviewing`, `rejected`, `offer`, `passed` — managed via `ApplicationStatusPicker` on cards and in the detail drawer
-- Application detail uses `ApplicationDetailSheet` at 60vw width, sliding in from the right with blurred backdrop
-- Deployable to Vercel; thin auth later; SQLite for now, Postgres possible later
+- `ApplicationDetailSheet` is 60vw, slides from the right with blurred backdrop; theme via `ThemeProvider` + blocking `themeInitScript()` before paint (near-black dark tokens in `styles.css`); Sonner follows active theme
+- Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1`
+- Deployable to Vercel; thin auth later; SQLite for now, Postgres possible later; Electron is a viable desktop path with local SQLite (no hosted DB required)
