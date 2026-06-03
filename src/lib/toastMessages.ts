@@ -15,6 +15,8 @@ export const toastMessages = {
   noteAddFailed: "Failed to add note",
   noteDeleted: "Note deleted.",
   noteDeleteFailed: "Failed to delete note",
+  noteCopied: "Note copied.",
+  noteCopyFailed: "Failed to copy note.",
   jobUrlCopied: "Job description URL copied.",
   jobUrlCopyFailed: "Failed to copy URL.",
   allJobUrlsCopied: "All job URLs copied.",

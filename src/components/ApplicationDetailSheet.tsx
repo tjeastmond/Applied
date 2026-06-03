@@ -30,7 +30,7 @@ import {
 import { errorMessage } from "@/lib/errorMessage";
 import { toastMessages } from "@/lib/toastMessages";
 import type { ApplicationNote, JobApplication } from "@/types";
-import { ChevronDownIcon, ExternalLinkIcon, Trash2Icon } from "lucide-react";
+import { ChevronDownIcon, CopyIcon, ExternalLinkIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 export function ApplicationDetailSheet({
@@ -137,6 +137,15 @@ export function ApplicationDetailSheet({
       toast.error(errorMessage(error, toastMessages.noteAddFailed));
     } finally {
       setIsAddingNote(false);
+    }
+  }
+
+  async function handleCopyNote(content: string) {
+    try {
+      await navigator.clipboard.writeText(content);
+      toast.success(toastMessages.noteCopied);
+    } catch {
+      toast.error(toastMessages.noteCopyFailed);
     }
   }
 
@@ -249,22 +258,34 @@ export function ApplicationDetailSheet({
                   ) : (
                     <ul className="space-y-3">
                       {notes.map((note) => (
-                        <li key={note.id} className="bg-muted/40 flex gap-3 rounded-lg border px-3 py-3 text-sm">
-                          <div className="min-w-0 flex-1">
-                            <p className="whitespace-pre-wrap">{note.content}</p>
-                            <p className="text-muted-foreground mt-1 text-xs">{formatNoteTimestamp(note.createdAt)}</p>
+                        <li key={note.id} className="bg-muted/40 rounded-lg border px-3 py-3 text-sm">
+                          <p className="whitespace-pre-wrap">{note.content}</p>
+                          <div className="mt-1 flex items-center justify-between gap-2">
+                            <p className="text-muted-foreground text-xs">{formatNoteTimestamp(note.createdAt)}</p>
+                            <div className="flex shrink-0 items-center gap-0.5">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground hover:text-foreground"
+                                aria-label="Copy note"
+                                onClick={() => void handleCopyNote(note.content)}
+                              >
+                                <CopyIcon />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground hover:text-foreground"
+                                disabled={isDeletingNote && pendingNoteId === note.id}
+                                aria-label="Delete note"
+                                onClick={() => requestDeleteNote(note.id)}
+                              >
+                                <Trash2Icon />
+                              </Button>
+                            </div>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0"
-                            disabled={isDeletingNote && pendingNoteId === note.id}
-                            aria-label="Delete note"
-                            onClick={() => requestDeleteNote(note.id)}
-                          >
-                            <Trash2Icon />
-                          </Button>
                         </li>
                       ))}
                     </ul>

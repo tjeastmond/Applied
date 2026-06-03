@@ -17,11 +17,11 @@ const buttonVariants = cva(
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        save: "bg-green-600 text-white hover:bg-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30",
+        save: "border-green-600 bg-green-600 text-white hover:border-green-700 hover:bg-green-700 focus-visible:border-green-700 focus-visible:ring-green-600/30",
         destructiveSolid:
           "bg-red-600 text-white hover:bg-red-700 focus-visible:border-red-700 focus-visible:ring-red-600/30",
         cancelOutline:
-          "border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive border-border bg-background",
+          "border-destructive bg-transparent text-destructive hover:bg-destructive/10 hover:text-destructive/80 focus-visible:border-destructive focus-visible:ring-destructive/20 dark:hover:bg-destructive/15",
         link: "text-primary",
       },
       size: {

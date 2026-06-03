@@ -330,7 +330,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
                 onParse={(url) => void parse(url)}
               />
             </div>
-            <DialogFooter className="mx-0 mb-0 gap-3 px-6 py-4">
+            <DialogFooter className="mx-0 mb-0 items-center gap-3 px-6 py-4">
               <Button type="button" variant="cancelOutline" size="lg" onClick={closeForm}>
                 Cancel
               </Button>
