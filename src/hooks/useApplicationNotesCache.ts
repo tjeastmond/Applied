@@ -27,10 +27,10 @@ export function useApplicationNotesCache() {
   }, []);
 
   const prefetch = useCallback(
-    (applicationId: string, options?: { notifyOnError?: boolean }) => {
-      if (entriesRef.current[applicationId] !== undefined) return;
+    (applicationId: string, options?: { notifyOnError?: boolean }): Promise<void> => {
+      if (entriesRef.current[applicationId] !== undefined) return Promise.resolve();
       const inflight = inflightRef.current.get(applicationId);
-      if (inflight) return;
+      if (inflight) return inflight;
 
       setLoading(applicationId, true);
 
@@ -50,17 +50,15 @@ export function useApplicationNotesCache() {
         });
 
       inflightRef.current.set(applicationId, request);
+      return request;
     },
     [setLoading],
   );
 
-  const getNotes = useCallback(
-    (applicationId: string | null): ApplicationNote[] | undefined => {
-      if (!applicationId) return undefined;
-      return entries[applicationId];
-    },
-    [entries],
-  );
+  const getNotes = useCallback((applicationId: string | null): ApplicationNote[] | undefined => {
+    if (!applicationId) return undefined;
+    return entriesRef.current[applicationId];
+  }, []);
 
   const isLoading = useCallback(
     (applicationId: string | null): boolean => {
@@ -89,9 +87,16 @@ export function useApplicationNotesCache() {
 
   const prefetchMany = useCallback(
     (applicationIds: string[]) => {
-      for (const id of applicationIds) {
-        prefetch(id);
-      }
+      const queue = applicationIds.filter((id) => entriesRef.current[id] === undefined);
+      if (queue.length === 0) return;
+
+      const concurrency = 6;
+      void (async () => {
+        for (let index = 0; index < queue.length; index += concurrency) {
+          const batch = queue.slice(index, index + concurrency);
+          await Promise.all(batch.map((id) => prefetch(id)));
+        }
+      })();
     },
     [prefetch],
   );
@@ -106,6 +111,7 @@ export function useApplicationNotesCache() {
     prefetch,
     prefetchMany,
     getNotes,
+    notesByApplicationId: entries,
     isLoading,
     setNotes,
     removeApplication,
