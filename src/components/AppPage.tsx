@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createApplication, deleteApplication, updateApplication } from "@/api";
+import { deleteApplication, updateApplication } from "@/api";
+import { AddApplicationDialog } from "@/components/AddApplicationDialog";
+import { ApplicationCard } from "@/components/ApplicationCard";
 import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
-import { ApplicationFormFields } from "@/components/ApplicationFormFields";
-import { ApplicationMetadataLine } from "@/components/ApplicationMetadataLine";
-import { ApplicationStatusPicker } from "@/components/ApplicationStatusPicker";
+import { BackupMenu } from "@/components/BackupMenu";
+import { CompanyFilter } from "@/components/CompanyFilter";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,18 +20,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { useApplicationFormActions } from "@/hooks/useApplicationFormActions";
 import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
 import { removeApplication, upsertApplication } from "@/lib/applicationsList";
-import { emptyForm, formatDate, normalizeClipboardOnlyJobUrl, type FormState } from "@/lib/applicationForm";
+import { filterApplicationsByCompanies, uniqueCompanyNames } from "@/lib/companyFilter";
 import { errorMessage } from "@/lib/errorMessage";
 import {
   isEditableKeyboardTarget,
@@ -38,29 +31,26 @@ import {
   modKShortcutLabel,
 } from "@/lib/keyboardShortcut";
 import { toastMessages } from "@/lib/toastMessages";
-import { cn } from "@/lib/utils";
-import type { ApplicationStatus, JobApplication } from "@/types";
-import { BackupMenu } from "@/components/BackupMenu";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import type { ApplicationNote, ApplicationStatus, JobApplication } from "@/types";
 import { CopyIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export function AppPage({ initialApplications }: { initialApplications: JobApplication[] }) {
-  const [form, setForm] = useState<FormState>(emptyForm);
   const [formOpen, setFormOpen] = useState(false);
   const [applications, setApplications] = useState(initialApplications);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const detailClosingIdRef = useRef<string | null>(null);
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [scrollHoverLocked, setScrollHoverLocked] = useState(false);
-  const addFormUrlInputRef = useRef<HTMLInputElement>(null);
-  const parseRef = useRef<(urlOverride?: string) => Promise<void>>(async () => {});
+  const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(() => new Set());
+  const applicationsListRef = useRef<HTMLDivElement>(null);
   const {
     prefetch,
     prefetchMany,
-    getNotes,
+    notesByApplicationId,
     isLoading,
     setNotes,
     removeApplication: clearNotesCache,
@@ -70,9 +60,14 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
     function onScroll() {
-      setScrollHoverLocked(true);
+      const list = applicationsListRef.current;
+      if (!list) return;
+      list.dataset.scrollHoverLocked = "";
       clearTimeout(timeout);
-      timeout = setTimeout(() => setScrollHoverLocked(false), 150);
+      timeout = setTimeout(() => {
+        const el = applicationsListRef.current;
+        if (el) delete el.dataset.scrollHoverLocked;
+      }, 150);
     }
 
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -86,30 +81,6 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     setApplications((prev) => upsertApplication(prev, application));
   }, []);
 
-  const { updateField, isParsing, isSaving, requiredValidation, parse, save, setShowValidation } =
-    useApplicationFormActions({
-      form,
-      setForm: setForm as React.Dispatch<React.SetStateAction<FormState | null>>,
-      onSave: async (input, currentForm) => {
-        if (currentForm.id) {
-          return updateApplication(currentForm.id, input);
-        }
-        return createApplication(input);
-      },
-      onApplicationChange: handleApplicationChange,
-    });
-  parseRef.current = parse;
-
-  const resetForm = useCallback(() => {
-    setForm(emptyForm());
-    setShowValidation(false);
-  }, [setShowValidation]);
-
-  const closeForm = useCallback(() => {
-    setFormOpen(false);
-    resetForm();
-  }, [resetForm]);
-
   const selectedApplication = useMemo(
     () => applications.find((application) => application.id === selectedId) ?? null,
     [applications, selectedId],
@@ -118,6 +89,28 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     () => applications.find((application) => application.id === pendingDeleteId) ?? null,
     [applications, pendingDeleteId],
   );
+  const selectedNotes = useMemo(
+    () => (selectedId ? (notesByApplicationId[selectedId] ?? []) : []),
+    [selectedId, notesByApplicationId],
+  );
+  const selectedNotesLoading = useMemo(() => {
+    if (!selectedId) return false;
+    return isLoading(selectedId) || notesByApplicationId[selectedId] === undefined;
+  }, [selectedId, notesByApplicationId, isLoading]);
+  const companyNames = useMemo(() => uniqueCompanyNames(applications), [applications]);
+  const filteredApplications = useMemo(
+    () => filterApplicationsByCompanies(applications, selectedCompanies),
+    [applications, selectedCompanies],
+  );
+
+  useEffect(() => {
+    setSelectedCompanies((prev) => {
+      if (prev.size === 0) return prev;
+      const available = new Set(companyNames);
+      const next = new Set([...prev].filter((name) => available.has(name)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [companyNames]);
 
   useEffect(() => {
     setApplications(initialApplications);
@@ -128,9 +121,8 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   }, [applications, prefetchMany]);
 
   const openAddForm = useCallback(() => {
-    resetForm();
     setFormOpen(true);
-  }, [setShowValidation]);
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -143,67 +135,43 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [openAddForm]);
 
-  useEffect(() => {
-    if (!formOpen) return;
+  const handleOpenApplication = useCallback(
+    (id: string) => {
+      prefetch(id, { notifyOnError: true });
+      setSelectedId(id);
+      setDetailOpen(true);
+    },
+    [prefetch],
+  );
 
-    let cancelled = false;
+  const handlePrefetchNotes = useCallback(
+    (id: string) => {
+      prefetch(id);
+    },
+    [prefetch],
+  );
 
-    void (async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        const url = normalizeClipboardOnlyJobUrl(text);
-        if (!url || cancelled) return;
-
-        await parseRef.current(url);
-        if (cancelled) return;
-
-        requestAnimationFrame(() => {
-          addFormUrlInputRef.current?.blur();
-        });
-      } catch {
-        // Clipboard unavailable or denied — user can paste manually.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [formOpen]);
-
-  function openDetail(application: JobApplication) {
-    prefetch(application.id, { notifyOnError: true });
-    setSelectedId(application.id);
-    setDetailOpen(true);
-  }
-
-  function handleDetailOpenChange(open: boolean) {
+  const handleDetailOpenChange = useCallback((open: boolean) => {
     setDetailOpen(open);
     if (!open) {
-      detailClosingIdRef.current = selectedId;
+      detailClosingIdRef.current = selectedIdRef.current;
     } else {
       detailClosingIdRef.current = null;
     }
-  }
+  }, []);
 
-  function handleDetailCloseComplete() {
+  const handleDetailCloseComplete = useCallback(() => {
     const closingId = detailClosingIdRef.current;
     if (closingId === null) return;
     detailClosingIdRef.current = null;
     setSelectedId((current) => (current === closingId ? null : current));
-  }
+  }, []);
 
-  function handleFormOpenChange(open: boolean) {
-    setFormOpen(open);
-    if (!open) {
-      resetForm();
-    }
-  }
-
-  function requestDelete(id: string) {
+  const requestDelete = useCallback((id: string) => {
     setPendingDeleteId(id);
-  }
+  }, []);
 
-  async function handleStatusChange(id: string, status: ApplicationStatus) {
+  const handleStatusChange = useCallback(async (id: string, status: ApplicationStatus) => {
     let previousApplication: JobApplication | undefined;
 
     setApplications((prev) => {
@@ -232,15 +200,18 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
       });
       toast.error(errorMessage(error, toastMessages.statusUpdateFailed));
     }
-  }
+  }, []);
 
-  function handleDeleteDialogOpenChange(open: boolean) {
-    if (!open && !isDeleting) {
-      setPendingDeleteId(null);
-    }
-  }
+  const handleDeleteDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && !isDeleting) {
+        setPendingDeleteId(null);
+      }
+    },
+    [isDeleting],
+  );
 
-  async function copyAllUrls() {
+  const copyAllUrls = useCallback(async () => {
     const urls = applications.map((application) => application.url.trim()).filter(Boolean);
     if (urls.length === 0) return;
 
@@ -250,9 +221,9 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     } catch {
       toast.error(toastMessages.allJobUrlsCopyFailed);
     }
-  }
+  }, [applications]);
 
-  async function confirmDelete() {
+  const confirmDelete = useCallback(async () => {
     if (!pendingDeleteId) return;
     const id = pendingDeleteId;
     setIsDeleting(true);
@@ -261,9 +232,6 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
       setPendingDeleteId(null);
       clearNotesCache(id);
       setApplications((prev) => removeApplication(prev, id));
-      if (form.id === id) {
-        closeForm();
-      }
       if (selectedId === id) {
         handleDetailOpenChange(false);
       }
@@ -273,17 +241,31 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     } finally {
       setIsDeleting(false);
     }
-  }
+  }, [pendingDeleteId, clearNotesCache, selectedId, handleDetailOpenChange]);
 
-  function handleBackupImported(nextApplications: JobApplication[]) {
-    setApplications(nextApplications);
-    clearNotesCacheAll();
-    prefetchMany(nextApplications.map((application) => application.id));
-    setSelectedId(null);
-    setDetailOpen(false);
-    setFormOpen(false);
-    resetForm();
-  }
+  const handleBackupImported = useCallback(
+    (nextApplications: JobApplication[]) => {
+      setApplications(nextApplications);
+      clearNotesCacheAll();
+      prefetchMany(nextApplications.map((application) => application.id));
+      setSelectedId(null);
+      setDetailOpen(false);
+      setFormOpen(false);
+    },
+    [clearNotesCacheAll, prefetchMany],
+  );
+
+  const handleNotesChange = useCallback(
+    (nextNotes: ApplicationNote[]) => {
+      const id = selectedIdRef.current;
+      if (id) setNotes(id, nextNotes);
+    },
+    [setNotes],
+  );
+
+  const clearCompanyFilter = useCallback(() => {
+    setSelectedCompanies(new Set());
+  }, []);
 
   return (
     <div className="mx-auto min-h-screen max-w-3xl px-4 py-10 sm:px-6">
@@ -297,6 +279,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
           <Button
             type="button"
             variant="outline"
+            className="header-toolbar-outline"
             disabled={applications.length === 0}
             onClick={() => void copyAllUrls()}
           >
@@ -313,57 +296,18 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
         </div>
       </header>
 
-      <Dialog open={formOpen} onOpenChange={handleFormOpenChange}>
-        <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 shadow-lg shadow-black/10 sm:max-w-2xl">
-          <form
-            className="flex min-h-0 flex-1 flex-col"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void (async () => {
-                if (await save()) {
-                  closeForm();
-                }
-              })();
-            }}
-          >
-            <DialogHeader className="border-b px-6 py-4">
-              <DialogTitle>Add Application</DialogTitle>
-              <DialogDescription>
-                Fields marked with <span className="text-destructive">*</span> are required.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="overflow-y-auto px-6 py-4">
-              <ApplicationFormFields
-                variant="minimal"
-                autoParseOnUrlPaste
-                urlInputRef={addFormUrlInputRef}
-                form={form}
-                requiredValidation={requiredValidation}
-                isParsing={isParsing}
-                updateField={updateField}
-                onParse={(url) => void parse(url)}
-              />
-            </div>
-            <DialogFooter className="mx-0 mb-0 items-center gap-3 px-6 py-4">
-              <Button type="button" variant="cancelOutline" size="lg" onClick={closeForm}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="save" size="lg" disabled={isSaving}>
-                {isSaving ? "Saving…" : "Save Application"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <AddApplicationDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onApplicationCreated={handleApplicationChange}
+      />
 
       <ApplicationDetailSheet
         application={selectedApplication}
         open={detailOpen}
-        notes={selectedId ? (getNotes(selectedId) ?? []) : []}
-        notesLoading={selectedId ? isLoading(selectedId) : false}
-        onNotesChange={(nextNotes) => {
-          if (selectedId) setNotes(selectedId, nextNotes);
-        }}
+        notes={selectedNotes}
+        notesLoading={selectedNotesLoading}
+        onNotesChange={handleNotesChange}
         onOpenChange={handleDetailOpenChange}
         onCloseComplete={handleDetailCloseComplete}
         onApplicationChange={handleApplicationChange}
@@ -392,91 +336,54 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
       </AlertDialog>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Applications</h2>
-        {applications.length === 0 ? (
-          <Card className="shadow-sm shadow-black/5">
-            <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
-              <p className="text-muted-foreground text-sm">No applications yet.</p>
-              <Button type="button" variant="outline" onClick={openAddForm} title={modKShortcutDescription()}>
-                <PlusIcon data-icon="inline-start" />
-                Add Your First Application
-                <kbd className="bg-muted text-muted-foreground pointer-events-none hidden rounded px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline">
-                  {modKShortcutLabel()}
-                </kbd>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          applications.map((application) => (
-            <ApplicationCard
-              key={application.id}
-              application={application}
-              scrollHoverLocked={scrollHoverLocked}
-              onOpen={() => openDetail(application)}
-              onPrefetchNotes={() => prefetch(application.id)}
-              onStatusChange={(status) => void handleStatusChange(application.id, status)}
-            />
-          ))
-        )}
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">Applications</h2>
+          {companyNames.length > 0 ? (
+            <div className="h-8">
+              <CompanyFilter
+                companies={companyNames}
+                selectedCompanies={selectedCompanies}
+                onSelectedCompaniesChange={setSelectedCompanies}
+              />
+            </div>
+          ) : null}
+        </div>
+        <div ref={applicationsListRef} className="group/list space-y-4">
+          {applications.length === 0 ? (
+            <Card className="shadow-sm shadow-black/5">
+              <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
+                <p className="text-muted-foreground text-sm">No applications yet.</p>
+                <Button type="button" variant="outline" onClick={openAddForm} title={modKShortcutDescription()}>
+                  <PlusIcon data-icon="inline-start" />
+                  Add Your First Application
+                  <kbd className="bg-muted text-muted-foreground pointer-events-none hidden rounded px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline">
+                    {modKShortcutLabel()}
+                  </kbd>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : filteredApplications.length === 0 ? (
+            <Card className="shadow-sm shadow-black/5">
+              <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+                <p className="text-muted-foreground text-sm">No applications match the selected companies.</p>
+                <Button type="button" variant="outline" size="sm" onClick={clearCompanyFilter}>
+                  Clear filters
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            filteredApplications.map((application) => (
+              <ApplicationCard
+                key={application.id}
+                application={application}
+                onOpen={handleOpenApplication}
+                onPrefetchNotes={handlePrefetchNotes}
+                onStatusChange={handleStatusChange}
+              />
+            ))
+          )}
+        </div>
       </section>
     </div>
-  );
-}
-
-function ApplicationCard({
-  application,
-  scrollHoverLocked,
-  onOpen,
-  onPrefetchNotes,
-  onStatusChange,
-}: {
-  application: JobApplication;
-  scrollHoverLocked: boolean;
-  onOpen: () => void;
-  onPrefetchNotes: () => void;
-  onStatusChange: (status: ApplicationStatus) => void;
-}) {
-  const title = application.title || application.url;
-  const appliedLabel = formatDate(application.appliedAt);
-  const postingUrl = application.url.trim();
-
-  return (
-    <Card
-      className={cn(
-        "relative gap-0 py-0 transition-colors",
-        !scrollHoverLocked &&
-          "hover:bg-muted/50 dark:hover:bg-secondary hover:shadow-md hover:shadow-black/5 dark:hover:shadow-black/30",
-      )}
-    >
-      <button
-        type="button"
-        className={cn(
-          "focus-visible:ring-ring/50 absolute inset-0 z-0 rounded-xl focus-visible:ring-3 focus-visible:outline-none",
-          scrollHoverLocked ? "cursor-default" : "cursor-pointer",
-        )}
-        aria-label={`View details for ${title}`}
-        onClick={onOpen}
-        onMouseEnter={onPrefetchNotes}
-        onFocus={onPrefetchNotes}
-      />
-      <CardHeader className="pointer-events-none relative z-10 flex flex-row items-start justify-between gap-3 space-y-0 py-4">
-        <div className="min-w-0 flex-1 space-y-1 text-left">
-          <CardTitle className="text-base">{title}</CardTitle>
-          <ApplicationMetadataLine
-            variant="card"
-            company={application.company}
-            appliedLabel={appliedLabel}
-            linkedinUrl={application.linkedinUrl}
-            postingUrl={postingUrl}
-            stopPropagation
-          />
-        </div>
-        <ApplicationStatusPicker
-          className="pointer-events-auto"
-          status={application.status}
-          onStatusChange={onStatusChange}
-        />
-      </CardHeader>
-    </Card>
   );
 }
