@@ -100,4 +100,81 @@ describe("parseJobUrl", () => {
     if (!result.ok) return;
     expect(result.title).toBe("Founding Engineer");
   });
+
+  it("extracts the hiring company from Y Combinator job pages", async () => {
+    const html = `<!doctype html><html><head>
+      <meta property="og:site_name" content="Y Combinator" />
+      <meta name="title" content="Backend Engineer (Remote) at Fathom" />
+      <meta property="og:title" content="Backend Engineer (Remote) at Fathom | Y Combinator" />
+      <title>Backend Engineer (Remote) at Fathom | Y Combinator</title>
+      <script type="application/ld+json">{
+        "@type": "JobPosting",
+        "hiringOrganization": { "@type": "Organization", "name": "Fathom" }
+      }</script>
+    </head><body></body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+
+    const result = await parseJobUrl(
+      "https://www.ycombinator.com/companies/fathom/jobs/Pg8RFWC-backend-engineer-remote",
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.company).toBe("Fathom");
+  });
+
+  it("falls back to the YC company slug when metadata is sparse", async () => {
+    const html = `<!doctype html><html><head>
+      <meta property="og:site_name" content="Y Combinator" />
+      <meta property="og:title" content="Founding Engineer | Y Combinator" />
+    </head><body></body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+
+    const result = await parseJobUrl("https://www.ycombinator.com/companies/acme-corp/jobs/abc");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.company).toBe("Acme Corp");
+  });
+
+  it("extracts the hiring company from Ashby job pages", async () => {
+    const html = `<!doctype html><html><head>
+      <meta name="title" content="Security Engineer, Cloud @ Ramp" />
+      <meta property="og:title" content="Security Engineer, Cloud" />
+      <script type="application/ld+json">{
+        "@type": "JobPosting",
+        "hiringOrganization": { "@type": "Organization", "name": "Ramp" }
+      }</script>
+    </head><body></body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+
+    const result = await parseJobUrl(
+      "https://jobs.ashbyhq.com/ramp/34413f8d-26bf-4bbc-8ade-eb309a0e2245",
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.company).toBe("Ramp");
+  });
 });

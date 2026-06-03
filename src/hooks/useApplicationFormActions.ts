@@ -54,7 +54,7 @@ export function useApplicationFormActions({
   );
 
   const parse = useCallback(async (urlOverride?: string) => {
-    const url = (urlOverride ?? form?.url ?? "").trim();
+    const url = (typeof urlOverride === "string" ? urlOverride : (form?.url ?? "")).trim();
     if (!url) return;
     const scopeId = form?.id;
     setIsParsing(true);
@@ -63,7 +63,9 @@ export function useApplicationFormActions({
       if (result.ok) {
         setForm((prev) => {
           if (!prev || (scopeId !== undefined && prev.id !== scopeId)) return prev;
-          return mergeParseResult(prev, result);
+          const base =
+            typeof urlOverride === "string" ? { ...prev, url: urlOverride.trim() } : prev;
+          return mergeParseResult(base, result);
         });
         toast.success(parseSuccessMessage);
       } else {

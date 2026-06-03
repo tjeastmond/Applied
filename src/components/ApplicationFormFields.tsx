@@ -2,7 +2,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { ApplicationStatusPicker } from "@/components/ApplicationStatusPicker";
-import { isProbablyHttpUrl, type FormState, type RequiredValidationState } from "@/lib/applicationForm";
+import { normalizePastedJobUrl, type FormState, type RequiredValidationState } from "@/lib/applicationForm";
 import type { ApplicationStatus } from "@/types";
 
 function RequiredMark() {
@@ -66,15 +66,21 @@ export function ApplicationFormFields({
             onPaste={
               autoParseOnUrlPaste
                 ? (e) => {
-                    const pasted = e.clipboardData.getData("text").trim();
-                    if (!isProbablyHttpUrl(pasted) || isParsing) return;
-                    requestAnimationFrame(() => onParse(pasted));
+                    const pastedUrl = normalizePastedJobUrl(e.clipboardData.getData("text"));
+                    if (!pastedUrl || isParsing) return;
+                    e.preventDefault();
+                    updateField("url", pastedUrl);
+                    onParse(pastedUrl);
                   }
                 : undefined
             }
           />
           <InputGroupAddon align="inline-end">
-            <InputGroupButton variant="secondary" disabled={isParsing || !form.url.trim()} onClick={onParse}>
+            <InputGroupButton
+              variant="secondary"
+              disabled={isParsing || !form.url.trim()}
+              onClick={() => onParse()}
+            >
               {isParsing ? "Parsing…" : "Parse"}
             </InputGroupButton>
           </InputGroupAddon>

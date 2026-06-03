@@ -3,6 +3,7 @@ import { errorMessage } from "@/lib/errorMessage";
 import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
 import type { ParseJobUrlResult } from "@/types";
 import { buildFullJd } from "./extractFullJd";
+import { extractJobCompany } from "./extractJobCompany";
 
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -81,10 +82,11 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
       null;
     const title = normalizeJobTitle(rawTitle);
 
-    const company =
-      getMetaContent(document, "og:site_name") ??
-      getMetaContent(document, "application-name") ??
-      hostnameToCompany(url);
+    const company = extractJobCompany(url, document, {
+      siteName: getMetaContent(document, "og:site_name"),
+      applicationName: getMetaContent(document, "application-name"),
+      hostnameFallback: hostnameToCompany(url),
+    });
 
     const metaDescription =
       getMetaContent(document, "og:description") ?? getMetaContent(document, "description") ?? null;

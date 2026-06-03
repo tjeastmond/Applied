@@ -50,6 +50,16 @@ export function isProbablyHttpUrl(value: string): boolean {
   }
 }
 
+/** Returns a normalized http(s) URL for pasted text, or null if it cannot be parsed. */
+export function normalizePastedJobUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (isProbablyHttpUrl(trimmed)) return trimmed;
+
+  const withScheme = `https://${trimmed.replace(/^\/+/, "")}`;
+  return isProbablyHttpUrl(withScheme) ? withScheme : null;
+}
+
 export const REQUIRED_FORM_FIELDS = ["url", "title", "company", "appliedAt"] as const;
 
 export type RequiredFormField = (typeof REQUIRED_FORM_FIELDS)[number];

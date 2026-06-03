@@ -7,6 +7,7 @@ import {
   isFormPristine,
   isFormValid,
   isProbablyHttpUrl,
+  normalizePastedJobUrl,
   safeFormToInput,
 } from "../src/lib/applicationForm";
 import type { JobApplication } from "../src/types";
@@ -21,6 +22,24 @@ describe("isProbablyHttpUrl", () => {
     expect(isProbablyHttpUrl("not-a-url")).toBe(false);
     expect(isProbablyHttpUrl("javascript:alert(1)")).toBe(false);
     expect(isProbablyHttpUrl("")).toBe(false);
+  });
+});
+
+describe("normalizePastedJobUrl", () => {
+  it("returns https URLs unchanged", () => {
+    expect(normalizePastedJobUrl("https://www.ycombinator.com/companies/acme/jobs/abc")).toBe(
+      "https://www.ycombinator.com/companies/acme/jobs/abc",
+    );
+  });
+
+  it("adds https when the pasted text omits a scheme", () => {
+    expect(normalizePastedJobUrl("www.ycombinator.com/companies/acme/jobs/abc")).toBe(
+      "https://www.ycombinator.com/companies/acme/jobs/abc",
+    );
+  });
+
+  it("returns null for non-URL text", () => {
+    expect(normalizePastedJobUrl("not a url")).toBeNull();
   });
 });
 
