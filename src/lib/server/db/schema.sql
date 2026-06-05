@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS applications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_applications_applied_at ON applications (applied_at DESC);
+CREATE INDEX IF NOT EXISTS idx_applications_updated_at ON applications (updated_at DESC);
 
 CREATE TABLE IF NOT EXISTS application_notes (
   id TEXT PRIMARY KEY,

@@ -2,8 +2,8 @@ import type { JobApplication } from "@/types";
 
 export function sortApplications(applications: JobApplication[]): JobApplication[] {
   return [...applications].sort((a, b) => {
-    const byApplied = b.appliedAt.localeCompare(a.appliedAt);
-    if (byApplied !== 0) return byApplied;
+    const byUpdated = b.updatedAt.localeCompare(a.updatedAt);
+    if (byUpdated !== 0) return byUpdated;
     return b.createdAt.localeCompare(a.createdAt);
   });
 }

@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
-import { removeApplication, upsertApplication } from "@/lib/applicationsList";
+import { removeApplication, sortApplications, upsertApplication } from "@/lib/applicationsList";
 import { filterApplications, hasActiveApplicationFilters } from "@/lib/applicationFilters";
 import { uniqueCompanyNames } from "@/lib/companyFilter";
 import { errorMessage } from "@/lib/errorMessage";
@@ -41,7 +41,7 @@ import { toast } from "sonner";
 
 export function AppPage({ initialApplications }: { initialApplications: JobApplication[] }) {
   const [formOpen, setFormOpen] = useState(false);
-  const [applications, setApplications] = useState(initialApplications);
+  const [applications, setApplications] = useState(() => sortApplications(initialApplications));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const detailClosingIdRef = useRef<string | null>(null);
@@ -282,7 +282,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
 
   const handleBackupImported = useCallback(
     (nextApplications: JobApplication[]) => {
-      setApplications(nextApplications);
+      setApplications(sortApplications(nextApplications));
       clearNotesCacheAll();
       prefetchMany(nextApplications.map((application) => application.id));
       setSelectedId(null);

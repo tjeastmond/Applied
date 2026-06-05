@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { removeApplication, sortApplications, upsertApplication } from "../src/lib/applicationsList";
 import type { JobApplication } from "../src/types";
 
-function app(id: string, appliedAt: string, createdAt: string): JobApplication {
+function app(
+  id: string,
+  appliedAt: string,
+  createdAt: string,
+  updatedAt: string = createdAt,
+): JobApplication {
   return {
     id,
     url: `https://example.com/${id}`,
@@ -18,16 +23,16 @@ function app(id: string, appliedAt: string, createdAt: string): JobApplication {
     fullJd: null,
     status: "applied",
     createdAt,
-    updatedAt: createdAt,
+    updatedAt,
   };
 }
 
 describe("applicationsList", () => {
-  it("sorts by appliedAt then createdAt descending", () => {
+  it("sorts by updatedAt then createdAt descending", () => {
     const sorted = sortApplications([
-      app("a", "2026-06-01", "2026-06-01T10:00:00.000Z"),
-      app("b", "2026-06-02", "2026-06-01T09:00:00.000Z"),
-      app("c", "2026-06-02", "2026-06-01T11:00:00.000Z"),
+      app("a", "2026-06-01", "2026-06-01T10:00:00.000Z", "2026-06-01T10:00:00.000Z"),
+      app("b", "2026-06-02", "2026-06-01T09:00:00.000Z", "2026-06-03T09:00:00.000Z"),
+      app("c", "2026-06-02", "2026-06-01T11:00:00.000Z", "2026-06-03T09:00:00.000Z"),
     ]);
 
     expect(sorted.map((item) => item.id)).toEqual(["c", "b", "a"]);

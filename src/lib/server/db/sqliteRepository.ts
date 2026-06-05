@@ -59,7 +59,7 @@ const LIST_SQL = `SELECT
   id, url, linkedin_url, title, company, applied_at,
   via_recruiter, recruiter_name, recruiter_firm,
   contact_email, contact_phone, full_jd, status, created_at, updated_at
-FROM applications ORDER BY applied_at DESC, created_at DESC`;
+FROM applications ORDER BY updated_at DESC, created_at DESC`;
 const GET_BY_ID_SQL = `SELECT
   id, url, linkedin_url, title, company, applied_at,
   via_recruiter, recruiter_name, recruiter_firm,

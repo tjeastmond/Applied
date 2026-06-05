@@ -158,7 +158,7 @@ applied.dev/
 
 **SQLite column mapping:** snake_case in DB (`linkedin_url`, `applied_at`, `full_jd`, etc.); camelCase in TypeScript via `rowToApplication()`.
 
-**List order:** `applied_at DESC, created_at DESC`.
+**List order:** `updated_at DESC, created_at DESC` (main application cards; application saves bump `updated_at`).
 
 ### `ApplicationNote` (`src/types.ts`)
 
