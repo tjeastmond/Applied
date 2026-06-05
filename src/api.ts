@@ -63,6 +63,17 @@ export function createApplicationNote(applicationId: string, content: string): P
   });
 }
 
+export function updateApplicationNote(
+  applicationId: string,
+  noteId: string,
+  content: string,
+): Promise<ApplicationNote> {
+  return request<ApplicationNote>(`/api/applications/${applicationId}/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ content }),
+  });
+}
+
 export function deleteApplicationNote(applicationId: string, noteId: string): Promise<void> {
   return request<void>(`/api/applications/${applicationId}/notes/${noteId}`, {
     method: "DELETE",

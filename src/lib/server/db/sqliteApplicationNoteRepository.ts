@@ -22,20 +22,26 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-const LIST_BY_APPLICATION_SQL = `SELECT * FROM application_notes WHERE application_id = ? ORDER BY created_at ASC, rowid ASC`;
+const LIST_BY_APPLICATION_SQL = `SELECT * FROM application_notes WHERE application_id = ? ORDER BY created_at DESC, rowid DESC`;
 const INSERT_SQL = `INSERT INTO application_notes (id, application_id, content, created_at) VALUES (?, ?, ?, ?)`;
+const GET_FOR_APPLICATION_SQL = `SELECT * FROM application_notes WHERE id = ? AND application_id = ?`;
+const UPDATE_FOR_APPLICATION_SQL = `UPDATE application_notes SET content = ? WHERE id = ? AND application_id = ?`;
 const DELETE_SQL = `DELETE FROM application_notes WHERE id = ?`;
 const DELETE_FOR_APPLICATION_SQL = `DELETE FROM application_notes WHERE id = ? AND application_id = ?`;
 
 export class SqliteApplicationNoteRepository implements ApplicationNoteRepository {
   private readonly listByApplicationStmt;
+  private readonly getForApplicationStmt;
   private readonly insertStmt;
+  private readonly updateForApplicationStmt;
   private readonly deleteStmt;
   private readonly deleteForApplicationStmt;
 
   constructor(db: Database.Database) {
     this.listByApplicationStmt = db.prepare(LIST_BY_APPLICATION_SQL);
+    this.getForApplicationStmt = db.prepare(GET_FOR_APPLICATION_SQL);
     this.insertStmt = db.prepare(INSERT_SQL);
+    this.updateForApplicationStmt = db.prepare(UPDATE_FOR_APPLICATION_SQL);
     this.deleteStmt = db.prepare(DELETE_SQL);
     this.deleteForApplicationStmt = db.prepare(DELETE_FOR_APPLICATION_SQL);
   }
@@ -62,6 +68,25 @@ export class SqliteApplicationNoteRepository implements ApplicationNoteRepositor
       content: trimmed,
       createdAt,
     };
+  }
+
+  async updateForApplication(
+    applicationId: string,
+    noteId: string,
+    content: string,
+  ): Promise<ApplicationNote | null> {
+    const trimmed = content.trim();
+    if (trimmed.length === 0) {
+      throw new Error("Note content is required");
+    }
+
+    const result = this.updateForApplicationStmt.run(trimmed, noteId, applicationId);
+    if (result.changes === 0) {
+      return null;
+    }
+
+    const row = this.getForApplicationStmt.get(noteId, applicationId) as NoteRow | undefined;
+    return row ? rowToNote(row) : null;
   }
 
   async delete(id: string): Promise<boolean> {

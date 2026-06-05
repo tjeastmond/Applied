@@ -3,7 +3,7 @@ import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { openDatabase } from "@/lib/server/db/migrate";
 import { getRepository, getNoteRepository, useTestDatabase } from "@/lib/server/db";
 import { GET as getNotes, POST as postNote } from "@/app/api/applications/[id]/notes/route";
-import { DELETE as deleteNote } from "@/app/api/applications/[id]/notes/[noteId]/route";
+import { DELETE as deleteNote, PATCH as patchNote } from "@/app/api/applications/[id]/notes/[noteId]/route";
 import { PATCH as patchApplication } from "@/app/api/applications/[id]/route";
 
 const missingApplicationId = "00000000-0000-4000-a000-000000000099";
@@ -55,6 +55,18 @@ describe("application API routes", () => {
     expect(createResponse.status).toBe(201);
     const note = (await createResponse.json()) as { id: string; content: string };
     expect(note.content).toBe("Follow up Friday");
+
+    const patchResponse = await patchNote(
+      new Request("http://localhost", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Follow up Monday" }),
+      }),
+      { params: Promise.resolve({ id: app.id, noteId: note.id }) },
+    );
+    expect(patchResponse.status).toBe(200);
+    const updated = (await patchResponse.json()) as { id: string; content: string };
+    expect(updated.content).toBe("Follow up Monday");
 
     const deleteResponse = await deleteNote(new Request("http://localhost", { method: "DELETE" }), {
       params: Promise.resolve({ id: app.id, noteId: note.id }),

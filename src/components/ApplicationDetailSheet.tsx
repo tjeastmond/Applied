@@ -1,10 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createApplicationNote, deleteApplicationNote, updateApplication } from "@/api";
+import {
+  createApplicationNote,
+  deleteApplicationNote,
+  updateApplication,
+  updateApplicationNote,
+} from "@/api";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
 import { ApplicationMetadataLine } from "@/components/ApplicationMetadataLine";
 import { NoteContent } from "@/components/NoteContent";
+import { NoteSortPicker } from "@/components/NoteSortPicker";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -36,9 +42,15 @@ import {
   modSShortcutDescription,
   modSShortcutLabel,
 } from "@/lib/keyboardShortcut";
+import {
+  persistNoteSortOrder,
+  readStoredNoteSortOrder,
+  sortNotes,
+  type NoteSortOrder,
+} from "@/lib/noteSort";
 import { toastMessages } from "@/lib/toastMessages";
 import type { ApplicationNote, JobApplication } from "@/types";
-import { ChevronDownIcon, CopyIcon, ExternalLinkIcon, Trash2Icon } from "lucide-react";
+import { ChevronDownIcon, CopyIcon, ExternalLinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 export function ApplicationDetailSheet({
@@ -69,9 +81,13 @@ export function ApplicationDetailSheet({
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [pendingNoteId, setPendingNoteId] = useState<string | null>(null);
   const [isDeletingNote, setIsDeletingNote] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteDraft, setEditingNoteDraft] = useState("");
+  const [isSavingNote, setIsSavingNote] = useState(false);
   const [jdOpen, setJdOpen] = useState(false);
   const [unsavedCloseDialogOpen, setUnsavedCloseDialogOpen] = useState(false);
   const [isSavingBeforeClose, setIsSavingBeforeClose] = useState(false);
+  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() => readStoredNoteSortOrder());
 
   const applicationId = application?.id ?? null;
   const applicationUpdatedAt = application?.updatedAt ?? null;
@@ -118,6 +134,9 @@ export function ApplicationDetailSheet({
     setPendingNoteId(null);
     setIsAddingNote(false);
     setIsDeletingNote(false);
+    setEditingNoteId(null);
+    setEditingNoteDraft("");
+    setIsSavingNote(false);
     setUnsavedCloseDialogOpen(false);
     setIsSavingBeforeClose(false);
   }, [application, applicationId, open, setShowValidation]);
@@ -134,6 +153,12 @@ export function ApplicationDetailSheet({
   }, [application, applicationId, applicationUpdatedAt, open]);
 
   const pendingNote = useMemo(() => notes.find((note) => note.id === pendingNoteId) ?? null, [notes, pendingNoteId]);
+  const sortedNotes = useMemo(() => sortNotes(notes, noteSortOrder), [notes, noteSortOrder]);
+
+  function handleNoteSortOrderChange(order: NoteSortOrder) {
+    setNoteSortOrder(order);
+    persistNoteSortOrder(order);
+  }
 
   async function handleAddNote() {
     if (!applicationId || !newNote.trim()) {
@@ -159,6 +184,63 @@ export function ApplicationDetailSheet({
     event.preventDefault();
     if (isAddingNote || !newNote.trim()) return;
     void handleAddNote();
+  }
+
+  const editingNote = useMemo(
+    () => (editingNoteId ? (notes.find((note) => note.id === editingNoteId) ?? null) : null),
+    [editingNoteId, notes],
+  );
+  const editingNoteDirty = editingNote ? editingNoteDraft.trim() !== editingNote.content : false;
+
+  function startEditingNote(note: ApplicationNote) {
+    setPendingNoteId(null);
+    setEditingNoteId(note.id);
+    setEditingNoteDraft(note.content);
+  }
+
+  function cancelEditingNote() {
+    setEditingNoteId(null);
+    setEditingNoteDraft("");
+  }
+
+  async function handleSaveNoteEdit() {
+    if (!applicationId || !editingNoteId || !editingNoteDraft.trim()) {
+      toast.error(toastMessages.noteTextRequired);
+      return;
+    }
+
+    const noteId = editingNoteId;
+    const trimmed = editingNoteDraft.trim();
+    if (editingNote && trimmed === editingNote.content) {
+      cancelEditingNote();
+      return;
+    }
+
+    setIsSavingNote(true);
+    try {
+      const updated = await updateApplicationNote(applicationId, noteId, trimmed);
+      if (applicationRef.current?.id !== applicationId) return;
+      onNotesChange(notes.map((note) => (note.id === noteId ? updated : note)));
+      cancelEditingNote();
+      toast.success(toastMessages.noteUpdated);
+    } catch (error) {
+      toast.error(errorMessage(error, toastMessages.noteUpdateFailed));
+    } finally {
+      setIsSavingNote(false);
+    }
+  }
+
+  function handleEditNoteKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (!isSavingNote) cancelEditingNote();
+      return;
+    }
+
+    if (!isModKeyChord(event.nativeEvent, "Enter")) return;
+    event.preventDefault();
+    if (isSavingNote || !editingNoteDraft.trim()) return;
+    void handleSaveNoteEdit();
   }
 
   async function handleCopyNote(content: string) {
@@ -337,7 +419,10 @@ export function ApplicationDetailSheet({
 
                 <div className="px-6 py-6">
                   <section className="space-y-4">
-                    <h3 className="text-sm font-semibold tracking-wide uppercase">Notes</h3>
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-sm font-semibold tracking-wide uppercase">Notes</h3>
+                      <NoteSortPicker sortOrder={noteSortOrder} onSortOrderChange={handleNoteSortOrderChange} />
+                    </div>
                     {notesLoading && notes.length === 0 ? (
                       <p className="text-muted-foreground text-sm">Loading notes…</p>
                     ) : null}
@@ -345,37 +430,94 @@ export function ApplicationDetailSheet({
                       <p className="text-muted-foreground text-sm">No notes yet.</p>
                     ) : null}
                     <ul className="space-y-3">
-                      {notes.map((note) => (
-                        <li key={note.id} className="bg-muted/40 min-w-0 overflow-hidden rounded-lg border px-3 py-3 text-sm">
-                          <NoteContent content={note.content} />
-                          <div className="mt-1 flex items-center justify-between gap-2">
-                            <p className="text-muted-foreground text-xs">{formatNoteTimestamp(note.createdAt)}</p>
-                            <div className="flex shrink-0 items-center gap-0.5">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-sm"
-                                className="text-muted-foreground hover:text-foreground"
-                                aria-label="Copy note"
-                                onClick={() => void handleCopyNote(note.content)}
-                              >
-                                <CopyIcon />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-sm"
-                                className="text-muted-foreground hover:text-foreground"
-                                disabled={isDeletingNote && pendingNoteId === note.id}
-                                aria-label="Delete note"
-                                onClick={() => requestDeleteNote(note.id)}
-                              >
-                                <Trash2Icon />
-                              </Button>
+                      {sortedNotes.map((note) => {
+                        const isEditing = editingNoteId === note.id;
+
+                        return (
+                          <li
+                            key={note.id}
+                            className="bg-muted/40 min-w-0 overflow-hidden rounded-lg border px-3 py-3 text-sm"
+                          >
+                            {isEditing ? (
+                              <Textarea
+                                value={editingNoteDraft}
+                                rows={3}
+                                autoFocus
+                                disabled={isSavingNote}
+                                onChange={(event) => setEditingNoteDraft(event.target.value)}
+                                onKeyDown={handleEditNoteKeyDown}
+                              />
+                            ) : (
+                              <NoteContent content={note.content} />
+                            )}
+                            <div className="mt-1 flex items-center justify-between gap-2">
+                              <p className="text-muted-foreground text-xs">{formatNoteTimestamp(note.createdAt)}</p>
+                              {isEditing ? (
+                                <div className="flex shrink-0 items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="cancelOutline"
+                                    size="sm"
+                                    disabled={isSavingNote}
+                                    onClick={cancelEditingNote}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="saveOutline"
+                                    size="sm"
+                                    disabled={isSavingNote || !editingNoteDraft.trim() || !editingNoteDirty}
+                                    title={modEnterShortcutDescription()}
+                                    onClick={() => void handleSaveNoteEdit()}
+                                  >
+                                    {isSavingNote ? "Saving…" : "Save Note"}
+                                    <kbd className="border-green-600/30 text-green-700/80 pointer-events-none hidden rounded border bg-green-600/10 px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline dark:text-green-400/90">
+                                      {modEnterShortcutLabel()}
+                                    </kbd>
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex shrink-0 items-center gap-0.5">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="text-muted-foreground hover:text-foreground"
+                                    disabled={editingNoteId !== null}
+                                    aria-label="Edit note"
+                                    onClick={() => startEditingNote(note)}
+                                  >
+                                    <PencilIcon />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="text-muted-foreground hover:text-foreground"
+                                    disabled={editingNoteId !== null}
+                                    aria-label="Copy note"
+                                    onClick={() => void handleCopyNote(note.content)}
+                                  >
+                                    <CopyIcon />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="text-muted-foreground hover:text-foreground"
+                                    disabled={(isDeletingNote && pendingNoteId === note.id) || editingNoteId !== null}
+                                    aria-label="Delete note"
+                                    onClick={() => requestDeleteNote(note.id)}
+                                  >
+                                    <Trash2Icon />
+                                  </Button>
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        </li>
-                      ))}
+                          </li>
+                        );
+                      })}
                       <li>
                         <Textarea
                           placeholder="Add a note…"

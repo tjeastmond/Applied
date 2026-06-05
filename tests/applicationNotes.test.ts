@@ -27,8 +27,8 @@ describe("SqliteApplicationNoteRepository", () => {
 
     const listed = await notes.listByApplicationId(application.id);
     expect(listed).toHaveLength(2);
-    expect(listed[0]?.id).toBe(first.id);
-    expect(listed[1]?.id).toBe(second.id);
+    expect(listed[0]?.id).toBe(second.id);
+    expect(listed[1]?.id).toBe(first.id);
 
     const deleted = await notes.delete(first.id);
     expect(deleted).toBe(true);
@@ -40,6 +40,35 @@ describe("SqliteApplicationNoteRepository", () => {
 
     await applications.delete(application.id);
     expect(await notes.listByApplicationId(application.id)).toHaveLength(0);
+  });
+
+  test("updates note content scoped to application", async () => {
+    const db = openDatabase(":memory:");
+    const applications = new SqliteJobApplicationRepository(db);
+    const notes = new SqliteApplicationNoteRepository(db);
+
+    const application = await applications.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/role",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+      }),
+    );
+
+    const note = await notes.create(application.id, "Initial note.");
+    const updated = await notes.updateForApplication(application.id, note.id, "Updated note.");
+
+    expect(updated).toEqual({
+      id: note.id,
+      applicationId: application.id,
+      content: "Updated note.",
+      createdAt: note.createdAt,
+    });
+    expect((await notes.listByApplicationId(application.id))[0]?.content).toBe("Updated note.");
+
+    expect(await notes.updateForApplication(application.id, crypto.randomUUID(), "Nope.")).toBeNull();
+    expect(await notes.updateForApplication(crypto.randomUUID(), note.id, "Nope.")).toBeNull();
   });
 
   test("migrates legacy application notes column into application_notes", async () => {

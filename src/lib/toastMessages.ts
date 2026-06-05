@@ -14,6 +14,8 @@ export const toastMessages = {
   noteTextRequired: "Enter note text before adding.",
   noteAdded: "Note added.",
   noteAddFailed: "Failed to add note",
+  noteUpdated: "Note updated.",
+  noteUpdateFailed: "Failed to update note",
   noteDeleted: "Note deleted.",
   noteDeleteFailed: "Failed to delete note",
   noteCopied: "Note copied.",
