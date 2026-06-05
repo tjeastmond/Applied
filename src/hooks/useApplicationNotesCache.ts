@@ -72,6 +72,33 @@ export function useApplicationNotesCache() {
     setEntries((prev) => ({ ...prev, [applicationId]: notes }));
   }, []);
 
+  const refetch = useCallback(
+    (applicationId: string, options?: { notifyOnError?: boolean }): Promise<void> => {
+      const inflight = inflightRef.current.get(applicationId);
+      if (inflight) return inflight;
+
+      setLoading(applicationId, true);
+
+      const request = listApplicationNotes(applicationId)
+        .then((notes) => {
+          setEntries((prev) => ({ ...prev, [applicationId]: notes }));
+        })
+        .catch((error) => {
+          if (options?.notifyOnError) {
+            toast.error(errorMessage(error, toastMessages.notesLoadFailed));
+          }
+        })
+        .finally(() => {
+          setLoading(applicationId, false);
+          inflightRef.current.delete(applicationId);
+        });
+
+      inflightRef.current.set(applicationId, request);
+      return request;
+    },
+    [setLoading],
+  );
+
   const removeApplication = useCallback(
     (applicationId: string) => {
       setEntries((prev) => {
@@ -114,6 +141,7 @@ export function useApplicationNotesCache() {
     notesByApplicationId: entries,
     isLoading,
     setNotes,
+    refetch,
     removeApplication,
     clearAll,
   };

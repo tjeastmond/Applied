@@ -1,4 +1,5 @@
-import { getRepository } from "@/lib/server/db";
+import { statusUpdateNoteContent } from "@/lib/applicationStatus";
+import { getNoteRepository, getRepository } from "@/lib/server/db";
 import {
   applicationNotFoundResponse,
   type ApplicationIdRouteContext,
@@ -23,10 +24,25 @@ export async function PATCH(request: Request, context: ApplicationIdRouteContext
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const updated = await getRepository().update(id, sanitizeApplicationInput(parsed.data));
+  const repository = getRepository();
+  const existing = await repository.getById(id);
+  if (!existing) {
+    return applicationNotFoundResponse();
+  }
+
+  const sanitized = sanitizeApplicationInput(parsed.data);
+  const statusChanging =
+    sanitized.status !== undefined && sanitized.status !== existing.status;
+
+  const updated = await repository.update(id, sanitized);
   if (!updated) {
     return applicationNotFoundResponse();
   }
+
+  if (statusChanging && sanitized.status) {
+    await getNoteRepository().create(id, statusUpdateNoteContent(sanitized.status));
+  }
+
   return NextResponse.json(updated);
 }
 

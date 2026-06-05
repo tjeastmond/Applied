@@ -46,6 +46,10 @@ export function statusLabel(status: ApplicationStatus): string {
   return APPLICATION_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
 }
 
+export function statusUpdateNoteContent(status: ApplicationStatus): string {
+  return `Status Update: ${statusLabel(status)}`;
+}
+
 export function statusTagClassName(status: ApplicationStatus): string {
   return STATUS_TAG_CLASSES[status];
 }

@@ -61,6 +61,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     notesByApplicationId,
     isLoading,
     setNotes,
+    refetch: refetchNotes,
     removeApplication: clearNotesCache,
     clearAll: clearNotesCacheAll,
   } = useApplicationNotesCache();
@@ -85,9 +86,22 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     };
   }, []);
 
-  const handleApplicationChange = useCallback((application: JobApplication) => {
-    setApplications((prev) => upsertApplication(prev, application));
-  }, []);
+  const handleApplicationChange = useCallback(
+    (application: JobApplication) => {
+      let statusChanged = false;
+
+      setApplications((prev) => {
+        const existing = prev.find((item) => item.id === application.id);
+        statusChanged = existing !== undefined && existing.status !== application.status;
+        return upsertApplication(prev, application);
+      });
+
+      if (statusChanged) {
+        void refetchNotes(application.id);
+      }
+    },
+    [refetchNotes],
+  );
 
   const selectedApplication = useMemo(
     () => applications.find((application) => application.id === selectedId) ?? null,
@@ -229,6 +243,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
         if (!current || current.status !== status) return prev;
         return upsertApplication(prev, updated);
       });
+      void refetchNotes(id);
     } catch (error) {
       setApplications((prev) => {
         const current = prev.find((item) => item.id === id);
@@ -237,7 +252,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
       });
       toast.error(errorMessage(error, toastMessages.statusUpdateFailed));
     }
-  }, []);
+  }, [refetchNotes]);
 
   const handleDeleteDialogOpenChange = useCallback(
     (open: boolean) => {

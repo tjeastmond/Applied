@@ -79,4 +79,55 @@ describe("application API routes", () => {
     });
     expect(missingResponse.status).toBe(404);
   });
+
+  test("PATCH status change creates a status update note", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/status",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+        status: "applied",
+      }),
+    );
+
+    const response = await patchApplication(
+      new Request("http://localhost", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "interviewing" }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    expect(response.status).toBe(200);
+
+    const notes = await getNoteRepository().listByApplicationId(app.id);
+    expect(notes).toHaveLength(1);
+    expect(notes[0]?.content).toBe("Status Update: Interviewing");
+  });
+
+  test("PATCH without status change does not create a status update note", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/no-status-change",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+        status: "applied",
+      }),
+    );
+
+    const response = await patchApplication(
+      new Request("http://localhost", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Senior Engineer" }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await getNoteRepository().listByApplicationId(app.id)).toHaveLength(0);
+  });
 });
