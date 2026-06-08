@@ -1,5 +1,10 @@
 import type { ApplicationNote, CreateJobApplicationInput, JobApplication, ParseJobUrlResult } from "./types";
 
+async function readApiError(response: Response, fallback: string): Promise<string> {
+  const body = (await response.json().catch(() => null)) as { error?: string } | null;
+  return body?.error ?? `${fallback} (${response.status})`;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     headers: {
@@ -10,8 +15,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error ?? `Request failed (${response.status})`);
+    throw new Error(await readApiError(response, "Request failed"));
   }
 
   if (response.status === 204) {
@@ -99,8 +103,7 @@ function parseContentDispositionFilename(header: string | null): string | null {
 export async function exportBackup(format: "sql" | "json"): Promise<{ blob: Blob; filename: string }> {
   const response = await fetch(`/api/backup/export?format=${format}`);
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error ?? `Export failed (${response.status})`);
+    throw new Error(await readApiError(response, "Export failed"));
   }
 
   const blob = await response.blob();
@@ -122,8 +125,7 @@ export async function importBackup(file: File, mode: ImportBackupMode): Promise<
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error ?? `Import failed (${response.status})`);
+    throw new Error(await readApiError(response, "Import failed"));
   }
 
   return (await response.json()) as ImportBackupResult;
