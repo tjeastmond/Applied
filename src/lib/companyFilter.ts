@@ -1,3 +1,4 @@
+import { toggleSetSelection } from "@/lib/toggleSetSelection";
 import type { JobApplication } from "@/types";
 
 export function uniqueCompanyNames(applications: JobApplication[]): string[] {
@@ -20,13 +21,6 @@ export function filterApplicationsByCompanies(
   });
 }
 
-export function toggleCompanySelection(
-  selected: Set<string>,
-  company: string,
-  checked: boolean,
-): Set<string> {
-  const next = new Set(selected);
-  if (checked) next.add(company);
-  else next.delete(company);
-  return next;
+export function toggleCompanySelection(selected: Set<string>, company: string, checked: boolean): Set<string> {
+  return toggleSetSelection(selected, company, checked);
 }

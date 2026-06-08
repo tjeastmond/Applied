@@ -1,5 +1,7 @@
+import { normalizeHost } from "@/lib/server/normalizeHost";
+
 export function isParaformHost(hostname: string): boolean {
-  return hostname.replace(/^www\./, "").toLowerCase() === "paraform.com";
+  return normalizeHost(hostname) === "paraform.com";
 }
 
 type ParaformRole = { title: string; company: string };
@@ -24,7 +26,7 @@ function parseTitleAtCompany(text: string): ParaformRole | null {
 }
 
 function readNextPageProps(document: Document): NextPageProps | null {
-  const script = document.querySelector('script#__NEXT_DATA__');
+  const script = document.querySelector("script#__NEXT_DATA__");
   const text = script?.textContent?.trim();
   if (!text) return null;
 
@@ -109,7 +111,7 @@ function extractFromOgTitle(document: Document): ParaformRole | null {
 function extractFromRoleHeader(document: Document): ParaformRole | null {
   const titleElement = document.querySelector(".text-2xl.font-book");
   const title = titleElement?.textContent?.trim();
-  if (!title) return null;
+  if (!titleElement || !title) return null;
 
   const companyElement = titleElement.previousElementSibling;
   const company = companyElement?.textContent?.trim();

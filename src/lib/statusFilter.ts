@@ -1,3 +1,4 @@
+import { toggleSetSelection } from "@/lib/toggleSetSelection";
 import type { ApplicationStatus, JobApplication } from "@/types";
 
 export function filterApplicationsByStatuses(
@@ -13,8 +14,5 @@ export function toggleStatusSelection(
   status: ApplicationStatus,
   checked: boolean,
 ): Set<ApplicationStatus> {
-  const next = new Set(selected);
-  if (checked) next.add(status);
-  else next.delete(status);
-  return next;
+  return toggleSetSelection(selected, status, checked);
 }

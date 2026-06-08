@@ -1,3 +1,4 @@
+import { normalizeHost } from "@/lib/server/normalizeHost";
 import { extractParaformRole, isParaformHost } from "./extractParaformRole";
 
 const JOB_BOARD_HOSTS = new Set(["ycombinator.com", "jobs.ashbyhq.com", "paraform.com"]);
@@ -9,10 +10,6 @@ const JOB_BOARD_SITE_NAMES = new Set(
 const YC_COMPANY_PATH = /^\/companies\/([^/]+)(?:\/|$)/i;
 const ASHBY_BOARD_PATH = /^\/([^/]+)(?:\/|$)/;
 const PARAFORM_COMPANY_PATH = /^\/(?:share|company)\/([^/]+)(?:\/|$)/i;
-
-function normalizeHost(hostname: string): string {
-  return hostname.replace(/^www\./, "").toLowerCase();
-}
 
 export function isJobBoardHost(hostname: string): boolean {
   return JOB_BOARD_HOSTS.has(normalizeHost(hostname));
