@@ -188,7 +188,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
 
   const handleOpenApplication = useCallback(
     (id: string) => {
-      prefetch(id, { notifyOnError: true });
+      void prefetch(id, { notifyOnError: true });
       setSelectedId(id);
       setDetailOpen(true);
     },
@@ -197,7 +197,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
 
   const handlePrefetchNotes = useCallback(
     (id: string) => {
-      prefetch(id);
+      void prefetch(id);
     },
     [prefetch],
   );
@@ -222,37 +222,47 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
     setPendingDeleteId(id);
   }, []);
 
-  const handleStatusChange = useCallback(async (id: string, status: ApplicationStatus) => {
-    let previousApplication: JobApplication | undefined;
+  const updateApplicationStatus = useCallback(
+    async (id: string, status: ApplicationStatus) => {
+      let previousApplication: JobApplication | undefined;
 
-    setApplications((prev) => {
-      const application = prev.find((item) => item.id === id);
-      if (!application || application.status === status) return prev;
-      previousApplication = application;
-      return upsertApplication(prev, { ...application, status });
-    });
-
-    if (!previousApplication) return;
-
-    const snapshot = previousApplication;
-
-    try {
-      const updated = await updateApplication(id, { status });
       setApplications((prev) => {
-        const current = prev.find((item) => item.id === id);
-        if (!current || current.status !== status) return prev;
-        return upsertApplication(prev, updated);
+        const application = prev.find((item) => item.id === id);
+        if (!application || application.status === status) return prev;
+        previousApplication = application;
+        return upsertApplication(prev, { ...application, status });
       });
-      void refetchNotes(id);
-    } catch (error) {
-      setApplications((prev) => {
-        const current = prev.find((item) => item.id === id);
-        if (!current || current.status !== status) return prev;
-        return upsertApplication(prev, snapshot);
-      });
-      toast.error(errorMessage(error, toastMessages.statusUpdateFailed));
-    }
-  }, [refetchNotes]);
+
+      if (!previousApplication) return;
+
+      const snapshot = previousApplication;
+
+      try {
+        const updated = await updateApplication(id, { status });
+        setApplications((prev) => {
+          const current = prev.find((item) => item.id === id);
+          if (!current || current.status !== status) return prev;
+          return upsertApplication(prev, updated);
+        });
+        void refetchNotes(id);
+      } catch (error) {
+        setApplications((prev) => {
+          const current = prev.find((item) => item.id === id);
+          if (!current || current.status !== status) return prev;
+          return upsertApplication(prev, snapshot);
+        });
+        toast.error(errorMessage(error, toastMessages.statusUpdateFailed));
+      }
+    },
+    [refetchNotes],
+  );
+
+  const handleStatusChange = useCallback(
+    (id: string, status: ApplicationStatus) => {
+      void updateApplicationStatus(id, status);
+    },
+    [updateApplicationStatus],
+  );
 
   const handleDeleteDialogOpenChange = useCallback(
     (open: boolean) => {
@@ -336,14 +346,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [
-    applications.length,
-    clearFilters,
-    detailOpen,
-    formOpen,
-    hasActiveFilters,
-    pendingDeleteId,
-  ]);
+  }, [applications.length, clearFilters, detailOpen, formOpen, hasActiveFilters, pendingDeleteId]);
 
   return (
     <div className="mx-auto min-h-screen max-w-3xl px-4 py-10 sm:px-6">
@@ -374,11 +377,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
         </div>
       </header>
 
-      <AddApplicationDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        onApplicationCreated={handleApplicationChange}
-      />
+      <AddApplicationDialog open={formOpen} onOpenChange={setFormOpen} onApplicationCreated={handleApplicationChange} />
 
       <ApplicationDetailSheet
         application={selectedApplication}
