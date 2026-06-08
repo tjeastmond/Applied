@@ -70,11 +70,7 @@ export class SqliteApplicationNoteRepository implements ApplicationNoteRepositor
     };
   }
 
-  async updateForApplication(
-    applicationId: string,
-    noteId: string,
-    content: string,
-  ): Promise<ApplicationNote | null> {
+  async updateForApplication(applicationId: string, noteId: string, content: string): Promise<ApplicationNote | null> {
     const trimmed = content.trim();
     if (trimmed.length === 0) {
       throw new Error("Note content is required");

@@ -95,11 +95,7 @@ export function ApplicationFormFields({
               }
             />
             <InputGroupAddon align="inline-end">
-              <InputGroupButton
-                variant="secondary"
-                disabled={isParsing || !form.url.trim()}
-                onClick={() => onParse()}
-              >
+              <InputGroupButton variant="secondary" disabled={isParsing || !form.url.trim()} onClick={() => onParse()}>
                 {isParsing ? "Parsing…" : "Parse"}
               </InputGroupButton>
             </InputGroupAddon>

@@ -49,20 +49,20 @@ pnpm run start       # next start (production server)
 
 ## Stack
 
-| Layer        | Technology                                                         |
-| ------------ | ------------------------------------------------------------------ |
-| Runtime      | Node.js                                                            |
-| Package mgr  | pnpm                                                               |
-| Framework    | Next.js 15 (App Router)                                            |
-| Frontend     | React 19, TypeScript (strict)                                      |
+| Layer        | Technology                                                               |
+| ------------ | ------------------------------------------------------------------------ |
+| Runtime      | Node.js                                                                  |
+| Package mgr  | pnpm                                                                     |
+| Framework    | Next.js 15 (App Router)                                                  |
+| Frontend     | React 19, TypeScript (strict)                                            |
 | Styling      | Tailwind CSS 4, Shadcn UI (`base-nova` style), Roboto Mono (self-hosted) |
-| Icons        | Lucide React                                                       |
-| Toasts       | Sonner (`<Toaster />` in `src/app/layout.tsx`)                     |
-| Backend      | Next.js Route Handlers (`src/app/api/**`)                          |
-| Database     | SQLite via `better-sqlite3`                                        |
-| HTML parsing | linkedom (server-side job URL fetch + parse)                       |
-| Tests        | Vitest (unit + SQLite integration)                                 |
-| Lint/format  | ESLint 9 (type-checked), Prettier + tailwind plugin                |
+| Icons        | Lucide React                                                             |
+| Toasts       | Sonner (`<Toaster />` in `src/app/layout.tsx`)                           |
+| Backend      | Next.js Route Handlers (`src/app/api/**`)                                |
+| Database     | SQLite via `better-sqlite3`                                              |
+| HTML parsing | linkedom (server-side job URL fetch + parse)                             |
+| Tests        | Vitest (unit + SQLite integration)                                       |
+| Lint/format  | ESLint 9 (type-checked), Prettier + tailwind plugin                      |
 
 ---
 
@@ -187,17 +187,17 @@ Legacy `applications.notes` values are migrated into `application_notes` on star
 
 All endpoints return JSON unless noted. Errors: `{ "error": "message" }` with 4xx status.
 
-| Method   | Path                                  | Body                                 | Response                |
-| -------- | ------------------------------------- | ------------------------------------ | ----------------------- |
-| `GET`    | `/api/applications`                   | —                                    | `JobApplication[]`      |
-| `POST`   | `/api/applications`                   | `CreateJobApplicationInput`          | `JobApplication` (201)  |
-| `PATCH`  | `/api/applications/:id`               | `Partial<CreateJobApplicationInput>` | `JobApplication` or 404 |
-| `DELETE` | `/api/applications/:id`               | —                                    | 204 or 404              |
-| `GET`    | `/api/applications/:id/notes`         | —                                    | `ApplicationNote[]`     |
-| `POST`   | `/api/applications/:id/notes`         | `{ "content": string }`              | `ApplicationNote` (201) |
+| Method   | Path                                  | Body                                 | Response                 |
+| -------- | ------------------------------------- | ------------------------------------ | ------------------------ |
+| `GET`    | `/api/applications`                   | —                                    | `JobApplication[]`       |
+| `POST`   | `/api/applications`                   | `CreateJobApplicationInput`          | `JobApplication` (201)   |
+| `PATCH`  | `/api/applications/:id`               | `Partial<CreateJobApplicationInput>` | `JobApplication` or 404  |
+| `DELETE` | `/api/applications/:id`               | —                                    | 204 or 404               |
+| `GET`    | `/api/applications/:id/notes`         | —                                    | `ApplicationNote[]`      |
+| `POST`   | `/api/applications/:id/notes`         | `{ "content": string }`              | `ApplicationNote` (201)  |
 | `PATCH`  | `/api/applications/:id/notes/:noteId` | `{ "content": string }`              | `ApplicationNote` or 404 |
-| `DELETE` | `/api/applications/:id/notes/:noteId` | —                                    | 204 or 404              |
-| `POST`   | `/api/jobs/parse`                     | `{ "url": string }`                  | `ParseJobUrlResult`     |
+| `DELETE` | `/api/applications/:id/notes/:noteId` | —                                    | 204 or 404               |
+| `POST`   | `/api/jobs/parse`                     | `{ "url": string }`                  | `ParseJobUrlResult`      |
 
 **Create validation** (`src/lib/schemas/application.ts` via Zod): `url`, `title`, `company`, `appliedAt` required; optional fields sanitized on persist.
 

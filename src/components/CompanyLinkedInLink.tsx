@@ -9,11 +9,7 @@ type CompanyLinkedInLinkProps = {
   stopPropagation?: boolean;
 };
 
-export function CompanyLinkedInLink({
-  url,
-  className,
-  stopPropagation = false,
-}: CompanyLinkedInLinkProps) {
+export function CompanyLinkedInLink({ url, className, stopPropagation = false }: CompanyLinkedInLinkProps) {
   const trimmed = url.trim();
   if (!trimmed) {
     return null;

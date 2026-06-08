@@ -64,15 +64,11 @@ describe("extractJobCompany", () => {
       }</script>
     </head></html>`);
 
-    const company = extractJobCompany(
-      new URL("https://www.paraform.com/share/ramp/cm123abc"),
-      document,
-      {
-        siteName: "Paraform",
-        applicationName: null,
-        hostnameFallback: "Paraform",
-      },
-    );
+    const company = extractJobCompany(new URL("https://www.paraform.com/share/ramp/cm123abc"), document, {
+      siteName: "Paraform",
+      applicationName: null,
+      hostnameFallback: "Paraform",
+    });
 
     expect(company).toBe("Ramp");
   });

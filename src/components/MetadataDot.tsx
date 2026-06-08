@@ -7,13 +7,7 @@ const sizeClasses = {
 
 export type MetadataDotSize = keyof typeof sizeClasses;
 
-export function MetadataDot({
-  size = "md",
-  className,
-}: {
-  size?: MetadataDotSize;
-  className?: string;
-}) {
+export function MetadataDot({ size = "md", className }: { size?: MetadataDotSize; className?: string }) {
   return (
     <span
       aria-hidden="true"

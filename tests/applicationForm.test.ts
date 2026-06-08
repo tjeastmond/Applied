@@ -46,12 +46,8 @@ describe("normalizePastedJobUrl", () => {
 
 describe("normalizeClipboardOnlyJobUrl", () => {
   it("normalizes a single URL from the clipboard", () => {
-    expect(normalizeClipboardOnlyJobUrl("https://jobs.example.com/role")).toBe(
-      "https://jobs.example.com/role",
-    );
-    expect(normalizeClipboardOnlyJobUrl("  www.jobs.example.com/role  ")).toBe(
-      "https://www.jobs.example.com/role",
-    );
+    expect(normalizeClipboardOnlyJobUrl("https://jobs.example.com/role")).toBe("https://jobs.example.com/role");
+    expect(normalizeClipboardOnlyJobUrl("  www.jobs.example.com/role  ")).toBe("https://www.jobs.example.com/role");
   });
 
   it("returns null when the clipboard has extra lines or non-URL text", () => {

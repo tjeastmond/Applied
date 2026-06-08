@@ -6,7 +6,7 @@ export function NoteContent({ content, className }: { content: string; className
   const segments = splitTextWithUrls(content);
 
   return (
-    <p className={cn("max-w-full min-w-0 overflow-hidden whitespace-pre-wrap break-words", className)}>
+    <p className={cn("max-w-full min-w-0 overflow-hidden break-words whitespace-pre-wrap", className)}>
       {segments.map((segment, index) =>
         segment.type === "link" ? (
           <a

@@ -67,9 +67,9 @@ describe("consumeDoubleEscape", () => {
   it("returns false when the second press is too late", () => {
     const lastPressAtRef = { current: null as number | null };
     consumeDoubleEscape(keyEvent({ key: "Escape" }), lastPressAtRef, 100);
-    expect(
-      consumeDoubleEscape(keyEvent({ key: "Escape" }), lastPressAtRef, 100 + DOUBLE_ESCAPE_INTERVAL_MS + 1),
-    ).toBe(false);
+    expect(consumeDoubleEscape(keyEvent({ key: "Escape" }), lastPressAtRef, 100 + DOUBLE_ESCAPE_INTERVAL_MS + 1)).toBe(
+      false,
+    );
   });
 
   it("ignores key repeat", () => {

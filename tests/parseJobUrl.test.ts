@@ -170,9 +170,7 @@ describe("parseJobUrl", () => {
       ),
     );
 
-    const result = await parseJobUrl(
-      "https://jobs.ashbyhq.com/ramp/34413f8d-26bf-4bbc-8ade-eb309a0e2245",
-    );
+    const result = await parseJobUrl("https://jobs.ashbyhq.com/ramp/34413f8d-26bf-4bbc-8ade-eb309a0e2245");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.company).toBe("Ramp");

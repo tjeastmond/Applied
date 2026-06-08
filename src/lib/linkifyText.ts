@@ -2,9 +2,7 @@ import { isProbablyHttpUrl } from "@/lib/applicationForm";
 
 const URL_REGEX = /https?:\/\/[^\s<>"']+/g;
 
-export type LinkifySegment =
-  | { type: "text"; value: string }
-  | { type: "link"; href: string; label: string };
+export type LinkifySegment = { type: "text"; value: string } | { type: "link"; href: string; label: string };
 
 function normalizeDetectedUrl(raw: string): { href: string | null; trailing: string } {
   const trimmed = raw.replace(/[.,;:!?)}\]'»]+$/, "");

@@ -14,17 +14,10 @@ export function hasActiveApplicationFilters({
   selectedStatuses,
   searchQuery,
 }: ApplicationFiltersState): boolean {
-  return (
-    selectedCompanies.size > 0 ||
-    selectedStatuses.size > 0 ||
-    searchQuery.trim().length > 0
-  );
+  return selectedCompanies.size > 0 || selectedStatuses.size > 0 || searchQuery.trim().length > 0;
 }
 
-export function filterApplications(
-  applications: JobApplication[],
-  filters: ApplicationFiltersState,
-): JobApplication[] {
+export function filterApplications(applications: JobApplication[], filters: ApplicationFiltersState): JobApplication[] {
   let result = applications;
   result = filterApplicationsByCompanies(result, filters.selectedCompanies);
   result = filterApplicationsByStatuses(result, filters.selectedStatuses);

@@ -19,10 +19,7 @@ function searchableText(application: JobApplication): string {
     .toLowerCase();
 }
 
-export function filterApplicationsBySearch(
-  applications: JobApplication[],
-  searchQuery: string,
-): JobApplication[] {
+export function filterApplicationsBySearch(applications: JobApplication[], searchQuery: string): JobApplication[] {
   const normalized = normalizeSearchQuery(searchQuery);
   if (!normalized) return applications;
   return applications.filter((application) => searchableText(application).includes(normalized));

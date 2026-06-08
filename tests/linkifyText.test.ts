@@ -13,9 +13,7 @@ describe("splitTextWithUrls", () => {
   });
 
   it("linkifies URLs embedded in note text", () => {
-    expect(
-      splitTextWithUrls("Heard about this role from Jing Lee: https://www.linkedin.com/in/jinglee/"),
-    ).toEqual([
+    expect(splitTextWithUrls("Heard about this role from Jing Lee: https://www.linkedin.com/in/jinglee/")).toEqual([
       { type: "text", value: "Heard about this role from Jing Lee: " },
       { type: "link", href: "https://www.linkedin.com/in/jinglee/", label: "https://www.linkedin.com/in/jinglee/" },
     ]);
@@ -30,8 +28,6 @@ describe("splitTextWithUrls", () => {
   });
 
   it("does not linkify non-http schemes", () => {
-    expect(splitTextWithUrls("javascript:alert(1)")).toEqual([
-      { type: "text", value: "javascript:alert(1)" },
-    ]);
+    expect(splitTextWithUrls("javascript:alert(1)")).toEqual([{ type: "text", value: "javascript:alert(1)" }]);
   });
 });

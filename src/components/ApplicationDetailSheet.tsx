@@ -1,12 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  createApplicationNote,
-  deleteApplicationNote,
-  updateApplication,
-  updateApplicationNote,
-} from "@/api";
+import { createApplicationNote, deleteApplicationNote, updateApplication, updateApplicationNote } from "@/api";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
 import { ApplicationMetadataLine } from "@/components/ApplicationMetadataLine";
 import { NoteContent } from "@/components/NoteContent";
@@ -42,12 +37,7 @@ import {
   modSShortcutDescription,
   modSShortcutLabel,
 } from "@/lib/keyboardShortcut";
-import {
-  persistNoteSortOrder,
-  readStoredNoteSortOrder,
-  sortNotes,
-  type NoteSortOrder,
-} from "@/lib/noteSort";
+import { persistNoteSortOrder, readStoredNoteSortOrder, sortNotes, type NoteSortOrder } from "@/lib/noteSort";
 import { toastMessages } from "@/lib/toastMessages";
 import type { ApplicationNote, JobApplication } from "@/types";
 import { ChevronDownIcon, CopyIcon, ExternalLinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
@@ -74,9 +64,7 @@ export function ApplicationDetailSheet({
   onApplicationChange: (application: JobApplication) => void;
   onRequestDelete: (id: string) => void;
 }) {
-  const [form, setForm] = useState<FormState | null>(() =>
-    application ? applicationToForm(application) : null,
-  );
+  const [form, setForm] = useState<FormState | null>(() => (application ? applicationToForm(application) : null));
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [pendingNoteId, setPendingNoteId] = useState<string | null>(null);
@@ -309,11 +297,14 @@ export function ApplicationDetailSheet({
     [onOpenChange, requestClose],
   );
 
-  const handleUnsavedCloseDialogOpenChange = useCallback((dialogOpen: boolean) => {
-    if (!dialogOpen && !isSavingBeforeClose) {
-      setUnsavedCloseDialogOpen(false);
-    }
-  }, [isSavingBeforeClose]);
+  const handleUnsavedCloseDialogOpenChange = useCallback(
+    (dialogOpen: boolean) => {
+      if (!dialogOpen && !isSavingBeforeClose) {
+        setUnsavedCloseDialogOpen(false);
+      }
+    },
+    [isSavingBeforeClose],
+  );
 
   const handleDiscardUnsavedChanges = useCallback(() => {
     closeSheet();
@@ -348,10 +339,7 @@ export function ApplicationDetailSheet({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, isFormDirty, isSaving, save]);
   const headerTitle =
-    (formMatchesApplication ? form.title.trim() : "") ||
-    application?.title ||
-    application?.company ||
-    "Application";
+    (formMatchesApplication ? form.title.trim() : "") || application?.title || application?.company || "Application";
   const postingUrl = (formMatchesApplication ? form.url.trim() : "") || application?.url.trim() || "";
   const companyLinkedInUrl =
     (formMatchesApplication ? form.linkedinUrl.trim() : "") || application?.linkedinUrl?.trim() || "";
@@ -370,14 +358,14 @@ export function ApplicationDetailSheet({
           side="right"
           className="border-border flex w-[60vw] max-w-[60vw] min-w-[60vw] flex-col gap-0 overflow-hidden border-l p-0 sm:max-w-[60vw]"
         >
-          <SheetHeader className="gap-2 border-b border-border px-6 py-4">
+          <SheetHeader className="border-border gap-2 border-b px-6 py-4">
             <SheetTitle className="pr-8 text-lg">
               {postingUrl ? (
                 <a
                   href={postingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="link-plain inline-flex items-center gap-1.5 hover:text-foreground/80"
+                  className="link-plain hover:text-foreground/80 inline-flex items-center gap-1.5"
                 >
                   <span>{headerTitle}</span>
                   <ExternalLinkIcon className="size-[0.95em] shrink-0 opacity-70" aria-hidden="true" />
@@ -388,11 +376,7 @@ export function ApplicationDetailSheet({
             </SheetTitle>
             <ApplicationMetadataLine
               variant="sheet"
-              company={
-                application
-                  ? (formMatchesApplication ? form.company.trim() : "") || application.company
-                  : null
-              }
+              company={application ? (formMatchesApplication ? form.company.trim() : "") || application.company : null}
               appliedLabel={application ? formatDate(application.appliedAt) : ""}
               linkedinUrl={application ? companyLinkedInUrl : null}
               postingUrl={application ? postingUrl : null}
@@ -472,7 +456,7 @@ export function ApplicationDetailSheet({
                                     onClick={() => void handleSaveNoteEdit()}
                                   >
                                     {isSavingNote ? "Saving…" : "Save Note"}
-                                    <kbd className="border-green-600/30 text-green-700/80 pointer-events-none hidden rounded border bg-green-600/10 px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline dark:text-green-400/90">
+                                    <kbd className="pointer-events-none hidden rounded border border-green-600/30 bg-green-600/10 px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide text-green-700/80 sm:inline dark:text-green-400/90">
                                       {modEnterShortcutLabel()}
                                     </kbd>
                                   </Button>
@@ -537,7 +521,7 @@ export function ApplicationDetailSheet({
                           onClick={() => void handleAddNote()}
                         >
                           {isAddingNote ? "Adding…" : "Add Note"}
-                          <kbd className="border-green-600/30 text-green-700/80 pointer-events-none hidden rounded border bg-green-600/10 px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline dark:text-green-400/90">
+                          <kbd className="pointer-events-none hidden rounded border border-green-600/30 bg-green-600/10 px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide text-green-700/80 sm:inline dark:text-green-400/90">
                             {modEnterShortcutLabel()}
                           </kbd>
                         </Button>
@@ -576,7 +560,7 @@ export function ApplicationDetailSheet({
             ) : null}
           </div>
 
-          <SheetFooter className="border-t border-border px-6 py-4 sm:flex-row sm:justify-between">
+          <SheetFooter className="border-border border-t px-6 py-4 sm:flex-row sm:justify-between">
             <Button
               type="button"
               variant="destructiveSolid"

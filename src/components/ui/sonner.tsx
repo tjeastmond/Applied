@@ -24,8 +24,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           toast: "group toast border shadow-md",
           success:
             "!border-green-600 !bg-green-50 !text-green-800 dark:!border-green-700 dark:!bg-green-950 dark:!text-green-200",
-          error:
-            "!border-red-600 !bg-red-100 !text-red-900 dark:!border-red-700 dark:!bg-red-950 dark:!text-red-200",
+          error: "!border-red-600 !bg-red-100 !text-red-900 dark:!border-red-700 dark:!bg-red-950 dark:!text-red-200",
         },
       }}
       {...props}

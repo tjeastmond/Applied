@@ -60,17 +60,14 @@ export function NoteSortPicker({
       <DropdownMenuTrigger className={triggerClassName} aria-label="Sort notes">
         <ArrowDownUpIcon className="size-3.5 shrink-0 opacity-70" />
         {noteSortLabel(sortOrder)}
-        <ChevronDownIcon className={cn("size-3 shrink-0 opacity-70 transition-transform duration-200", open && "rotate-180")} />
+        <ChevronDownIcon
+          className={cn("size-3 shrink-0 opacity-70 transition-transform duration-200", open && "rotate-180")}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-40 rounded-md">
         <DropdownMenuRadioGroup value={sortOrder} onValueChange={handleSortSelect}>
           {NOTE_SORT_OPTIONS.map((option) => (
-            <DropdownMenuRadioItem
-              key={option}
-              value={option}
-              className="rounded-sm"
-              onClick={() => setOpen(false)}
-            >
+            <DropdownMenuRadioItem key={option} value={option} className="rounded-sm" onClick={() => setOpen(false)}>
               {noteSortLabel(option)}
             </DropdownMenuRadioItem>
           ))}

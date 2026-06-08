@@ -54,39 +54,41 @@ export function useApplicationFormActions({
     [setForm],
   );
 
-  const parse = useCallback(async (urlOverride?: string) => {
-    const url = (typeof urlOverride === "string" ? urlOverride : (form?.url ?? "")).trim();
-    if (!url) return;
-    if (parseInFlightUrlRef.current === url) return;
+  const parse = useCallback(
+    async (urlOverride?: string) => {
+      const url = (typeof urlOverride === "string" ? urlOverride : (form?.url ?? "")).trim();
+      if (!url) return;
+      if (parseInFlightUrlRef.current === url) return;
 
-    const scopeId = form?.id;
-    parseInFlightUrlRef.current = url;
-    setIsParsing(true);
-    if (typeof urlOverride === "string") {
-      setForm((prev) => (prev ? { ...prev, url: url.trim() } : prev));
-    }
-    try {
-      const result = await parseJobUrl(url);
-      if (result.ok) {
-        setForm((prev) => {
-          if (!prev || (scopeId !== undefined && prev.id !== scopeId)) return prev;
-          const base =
-            typeof urlOverride === "string" ? { ...prev, url: urlOverride.trim() } : prev;
-          return mergeParseResult(base, result);
-        });
-        toast.success(parseSuccessMessage);
-      } else {
-        toast.error(result.error);
+      const scopeId = form?.id;
+      parseInFlightUrlRef.current = url;
+      setIsParsing(true);
+      if (typeof urlOverride === "string") {
+        setForm((prev) => (prev ? { ...prev, url: url.trim() } : prev));
       }
-    } catch (error) {
-      toast.error(errorMessage(error, toastMessages.parseUrlFailed));
-    } finally {
-      if (parseInFlightUrlRef.current === url) {
-        parseInFlightUrlRef.current = null;
+      try {
+        const result = await parseJobUrl(url);
+        if (result.ok) {
+          setForm((prev) => {
+            if (!prev || (scopeId !== undefined && prev.id !== scopeId)) return prev;
+            const base = typeof urlOverride === "string" ? { ...prev, url: urlOverride.trim() } : prev;
+            return mergeParseResult(base, result);
+          });
+          toast.success(parseSuccessMessage);
+        } else {
+          toast.error(result.error);
+        }
+      } catch (error) {
+        toast.error(errorMessage(error, toastMessages.parseUrlFailed));
+      } finally {
+        if (parseInFlightUrlRef.current === url) {
+          parseInFlightUrlRef.current = null;
+        }
+        setIsParsing(false);
       }
-      setIsParsing(false);
-    }
-  }, [form?.id, form?.url, parseSuccessMessage, setForm]);
+    },
+    [form?.id, form?.url, parseSuccessMessage, setForm],
+  );
 
   const save = useCallback(async (): Promise<boolean> => {
     if (!form || (requireId && !form.id)) {

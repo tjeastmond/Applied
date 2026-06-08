@@ -56,10 +56,7 @@ export const ApplicationFilters = memo(function ApplicationFilters({
           onSelectedCompaniesChange={onSelectedCompaniesChange}
           disabled={companies.length === 0}
         />
-        <StatusFilter
-          selectedStatuses={selectedStatuses}
-          onSelectedStatusesChange={onSelectedStatusesChange}
-        />
+        <StatusFilter selectedStatuses={selectedStatuses} onSelectedStatusesChange={onSelectedStatusesChange} />
         <span
           className={cn("inline-flex shrink-0", !hasActiveFilters && "cursor-not-allowed")}
           title={hasActiveFilters ? "Clear filters" : "No active filters"}
@@ -71,9 +68,9 @@ export const ApplicationFilters = memo(function ApplicationFilters({
             disabled={!hasActiveFilters}
             className={cn(
               "active:translate-y-0",
-              !hasActiveFilters && "disabled:opacity-100 [&_svg]:text-muted-foreground",
+              !hasActiveFilters && "[&_svg]:text-muted-foreground disabled:opacity-100",
               hasActiveFilters &&
-                "border-border bg-destructive/20 text-white hover:border-border hover:bg-destructive/25 hover:text-white [&_svg]:text-white dark:border-input dark:hover:border-input",
+                "border-border bg-destructive/20 hover:border-border hover:bg-destructive/25 dark:border-input dark:hover:border-input text-white hover:text-white [&_svg]:text-white",
             )}
             onClick={onClearFilters}
             aria-label="Clear filters"
