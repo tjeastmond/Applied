@@ -1,26 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { filterApplications, hasActiveApplicationFilters } from "../src/lib/applicationFilters";
-import type { JobApplication } from "../src/types";
-
-function app(overrides: Partial<JobApplication> & Pick<JobApplication, "id">): JobApplication {
-  return {
-    id: overrides.id,
-    url: overrides.url ?? `https://example.com/${overrides.id}`,
-    linkedinUrl: overrides.linkedinUrl ?? null,
-    title: overrides.title ?? overrides.id,
-    company: overrides.company ?? "Acme",
-    appliedAt: overrides.appliedAt ?? "2026-06-01",
-    viaRecruiter: overrides.viaRecruiter ?? false,
-    recruiterName: overrides.recruiterName ?? null,
-    recruiterFirm: overrides.recruiterFirm ?? null,
-    contactEmail: overrides.contactEmail ?? null,
-    contactPhone: overrides.contactPhone ?? null,
-    fullJd: overrides.fullJd ?? null,
-    status: overrides.status ?? "applied",
-    createdAt: overrides.createdAt ?? "2026-06-01T10:00:00.000Z",
-    updatedAt: overrides.updatedAt ?? "2026-06-01T10:00:00.000Z",
-  };
-}
+import { makeJobApplication } from "./fixtures/jobApplication";
 
 describe("applicationFilters", () => {
   it("detects active filters", () => {
@@ -40,11 +20,11 @@ describe("applicationFilters", () => {
     ).toBe(true);
   });
 
-  it("composes company, status, and search filters", () => {
+  it("applies company, status, and search filters together", () => {
     const applications = [
-      app({ id: "a", title: "Software Engineer", company: "Acme", status: "applied" }),
-      app({ id: "b", title: "Software Engineer", company: "Beta", status: "offer" }),
-      app({ id: "c", title: "Designer", company: "Acme", status: "applied" }),
+      makeJobApplication({ id: "a", company: "Acme", status: "applied", title: "Engineer" }),
+      makeJobApplication({ id: "b", company: "Beta", status: "offer", title: "Designer" }),
+      makeJobApplication({ id: "c", company: "Acme", status: "offer", title: "Engineer" }),
     ];
 
     expect(
