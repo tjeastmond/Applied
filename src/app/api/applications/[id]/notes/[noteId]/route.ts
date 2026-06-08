@@ -1,8 +1,10 @@
+import { parseUuid } from "@/lib/schemas/common";
 import { getNoteRepository } from "@/lib/server/db";
 import {
   applicationNotFoundResponse,
+  badRequestResponse,
   type ApplicationNoteRouteContext,
-  parseRouteUuid,
+  noteNotFoundResponse,
   requireApplicationId,
 } from "@/lib/server/applicationRouteHelpers";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
@@ -13,9 +15,9 @@ export const runtime = "nodejs";
 
 export async function PATCH(request: Request, context: ApplicationNoteRouteContext) {
   const { id: rawId, noteId: rawNoteId } = await context.params;
-  const noteId = parseRouteUuid(rawNoteId);
+  const noteId = parseUuid(rawNoteId);
   if (!noteId) {
-    return NextResponse.json({ error: "Note not found" }, { status: 404 });
+    return noteNotFoundResponse();
   }
 
   const applicationId = await requireApplicationId(rawId);
@@ -25,12 +27,12 @@ export async function PATCH(request: Request, context: ApplicationNoteRouteConte
 
   const parsed = await parseRequestBody(request, createApplicationNoteSchema);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return badRequestResponse(parsed.error);
   }
 
   const note = await getNoteRepository().updateForApplication(applicationId, noteId, parsed.data.content);
   if (!note) {
-    return NextResponse.json({ error: "Note not found" }, { status: 404 });
+    return noteNotFoundResponse();
   }
 
   return NextResponse.json(note);
@@ -38,9 +40,9 @@ export async function PATCH(request: Request, context: ApplicationNoteRouteConte
 
 export async function DELETE(_request: Request, context: ApplicationNoteRouteContext) {
   const { id: rawId, noteId: rawNoteId } = await context.params;
-  const noteId = parseRouteUuid(rawNoteId);
+  const noteId = parseUuid(rawNoteId);
   if (!noteId) {
-    return NextResponse.json({ error: "Note not found" }, { status: 404 });
+    return noteNotFoundResponse();
   }
 
   const applicationId = await requireApplicationId(rawId);
@@ -50,7 +52,7 @@ export async function DELETE(_request: Request, context: ApplicationNoteRouteCon
 
   const deleted = await getNoteRepository().deleteForApplication(applicationId, noteId);
   if (!deleted) {
-    return NextResponse.json({ error: "Note not found" }, { status: 404 });
+    return noteNotFoundResponse();
   }
 
   return new NextResponse(null, { status: 204 });

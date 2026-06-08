@@ -1,4 +1,5 @@
 import { getRepository } from "@/lib/server/db";
+import { badRequestResponse } from "@/lib/server/applicationRouteHelpers";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
 import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
@@ -14,7 +15,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const parsed = await parseRequestBody(request, createJobApplicationSchema);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return badRequestResponse(parsed.error);
   }
 
   const application = await getRepository().create(sanitizeApplicationInput(parsed.data));

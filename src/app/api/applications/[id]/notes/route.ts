@@ -1,6 +1,7 @@
 import { getNoteRepository } from "@/lib/server/db";
 import {
   applicationNotFoundResponse,
+  badRequestResponse,
   type ApplicationIdRouteContext,
   requireApplicationId,
 } from "@/lib/server/applicationRouteHelpers";
@@ -30,7 +31,7 @@ export async function POST(request: Request, context: ApplicationIdRouteContext)
 
   const parsed = await parseRequestBody(request, createApplicationNoteSchema);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return badRequestResponse(parsed.error);
   }
 
   const note = await getNoteRepository().create(applicationId, parsed.data.content);

@@ -6,16 +6,24 @@ export type ApplicationIdRouteContext = { params: Promise<{ id: string }> };
 
 export type ApplicationNoteRouteContext = { params: Promise<{ id: string; noteId: string }> };
 
-export function parseRouteUuid(raw: string): string | null {
-  return parseUuid(raw);
+export function jsonError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
+
+export function badRequestResponse(error: string) {
+  return jsonError(error, 400);
 }
 
 export function applicationNotFoundResponse() {
-  return NextResponse.json({ error: "Application not found" }, { status: 404 });
+  return jsonError("Application not found", 404);
+}
+
+export function noteNotFoundResponse() {
+  return jsonError("Note not found", 404);
 }
 
 export async function requireApplicationId(rawId: string): Promise<string | null> {
-  const id = parseRouteUuid(rawId);
+  const id = parseUuid(rawId);
   if (!id) {
     return null;
   }

@@ -2,6 +2,7 @@ import { statusUpdateNoteContent } from "@/lib/applicationStatus";
 import { getNoteRepository, getRepository } from "@/lib/server/db";
 import {
   applicationNotFoundResponse,
+  badRequestResponse,
   type ApplicationIdRouteContext,
   requireApplicationId,
 } from "@/lib/server/applicationRouteHelpers";
@@ -21,7 +22,7 @@ export async function PATCH(request: Request, context: ApplicationIdRouteContext
 
   const parsed = await parseRequestBody(request, patchJobApplicationSchema);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return badRequestResponse(parsed.error);
   }
 
   const repository = getRepository();
@@ -31,8 +32,7 @@ export async function PATCH(request: Request, context: ApplicationIdRouteContext
   }
 
   const sanitized = sanitizeApplicationInput(parsed.data);
-  const statusChanging =
-    sanitized.status !== undefined && sanitized.status !== existing.status;
+  const statusChanging = sanitized.status !== undefined && sanitized.status !== existing.status;
 
   const updated = await repository.update(id, sanitized);
   if (!updated) {
