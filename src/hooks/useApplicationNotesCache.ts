@@ -7,6 +7,11 @@ import { toastMessages } from "@/lib/toastMessages";
 import type { ApplicationNote } from "@/types";
 import { toast } from "sonner";
 
+type LoadNotesOptions = {
+  notifyOnError?: boolean;
+  emptyCacheOnError?: boolean;
+};
+
 export function useApplicationNotesCache() {
   const [entries, setEntries] = useState<Record<string, ApplicationNote[]>>({});
   const [loadingIds, setLoadingIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -26,9 +31,8 @@ export function useApplicationNotesCache() {
     });
   }, []);
 
-  const prefetch = useCallback(
-    (applicationId: string, options?: { notifyOnError?: boolean }): Promise<void> => {
-      if (entriesRef.current[applicationId] !== undefined) return Promise.resolve();
+  const loadNotes = useCallback(
+    (applicationId: string, options?: LoadNotesOptions): Promise<void> => {
       const inflight = inflightRef.current.get(applicationId);
       if (inflight) return inflight;
 
@@ -39,7 +43,9 @@ export function useApplicationNotesCache() {
           setEntries((prev) => ({ ...prev, [applicationId]: notes }));
         })
         .catch((error) => {
-          setEntries((prev) => ({ ...prev, [applicationId]: [] }));
+          if (options?.emptyCacheOnError) {
+            setEntries((prev) => ({ ...prev, [applicationId]: [] }));
+          }
           if (options?.notifyOnError) {
             toast.error(errorMessage(error, toastMessages.notesLoadFailed));
           }
@@ -53,6 +59,14 @@ export function useApplicationNotesCache() {
       return request;
     },
     [setLoading],
+  );
+
+  const prefetch = useCallback(
+    (applicationId: string, options?: { notifyOnError?: boolean }): Promise<void> => {
+      if (entriesRef.current[applicationId] !== undefined) return Promise.resolve();
+      return loadNotes(applicationId, { ...options, emptyCacheOnError: true });
+    },
+    [loadNotes],
   );
 
   const getNotes = useCallback((applicationId: string | null): ApplicationNote[] | undefined => {
@@ -74,29 +88,9 @@ export function useApplicationNotesCache() {
 
   const refetch = useCallback(
     (applicationId: string, options?: { notifyOnError?: boolean }): Promise<void> => {
-      const inflight = inflightRef.current.get(applicationId);
-      if (inflight) return inflight;
-
-      setLoading(applicationId, true);
-
-      const request = listApplicationNotes(applicationId)
-        .then((notes) => {
-          setEntries((prev) => ({ ...prev, [applicationId]: notes }));
-        })
-        .catch((error) => {
-          if (options?.notifyOnError) {
-            toast.error(errorMessage(error, toastMessages.notesLoadFailed));
-          }
-        })
-        .finally(() => {
-          setLoading(applicationId, false);
-          inflightRef.current.delete(applicationId);
-        });
-
-      inflightRef.current.set(applicationId, request);
-      return request;
+      return loadNotes(applicationId, options);
     },
-    [setLoading],
+    [loadNotes],
   );
 
   const removeApplication = useCallback(
