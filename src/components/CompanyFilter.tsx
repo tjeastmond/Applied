@@ -1,19 +1,7 @@
 "use client";
 
-import { memo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toggleCompanySelection } from "@/lib/companyFilter";
-import { FILTER_TRIGGER_BUTTON_CLASS } from "@/lib/filterControls";
-import { cn } from "@/lib/utils";
-import { ChevronDownIcon, ListFilterIcon } from "lucide-react";
+import { memo, useMemo } from "react";
+import { MultiSelectFilter } from "@/components/MultiSelectFilter";
 
 export const CompanyFilter = memo(function CompanyFilter({
   companies,
@@ -28,61 +16,18 @@ export const CompanyFilter = memo(function CompanyFilter({
   className?: string;
   disabled?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const activeCount = selectedCompanies.size;
-  const label =
-    activeCount === 0
-      ? "Filter by company"
-      : activeCount === 1
-        ? [...selectedCompanies][0]
-        : `${activeCount} companies`;
-
-  function handleOpenChange(next: boolean) {
-    if (disabled) return;
-    setOpen(next);
-  }
+  const items = useMemo(() => companies.map((company) => ({ value: company, label: company })), [companies]);
 
   return (
-    <DropdownMenu open={open} onOpenChange={handleOpenChange} modal={false}>
-      <DropdownMenuTrigger
-        disabled={disabled}
-        render={
-          <Button
-            type="button"
-            variant="outline"
-            size="default"
-            disabled={disabled}
-            className={cn(FILTER_TRIGGER_BUTTON_CLASS, className)}
-          >
-            <span className="flex min-w-0 flex-1 items-center gap-1.5">
-              <ListFilterIcon className="size-3.5 shrink-0 opacity-70" />
-              <span className="truncate">{label}</span>
-            </span>
-            <ChevronDownIcon
-              className={cn(
-                "size-3.5 shrink-0 opacity-70 transition-transform duration-200",
-                open && "rotate-180",
-              )}
-            />
-          </Button>
-        }
-      />
-      <DropdownMenuContent align="start">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Company</DropdownMenuLabel>
-          {companies.map((company) => (
-            <DropdownMenuCheckboxItem
-              key={company}
-              checked={selectedCompanies.has(company)}
-              onCheckedChange={(checked) =>
-                onSelectedCompaniesChange(toggleCompanySelection(selectedCompanies, company, checked === true))
-              }
-            >
-              {company}
-            </DropdownMenuCheckboxItem>
-          ))}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <MultiSelectFilter
+      items={items}
+      selected={selectedCompanies}
+      onSelectedChange={onSelectedCompaniesChange}
+      emptyLabel="Filter by company"
+      pluralNoun="companies"
+      groupLabel="Company"
+      disabled={disabled}
+      className={className}
+    />
   );
 });
