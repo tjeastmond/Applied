@@ -388,6 +388,7 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
         onOpenChange={handleDetailOpenChange}
         onCloseComplete={handleDetailCloseComplete}
         onApplicationChange={handleApplicationChange}
+        onStatusChange={handleStatusChange}
         onRequestDelete={requestDelete}
       />
 

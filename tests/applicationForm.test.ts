@@ -5,6 +5,7 @@ import {
   formToInput,
   getRequiredValidationState,
   isFormPristine,
+  isManualSaveFormDirty,
   isFormValid,
   isProbablyHttpUrl,
   normalizeClipboardOnlyJobUrl,
@@ -165,6 +166,32 @@ describe("isFormPristine", () => {
     const form = applicationToForm(application);
     form.title = "Staff Engineer";
     expect(isFormPristine(form, application)).toBe(false);
+  });
+
+  it("treats a status-only edit as clean for manual save", () => {
+    const application: JobApplication = {
+      id: "id-1",
+      url: "https://jobs.example.com",
+      linkedinUrl: null,
+      title: "Engineer",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+      viaRecruiter: false,
+      recruiterName: null,
+      recruiterFirm: null,
+      contactEmail: null,
+      contactPhone: null,
+      fullJd: null,
+      status: "applied",
+      createdAt: "2026-06-01T00:00:00.000Z",
+      updatedAt: "2026-06-01T00:00:00.000Z",
+    };
+
+    const form = applicationToForm(application);
+    form.status = "interviewing";
+
+    expect(isFormPristine(form, application)).toBe(false);
+    expect(isManualSaveFormDirty(form, application)).toBe(false);
   });
 });
 

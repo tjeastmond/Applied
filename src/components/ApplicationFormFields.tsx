@@ -21,6 +21,7 @@ export function ApplicationFormFields({
   autoParseOnUrlPaste = false,
   urlInputRef,
   updateField,
+  onStatusChange,
   onParse,
 }: {
   form: FormState;
@@ -32,6 +33,7 @@ export function ApplicationFormFields({
   autoParseOnUrlPaste?: boolean;
   urlInputRef?: Ref<HTMLInputElement>;
   updateField: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+  onStatusChange?: (status: ApplicationStatus) => void;
   onParse: (urlOverride?: string) => void;
 }) {
   const minimal = variant === "minimal";
@@ -143,7 +145,7 @@ export function ApplicationFormFields({
             <ApplicationStatusPicker
               size="field"
               status={form.status}
-              onStatusChange={(value: ApplicationStatus) => updateField("status", value)}
+              onStatusChange={onStatusChange ?? ((value: ApplicationStatus) => updateField("status", value))}
             />
           </Field>
         ) : null}

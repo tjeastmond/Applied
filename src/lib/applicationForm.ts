@@ -157,21 +157,36 @@ export function safeFormToInput(
   return { ok: true, data: result.data };
 }
 
-export function isFormPristine(form: FormState, application: JobApplication): boolean {
+const FORM_FIELD_KEYS = [
+  "url",
+  "linkedinUrl",
+  "title",
+  "company",
+  "appliedAt",
+  "recruiterName",
+  "recruiterFirm",
+  "contactEmail",
+  "contactPhone",
+  "fullJd",
+  "status",
+] as const satisfies readonly (keyof FormState)[];
+
+function formFieldDiffers(
+  form: FormState,
+  application: JobApplication,
+  exclude: ReadonlySet<(typeof FORM_FIELD_KEYS)[number]> = new Set(),
+): boolean {
   const baseline = applicationToForm(application);
-  return (
-    form.url === baseline.url &&
-    form.linkedinUrl === baseline.linkedinUrl &&
-    form.title === baseline.title &&
-    form.company === baseline.company &&
-    form.appliedAt === baseline.appliedAt &&
-    form.recruiterName === baseline.recruiterName &&
-    form.recruiterFirm === baseline.recruiterFirm &&
-    form.contactEmail === baseline.contactEmail &&
-    form.contactPhone === baseline.contactPhone &&
-    form.fullJd === baseline.fullJd &&
-    form.status === baseline.status
-  );
+  return FORM_FIELD_KEYS.some((field) => !exclude.has(field) && form[field] !== baseline[field]);
+}
+
+export function isFormPristine(form: FormState, application: JobApplication): boolean {
+  return !formFieldDiffers(form, application);
+}
+
+/** Dirty check for fields that still require an explicit save (status auto-saves in the detail sheet). */
+export function isManualSaveFormDirty(form: FormState, application: JobApplication): boolean {
+  return formFieldDiffers(form, application, new Set(["status"]));
 }
 
 export function mergeParseResult(

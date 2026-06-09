@@ -27,6 +27,7 @@ import {
   formatDate,
   formatNoteTimestamp,
   isFormPristine,
+  isManualSaveFormDirty,
   type FormState,
 } from "@/lib/applicationForm";
 import { errorMessage } from "@/lib/errorMessage";
@@ -39,7 +40,7 @@ import {
 } from "@/lib/keyboardShortcut";
 import { persistNoteSortOrder, readStoredNoteSortOrder, sortNotes, type NoteSortOrder } from "@/lib/noteSort";
 import { toastMessages } from "@/lib/toastMessages";
-import type { ApplicationNote, JobApplication } from "@/types";
+import type { ApplicationNote, ApplicationStatus, JobApplication } from "@/types";
 import { ChevronDownIcon, CopyIcon, ExternalLinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,6 +53,7 @@ export function ApplicationDetailSheet({
   onOpenChange,
   onCloseComplete,
   onApplicationChange,
+  onStatusChange,
   onRequestDelete,
 }: {
   application: JobApplication | null;
@@ -62,6 +64,7 @@ export function ApplicationDetailSheet({
   onOpenChange: (open: boolean) => void;
   onCloseComplete?: () => void;
   onApplicationChange: (application: JobApplication) => void;
+  onStatusChange: (id: string, status: ApplicationStatus) => void;
   onRequestDelete: (id: string) => void;
 }) {
   const [form, setForm] = useState<FormState | null>(() => (application ? applicationToForm(application) : null));
@@ -267,10 +270,19 @@ export function ApplicationDetailSheet({
     }
   }
 
+  const handleStatusChange = useCallback(
+    (status: ApplicationStatus) => {
+      if (!applicationId || !application || application.status === status) return;
+      updateField("status", status);
+      onStatusChange(applicationId, status);
+    },
+    [applicationId, application, onStatusChange, updateField],
+  );
+
   const formMatchesApplication = form?.id === applicationId;
   const isFormDirty = useMemo(() => {
     if (!form || !application || !formMatchesApplication) return false;
-    return !isFormPristine(form, application);
+    return isManualSaveFormDirty(form, application);
   }, [form, application, formMatchesApplication]);
 
   const closeSheet = useCallback(() => {
@@ -395,6 +407,7 @@ export function ApplicationDetailSheet({
                     showStatus
                     stackedTitleCompany
                     updateField={updateField}
+                    onStatusChange={handleStatusChange}
                     onParse={() => void parse()}
                   />
                 </div>
