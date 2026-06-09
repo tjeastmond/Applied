@@ -55,10 +55,10 @@ export function useApplicationFormActions({
   );
 
   const parse = useCallback(
-    async (urlOverride?: string) => {
+    async (urlOverride?: string): Promise<boolean> => {
       const url = (typeof urlOverride === "string" ? urlOverride : (form?.url ?? "")).trim();
-      if (!url) return;
-      if (parseInFlightUrlRef.current === url) return;
+      if (!url) return false;
+      if (parseInFlightUrlRef.current === url) return false;
 
       const scopeId = form?.id;
       parseInFlightUrlRef.current = url;
@@ -75,11 +75,13 @@ export function useApplicationFormActions({
             return mergeParseResult(base, result);
           });
           toast.success(parseSuccessMessage);
-        } else {
-          toast.error(result.error);
+          return true;
         }
+        toast.error(result.error);
+        return false;
       } catch (error) {
         toast.error(errorMessage(error, toastMessages.parseUrlFailed));
+        return false;
       } finally {
         if (parseInFlightUrlRef.current === url) {
           parseInFlightUrlRef.current = null;

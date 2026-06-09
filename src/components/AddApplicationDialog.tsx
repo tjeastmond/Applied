@@ -27,7 +27,8 @@ export function AddApplicationDialog({
 }) {
   const [form, setForm] = useState<FormState>(emptyForm);
   const addFormUrlInputRef = useRef<HTMLInputElement>(null);
-  const parseRef = useRef<(urlOverride?: string) => Promise<void>>(async () => {});
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
+  const parseRef = useRef<(urlOverride?: string) => Promise<boolean>>(async () => false);
 
   const handleApplicationChange = useCallback(
     (application: JobApplication) => {
@@ -74,11 +75,11 @@ export function AddApplicationDialog({
         const url = normalizeClipboardOnlyJobUrl(text);
         if (!url || cancelled) return;
 
-        await parseRef.current(url);
-        if (cancelled) return;
+        const parsed = await parseRef.current(url);
+        if (!parsed || cancelled) return;
 
         requestAnimationFrame(() => {
-          addFormUrlInputRef.current?.blur();
+          saveButtonRef.current?.focus();
         });
       } catch {
         // Clipboard unavailable or denied — user can paste manually.
@@ -126,7 +127,7 @@ export function AddApplicationDialog({
             <Button type="button" variant="cancelOutline" size="lg" onClick={close}>
               Cancel
             </Button>
-            <Button type="submit" variant="save" size="lg" disabled={isSaving}>
+            <Button ref={saveButtonRef} type="submit" variant="save" size="lg" disabled={isSaving}>
               {isSaving ? "Saving…" : "Save Application"}
             </Button>
           </DialogFooter>
