@@ -124,7 +124,11 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
     const placeholders = uniqueIds.map(() => "?").join(", ");
     const sql = `${LIST_SQL.replace("FROM applications", `FROM applications WHERE id IN (${placeholders})`)}`;
     const rows = this.db.prepare(sql).all(...uniqueIds) as ApplicationRow[];
-    return rows.map(rowToApplication);
+    const applicationsById = new Map(rows.map((row) => [row.id, rowToApplication(row)]));
+    return uniqueIds.flatMap((id) => {
+      const application = applicationsById.get(id);
+      return application ? [application] : [];
+    });
   }
 
   async getById(id: string): Promise<JobApplication | null> {

@@ -159,9 +159,7 @@ describe("application API routes", () => {
     );
     expect(allResponse.status).toBe(200);
     const allBody = (await allResponse.json()) as { applications: { id: string }[] };
-    expect(allBody.applications.map((application) => application.id).sort()).toEqual(
-      [first.id, second.id].sort(),
-    );
+    expect(allBody.applications.map((application) => application.id).sort()).toEqual([first.id, second.id].sort());
 
     const subsetResponse = await bulkFetchApplicationsRoute(
       new Request("http://localhost/api/applications/bulk", {
