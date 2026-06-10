@@ -84,4 +84,29 @@ describe("SqliteJobApplicationRepository", () => {
 
     vi.useRealTimers();
   });
+
+  test("listByIds returns only requested applications", async () => {
+    const db = openDatabase(":memory:");
+    const repository = new SqliteJobApplicationRepository(db);
+
+    const first = await repository.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/first",
+        title: "First",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+      }),
+    );
+    const second = await repository.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/second",
+        title: "Second",
+        company: "Beta",
+        appliedAt: "2026-06-02",
+      }),
+    );
+
+    const listed = await repository.listByIds([second.id, first.id, second.id]);
+    expect(listed.map((item) => item.id)).toEqual([second.id, first.id]);
+  });
 });

@@ -10,6 +10,7 @@ import {
   optionalPlainTextSchema,
   requiredHttpUrlSchema,
   requiredPlainTextSchema,
+  uuidSchema,
 } from "@/lib/schemas/common";
 
 const titleSchema = requiredPlainTextSchema("title", 200).transform((value) => normalizeJobTitle(value) ?? value);
@@ -88,6 +89,12 @@ export const createJobApplicationSchema = jobApplicationSchema.superRefine((valu
 export const patchJobApplicationSchema = jobApplicationSchema.partial().superRefine((value, ctx) => {
   addRecruiterFieldsWhenNotViaRecruiterIssues(value, ctx, "patch");
 });
+
+export const bulkFetchApplicationsSchema = z.object({
+  ids: z.array(uuidSchema).optional(),
+});
+
+export type BulkFetchApplicationsInput = z.infer<typeof bulkFetchApplicationsSchema>;
 
 export type CreateJobApplicationInput = z.input<typeof createJobApplicationSchema>;
 export type ParsedCreateJobApplicationInput = z.infer<typeof createJobApplicationSchema>;

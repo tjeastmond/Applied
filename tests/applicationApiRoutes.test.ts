@@ -5,6 +5,7 @@ import { getRepository, getNoteRepository, useTestDatabase } from "@/lib/server/
 import { GET as getNotes, POST as postNote } from "@/app/api/applications/[id]/notes/route";
 import { DELETE as deleteNote, PATCH as patchNote } from "@/app/api/applications/[id]/notes/[noteId]/route";
 import { PATCH as patchApplication } from "@/app/api/applications/[id]/route";
+import { POST as bulkFetchApplicationsRoute } from "@/app/api/applications/bulk/route";
 
 const missingApplicationId = "00000000-0000-4000-a000-000000000099";
 
@@ -129,5 +130,49 @@ describe("application API routes", () => {
 
     expect(response.status).toBe(200);
     expect(await getNoteRepository().listByApplicationId(app.id)).toHaveLength(0);
+  });
+
+  test("bulk POST returns all applications when ids are omitted", async () => {
+    const first = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/first",
+        title: "First",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+      }),
+    );
+    const second = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/second",
+        title: "Second",
+        company: "Beta",
+        appliedAt: "2026-06-03",
+      }),
+    );
+
+    const allResponse = await bulkFetchApplicationsRoute(
+      new Request("http://localhost/api/applications/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }),
+    );
+    expect(allResponse.status).toBe(200);
+    const allBody = (await allResponse.json()) as { applications: { id: string }[] };
+    expect(allBody.applications.map((application) => application.id).sort()).toEqual(
+      [first.id, second.id].sort(),
+    );
+
+    const subsetResponse = await bulkFetchApplicationsRoute(
+      new Request("http://localhost/api/applications/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [second.id] }),
+      }),
+    );
+    expect(subsetResponse.status).toBe(200);
+    const subsetBody = (await subsetResponse.json()) as { applications: { id: string }[] };
+    expect(subsetBody.applications).toHaveLength(1);
+    expect(subsetBody.applications[0]?.id).toBe(second.id);
   });
 });

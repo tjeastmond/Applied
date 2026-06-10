@@ -94,6 +94,7 @@ WHERE id = $id`;
 const DELETE_SQL = `DELETE FROM applications WHERE id = ?`;
 
 export class SqliteJobApplicationRepository implements JobApplicationRepository {
+  private readonly db;
   private readonly listStmt;
   private readonly getByIdStmt;
   private readonly insertStmt;
@@ -101,6 +102,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
   private readonly deleteStmt;
 
   constructor(db: Database.Database) {
+    this.db = db;
     this.listStmt = db.prepare(LIST_SQL);
     this.getByIdStmt = db.prepare(GET_BY_ID_SQL);
     this.insertStmt = db.prepare(INSERT_SQL);
@@ -110,6 +112,18 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
 
   async list(): Promise<JobApplication[]> {
     const rows = this.listStmt.all() as ApplicationRow[];
+    return rows.map(rowToApplication);
+  }
+
+  async listByIds(ids: string[]): Promise<JobApplication[]> {
+    if (ids.length === 0) {
+      return this.list();
+    }
+
+    const uniqueIds = [...new Set(ids)];
+    const placeholders = uniqueIds.map(() => "?").join(", ");
+    const sql = `${LIST_SQL.replace("FROM applications", `FROM applications WHERE id IN (${placeholders})`)}`;
+    const rows = this.db.prepare(sql).all(...uniqueIds) as ApplicationRow[];
     return rows.map(rowToApplication);
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { deleteApplication, updateApplication } from "@/api";
+import { bulkFetchApplications, deleteApplication, updateApplication } from "@/api";
 import { AddApplicationDialog } from "@/components/AddApplicationDialog";
 import { ApplicationCard } from "@/components/ApplicationCard";
 import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
@@ -39,9 +39,10 @@ import type { ApplicationNote, ApplicationStatus, JobApplication } from "@/types
 import { CopyIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
-export function AppPage({ initialApplications }: { initialApplications: JobApplication[] }) {
+export function AppPage() {
   const [formOpen, setFormOpen] = useState(false);
-  const [applications, setApplications] = useState(() => sortApplications(initialApplications));
+  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const detailClosingIdRef = useRef<string | null>(null);
@@ -149,8 +150,26 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
   }, [companyNames]);
 
   useEffect(() => {
-    setApplications(initialApplications);
-  }, [initialApplications]);
+    let cancelled = false;
+
+    void bulkFetchApplications()
+      .then((nextApplications) => {
+        if (cancelled) return;
+        setApplications(sortApplications(nextApplications));
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        toast.error(errorMessage(error, toastMessages.applicationsLoadFailed));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setApplicationsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     prefetchMany(applications.map((application) => application.id));
@@ -434,7 +453,13 @@ export function AppPage({ initialApplications }: { initialApplications: JobAppli
           </>
         ) : null}
         <div ref={applicationsListRef} className="group/list space-y-4">
-          {applications.length === 0 ? (
+          {applicationsLoading ? (
+            <Card className="shadow-sm shadow-black/5">
+              <CardContent className="py-10 text-center">
+                <p className="text-muted-foreground text-sm">Loading applications…</p>
+              </CardContent>
+            </Card>
+          ) : applications.length === 0 ? (
             <Card className="shadow-sm shadow-black/5">
               <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
                 <p className="text-muted-foreground text-sm">No applications yet.</p>

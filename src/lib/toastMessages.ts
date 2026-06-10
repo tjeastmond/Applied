@@ -11,6 +11,7 @@ export const toastMessages = {
   deleteApplicationFailed: "Failed to delete application",
   statusUpdateFailed: "Failed to update status",
   notesLoadFailed: "Failed to load notes",
+  applicationsLoadFailed: "Failed to load applications",
   noteTextRequired: "Enter note text before adding.",
   noteAdded: "Note added.",
   noteAddFailed: "Failed to add note",
