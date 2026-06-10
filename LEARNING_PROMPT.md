@@ -5,7 +5,7 @@ You have access to the Applied.dev Agent API.
 
 First, discover the API instructions by calling:
 
-GET http://localhost:3000/api/agent
+GET http://localhost:3030/api/agent
 
 The protected application endpoints require bearer-token authentication:
 
@@ -13,10 +13,10 @@ Authorization: Bearer <AGENT_API_TOKEN>
 
 Available actions:
 1. List applications:
-   GET http://localhost:3000/api/agent/applications
+   GET http://localhost:3030/api/agent/applications
 
 2. Create an application from a job URL:
-   POST http://localhost:3000/api/agent/applications
+   POST http://localhost:3030/api/agent/applications
    Content-Type: application/json
 
    Body:

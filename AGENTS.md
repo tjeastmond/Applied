@@ -25,7 +25,7 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 
 ```bash
 pnpm install         # install dependencies
-pnpm dev             # Next.js dev server with Turbopack (port 3000)
+pnpm dev             # Next.js dev server with Turbopack (port 3030 from .env.local)
 pnpm dev:clean       # wipe .next and start dev (if HMR/CSS breaks)
 pnpm run check       # typecheck + tests + lint + format + build (full CI gate)
 ```
@@ -39,11 +39,13 @@ pnpm run start       # next start (production server)
 
 **Environment variables:**
 
-| Variable        | Default           | Purpose                          |
-| --------------- | ----------------- | -------------------------------- |
-| `DATABASE_PATH` | `data/applied.db` | SQLite file path                 |
-| `NODE_ENV`      | —                 | `production` for optimized build |
-| `PORT`          | `3000`            | HTTP port for `next start`       |
+Local defaults live in `.env.local`; copy from `.env.example` when bootstrapping a fresh checkout.
+
+| Variable        | Default           | Purpose                                                                      |
+| --------------- | ----------------- | ---------------------------------------------------------------------------- |
+| `DATABASE_PATH` | `data/applied.db` | SQLite file path                                                             |
+| `NODE_ENV`      | —                 | `production` for optimized build                                             |
+| `PORT`          | `3030`            | HTTP port for `pnpm dev` and `pnpm start`; read from `.env.local` by default |
 
 ---
 
@@ -399,7 +401,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 - Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (header/tab title `APPLIED.`; `ThemeToggle`, icon-only `BackupMenu`, Copy All URLs; initial application hydration via `/api/applications/bulk`; `ApplicationFilters` for company/status/search via `filterApplications`; card pagination via `ApplicationCardPagination`/`applicationPagination`; list footer with `hello@swoo.io` and MIT License link to GitHub; notes prefetched on load and sheet open through `useApplicationNotesCache`; clipboard-only URL prefill on new-application open)
 - Stack: Next.js App Router, Node.js, pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI, self-hosted Roboto Mono
-- `pnpm dev` runs `scripts/dev-clean.sh` (wipes `.next` then starts Turbopack on port 3000)
+- `pnpm dev` runs `scripts/dev-clean.sh` (wipes `.next`, reads `PORT` from `.env.local`, then starts Turbopack on port 3030 by default)
 - Required application form fields: job posting URL, title, company, apply date; all other fields are optional
 - Parsed job postings store cleaned minimal HTML in `full_jd`; user notes live in `application_notes` (many per application)
 - SQLite persistence via better-sqlite3 (`data/applied.db` by default)

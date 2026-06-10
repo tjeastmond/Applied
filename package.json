@@ -8,7 +8,7 @@
     "dev": "sh scripts/dev-clean.sh",
     "dev:clean": "pnpm dev",
     "build": "next build",
-    "start": "next start",
+    "start": "sh scripts/start.sh",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

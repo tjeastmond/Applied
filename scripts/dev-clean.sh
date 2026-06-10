@@ -1,6 +1,17 @@
 #!/usr/bin/env sh
 set -eu
 
+default_port=3030
+env_file=".env.local"
+
+if [ -f "$env_file" ]; then
+  env_port=$(grep -E "^PORT=" "$env_file" | tail -n 1 | cut -d= -f2-)
+  if [ -n "$env_port" ]; then
+    PORT="$env_port"
+    export PORT
+  fi
+fi
+
 pkill -f "next dev" 2>/dev/null || true
 sleep 2
 
@@ -18,4 +29,4 @@ while [ "$attempt" -le "$max_attempts" ]; do
   attempt=$((attempt + 1))
 done
 
-exec next dev --turbopack -p "${PORT:-3000}"
+exec next dev --turbopack -p "${PORT:-$default_port}"
