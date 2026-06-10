@@ -15,7 +15,7 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 - Add-application dialog: hide notes (manage in detail drawer); no section dividers; recruiter/contact fields optional by default; auto-parse on URL paste; on open, clipboard-only URL prefill, parse, then focus Save Application
 - Label the field "Company LinkedIn URL"; use "Contact Name" for the recruiter name field; when `linkedinUrl` is set, show a LinkedIn link before Job Description on cards and sheet via `ApplicationMetadataLine`
 - Use Shadcn Alert Dialog for delete confirmations, not `window.confirm`; no edit/delete on application cards — delete only from the detail drawer
-- Application cards use color-coded `ApplicationStatusPicker` (tag-like dropdown, closes on select; Applied first, then alphabetical); job URLs via `JobDescriptionLink` with copy icon; drawer overlay blurs background; header has icon-only `BackupMenu` (database icon), Copy All URLs, and Add Application
+- Application cards use color-coded `ApplicationStatusPicker` (tag-like dropdown, closes on select; Applied first, then alphabetical); job URLs via `JobDescriptionLink` with copy icon; drawer overlay blurs background; header has icon-only `BackupMenu` (database icon), Copy All URLs, and Add Application; card pagination supports 5/10/20/50 per page plus View all, persisted as `applied-dev-page-size`
 - Light/dark theme toggle in header (Lucide Sun/Moon); persist choice in `localStorage` (`applied-dev-theme`); default light; dark-mode header toolbar outline buttons use `header-toolbar-outline` in `styles.css` for lighter borders and visible hover
 - Links: no default underline; left-to-right underline animates on hover/focus for `a[href]`; sheet header job title uses `link-plain` plus `ExternalLinkIcon` (no animated underline)
 
@@ -397,7 +397,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 ## Learned Workspace Facts
 
-- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (header/tab title `APPLIED.`; `ThemeToggle`, icon-only `BackupMenu`, Copy All URLs; `ApplicationFilters` for company/status/search via `filterApplications`; list footer with `hello@swoo.io` and MIT License link to GitHub; notes prefetched on load and sheet open through `useApplicationNotesCache`; clipboard-only URL prefill on new-application open)
+- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (header/tab title `APPLIED.`; `ThemeToggle`, icon-only `BackupMenu`, Copy All URLs; initial application hydration via `/api/applications/bulk`; `ApplicationFilters` for company/status/search via `filterApplications`; card pagination via `ApplicationCardPagination`/`applicationPagination`; list footer with `hello@swoo.io` and MIT License link to GitHub; notes prefetched on load and sheet open through `useApplicationNotesCache`; clipboard-only URL prefill on new-application open)
 - Stack: Next.js App Router, Node.js, pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI, self-hosted Roboto Mono
 - `pnpm dev` runs `scripts/dev-clean.sh` (wipes `.next` then starts Turbopack on port 3000)
 - Required application form fields: job posting URL, title, company, apply date; all other fields are optional
@@ -408,4 +408,4 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 - Application statuses: `applied`, `interviewing`, `waiting`, `rejected`, `offer`, `passed` — managed via `ApplicationStatusPicker` on cards and in the detail drawer; status changes auto-create a note `Status Update: {label}` via PATCH
 - `ApplicationDetailSheet` is 60vw, slides from the right with blurred backdrop; theme via `ThemeProvider` + blocking `themeInitScript()` before paint (near-black dark tokens in `styles.css`); Sonner follows active theme
 - Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1`
-- Deployable to Vercel; thin auth later; SQLite for now, Postgres possible later; Electron is a viable desktop path with local SQLite (no hosted DB required)
+- Deployable to Vercel; thin auth later; SQLite for now, Postgres possible later; Electron is a viable desktop path with local SQLite (no hosted DB required); for hosted external-agent access, prefer a minimal HTTP API with CLI-created tokens over stdio MCP
