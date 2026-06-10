@@ -18,4 +18,4 @@ while [ "$attempt" -le "$max_attempts" ]; do
   attempt=$((attempt + 1))
 done
 
-exec next dev --turbopack
+exec next dev --turbopack -p "${PORT:-3000}"
