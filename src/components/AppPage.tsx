@@ -6,6 +6,7 @@ import { AddApplicationDialog } from "@/components/AddApplicationDialog";
 import { ApplicationCard } from "@/components/ApplicationCard";
 import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
 import { BackupMenu } from "@/components/BackupMenu";
+import { ApplicationCardPagination } from "@/components/ApplicationCardPagination";
 import { ApplicationFilters } from "@/components/ApplicationFilters";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,12 @@ import {
 import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
 import { removeApplication, sortApplications, upsertApplication } from "@/lib/applicationsList";
 import { filterApplications, hasActiveApplicationFilters } from "@/lib/applicationFilters";
+import {
+  paginateItems,
+  persistApplicationPageSize,
+  readStoredApplicationPageSize,
+  type ApplicationPageSize,
+} from "@/lib/applicationPagination";
 import { uniqueCompanyNames } from "@/lib/companyFilter";
 import { errorMessage } from "@/lib/errorMessage";
 import {
@@ -53,6 +60,8 @@ export function AppPage() {
   const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(() => new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<ApplicationStatus>>(() => new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<ApplicationPageSize>(() => readStoredApplicationPageSize());
   const applicationsListRef = useRef<HTMLDivElement>(null);
   const lastEscapeAtRef = useRef<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +139,15 @@ export function AppPage() {
       }),
     [applications, selectedCompanies, selectedStatuses, searchQuery],
   );
+  const paginatedApplications = useMemo(
+    () => paginateItems(filteredApplications, currentPage, pageSize),
+    [filteredApplications, currentPage, pageSize],
+  );
+  const visibleApplications = paginatedApplications.items;
+  const visibleApplicationIds = useMemo(
+    () => visibleApplications.map((application) => application.id),
+    [visibleApplications],
+  );
   const hasActiveFilters = useMemo(
     () =>
       hasActiveApplicationFilters({
@@ -139,6 +157,16 @@ export function AppPage() {
       }),
     [selectedCompanies, selectedStatuses, searchQuery],
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCompanies, selectedStatuses, searchQuery]);
+
+  useEffect(() => {
+    if (paginatedApplications.page !== currentPage) {
+      setCurrentPage(paginatedApplications.page);
+    }
+  }, [currentPage, paginatedApplications.page]);
 
   useEffect(() => {
     setSelectedCompanies((prev) => {
@@ -172,8 +200,8 @@ export function AppPage() {
   }, []);
 
   useEffect(() => {
-    prefetchMany(applications.map((application) => application.id));
-  }, [applications, prefetchMany]);
+    prefetchMany(visibleApplicationIds);
+  }, [visibleApplicationIds, prefetchMany]);
 
   const openAddForm = useCallback(() => {
     setFormOpen(true);
@@ -328,12 +356,12 @@ export function AppPage() {
     (nextApplications: JobApplication[]) => {
       setApplications(sortApplications(nextApplications));
       clearNotesCacheAll();
-      prefetchMany(nextApplications.map((application) => application.id));
+      setCurrentPage(1);
       setSelectedId(null);
       setDetailOpen(false);
       setFormOpen(false);
     },
-    [clearNotesCacheAll, prefetchMany],
+    [clearNotesCacheAll],
   );
 
   const handleNotesChange = useCallback(
@@ -348,6 +376,18 @@ export function AppPage() {
     setSelectedCompanies(new Set());
     setSelectedStatuses(new Set());
     setSearchQuery("");
+  }, []);
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    applicationsListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const handlePageSizeChange = useCallback((nextPageSize: ApplicationPageSize) => {
+    setPageSize(nextPageSize);
+    persistApplicationPageSize(nextPageSize);
+    setCurrentPage(1);
+    applicationsListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
   useEffect(() => {
@@ -483,7 +523,7 @@ export function AppPage() {
             </Card>
           ) : (
             <>
-              {filteredApplications.map((application) => (
+              {visibleApplications.map((application) => (
                 <ApplicationCard
                   key={application.id}
                   application={application}
@@ -492,6 +532,16 @@ export function AppPage() {
                   onStatusChange={handleStatusChange}
                 />
               ))}
+              <ApplicationCardPagination
+                page={paginatedApplications.page}
+                pageSize={pageSize}
+                totalPages={paginatedApplications.totalPages}
+                rangeStart={paginatedApplications.rangeStart}
+                rangeEnd={paginatedApplications.rangeEnd}
+                totalCount={paginatedApplications.totalCount}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+              />
               <div className="py-3">
                 <Separator />
               </div>
