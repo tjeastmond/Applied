@@ -14,6 +14,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "agent:token": "node scripts/create-agent-token.mjs",
     "test": "vitest",
     "test:run": "vitest run",
     "check": "pnpm run typecheck && pnpm run test:run && pnpm run lint && pnpm run format:check && pnpm run build"
