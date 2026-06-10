@@ -41,6 +41,18 @@ describe("createJobApplicationSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("accepts to_apply status", () => {
+    const parsed = createJobApplicationSchema.parse({
+      url: "https://jobs.example.com/role",
+      title: "Engineer",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+      status: "to_apply",
+    });
+
+    expect(parsed.status).toBe("to_apply");
+  });
+
   it("rejects recruiter fields when viaRecruiter is false", () => {
     const result = createJobApplicationSchema.safeParse({
       url: "https://jobs.example.com/role",

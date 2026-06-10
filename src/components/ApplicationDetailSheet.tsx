@@ -28,6 +28,7 @@ import {
   formatNoteTimestamp,
   isFormPristine,
   isManualSaveFormDirty,
+  isStatusOnlyFormChange,
   type FormState,
 } from "@/lib/applicationForm";
 import { errorMessage } from "@/lib/errorMessage";
@@ -64,7 +65,7 @@ export function ApplicationDetailSheet({
   onOpenChange: (open: boolean) => void;
   onCloseComplete?: () => void;
   onApplicationChange: (application: JobApplication) => void;
-  onStatusChange: (id: string, status: ApplicationStatus) => void;
+  onStatusChange: (id: string, status: ApplicationStatus) => void | Promise<void>;
   onRequestDelete: (id: string) => void;
 }) {
   const [form, setForm] = useState<FormState | null>(() => (application ? applicationToForm(application) : null));
@@ -137,11 +138,37 @@ export function ApplicationDetailSheet({
     if (syncedUpdatedAtRef.current === application.updatedAt) return;
 
     const currentForm = formRef.current;
-    if (currentForm && currentForm.id === applicationId && isFormPristine(currentForm, application)) {
-      setForm(applicationToForm(application));
+    if (currentForm && currentForm.id === applicationId) {
+      if (isFormPristine(currentForm, application)) {
+        setForm(applicationToForm(application));
+      } else if (isStatusOnlyFormChange(currentForm, application) && currentForm.status === application.status) {
+        setForm(applicationToForm(application));
+      }
     }
     syncedUpdatedAtRef.current = application.updatedAt;
   }, [application, applicationId, applicationUpdatedAt, open]);
+
+  const syncFormFromSavedApplication = useCallback((saved: JobApplication) => {
+    if (applicationRef.current?.id !== saved.id) return;
+    const currentForm = formRef.current;
+    if (!currentForm || currentForm.id !== saved.id) return;
+    if (isManualSaveFormDirty(currentForm, saved)) return;
+    setForm(applicationToForm(saved));
+    syncedUpdatedAtRef.current = saved.updatedAt;
+  }, []);
+
+  useEffect(() => {
+    if (!open || !applicationId || !application || application.id !== applicationId) return;
+
+    const currentForm = formRef.current;
+    if (!currentForm || currentForm.id !== applicationId) return;
+    if (isManualSaveFormDirty(currentForm, application)) return;
+
+    if (isStatusOnlyFormChange(currentForm, application) && currentForm.status === application.status) {
+      setForm(applicationToForm(application));
+      syncedUpdatedAtRef.current = application.updatedAt;
+    }
+  }, [application, applicationId, open]);
 
   const pendingNote = useMemo(() => notes.find((note) => note.id === pendingNoteId) ?? null, [notes, pendingNoteId]);
   const sortedNotes = useMemo(() => sortNotes(notes, noteSortOrder), [notes, noteSortOrder]);
@@ -274,9 +301,13 @@ export function ApplicationDetailSheet({
     (status: ApplicationStatus) => {
       if (!applicationId || !application || application.status === status) return;
       updateField("status", status);
-      onStatusChange(applicationId, status);
+      void Promise.resolve(onStatusChange(applicationId, status)).then(() => {
+        const saved = applicationRef.current;
+        if (!saved || saved.id !== applicationId || saved.status !== status) return;
+        syncFormFromSavedApplication(saved);
+      });
     },
-    [applicationId, application, onStatusChange, updateField],
+    [applicationId, application, onStatusChange, syncFormFromSavedApplication, updateField],
   );
 
   const formMatchesApplication = form?.id === applicationId;

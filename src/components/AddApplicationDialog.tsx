@@ -28,7 +28,7 @@ export function AddApplicationDialog({
   const [form, setForm] = useState<FormState>(emptyForm);
   const addFormUrlInputRef = useRef<HTMLInputElement>(null);
   const saveButtonRef = useRef<HTMLButtonElement>(null);
-  const parseRef = useRef<(urlOverride?: string) => Promise<boolean>>(async () => false);
+  const parseRef = useRef<(urlOverride?: string) => Promise<boolean>>(() => Promise.resolve(false));
 
   const handleApplicationChange = useCallback(
     (application: JobApplication) => {

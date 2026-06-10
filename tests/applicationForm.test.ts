@@ -6,6 +6,7 @@ import {
   getRequiredValidationState,
   isFormPristine,
   isManualSaveFormDirty,
+  isStatusOnlyFormChange,
   isFormValid,
   isProbablyHttpUrl,
   normalizeClipboardOnlyJobUrl,
@@ -192,6 +193,32 @@ describe("isFormPristine", () => {
 
     expect(isFormPristine(form, application)).toBe(false);
     expect(isManualSaveFormDirty(form, application)).toBe(false);
+    expect(isStatusOnlyFormChange(form, application)).toBe(true);
+  });
+
+  it("returns false for isStatusOnlyFormChange when a manual-save field differs", () => {
+    const application: JobApplication = {
+      id: "id-1",
+      url: "https://jobs.example.com",
+      linkedinUrl: null,
+      title: "Engineer",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+      viaRecruiter: false,
+      recruiterName: null,
+      recruiterFirm: null,
+      contactEmail: null,
+      contactPhone: null,
+      fullJd: null,
+      status: "applied",
+      createdAt: "2026-06-01T00:00:00.000Z",
+      updatedAt: "2026-06-01T00:00:00.000Z",
+    };
+
+    const form = applicationToForm(application);
+    form.title = "Staff Engineer";
+
+    expect(isStatusOnlyFormChange(form, application)).toBe(false);
   });
 });
 

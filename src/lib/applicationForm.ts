@@ -189,6 +189,11 @@ export function isManualSaveFormDirty(form: FormState, application: JobApplicati
   return formFieldDiffers(form, application, new Set(["status"]));
 }
 
+/** True when status differs but every manual-save field matches the saved application. */
+export function isStatusOnlyFormChange(form: FormState, application: JobApplication): boolean {
+  return !isFormPristine(form, application) && !isManualSaveFormDirty(form, application);
+}
+
 export function mergeParseResult(
   form: FormState,
   result: Pick<ParseJobUrlSuccess, "title" | "company" | "fullJd">,
