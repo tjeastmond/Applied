@@ -1,65 +1,53 @@
 import Database from "better-sqlite3";
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { openDatabase } from "./db/migrate";
-import { SqliteApplicationNoteRepository } from "./db/sqliteApplicationNoteRepository";
-import { SqliteJobApplicationRepository } from "./db/sqliteRepository";
+import { getDefaultDatabasePath, readDatabaseConfig } from "./databaseConfig";
+import type { DatabaseBackend } from "./databaseBackend";
+import { SqliteDatabaseBackend } from "./db/sqliteBackend";
+import { TursoDatabaseBackend } from "./db/tursoBackend";
 import type { ApplicationNoteRepository } from "./repositories/applicationNoteRepository";
 import type { JobApplicationRepository } from "./repositories/jobApplicationRepository";
 
 const globalForDb = globalThis as unknown as {
-  db?: Database.Database;
-  repository?: JobApplicationRepository;
-  noteRepository?: ApplicationNoteRepository;
+  backend?: DatabaseBackend;
 };
 
 export function getDatabasePath(): string {
-  return process.env.DATABASE_PATH ?? join(process.cwd(), "data", "applied.db");
+  const config = readDatabaseConfig();
+  return config.provider === "sqlite" ? config.path : getDefaultDatabasePath();
 }
 
-function ensureDataDirectory(dbPath: string): void {
-  const dataDir = dirname(dbPath);
-  if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true });
+export function getDatabaseBackend(): DatabaseBackend {
+  if (!globalForDb.backend) {
+    const config = readDatabaseConfig();
+    globalForDb.backend =
+      config.provider === "sqlite" ? new SqliteDatabaseBackend(config) : new TursoDatabaseBackend(config);
   }
-}
 
-function getDb(): Database.Database {
-  if (!globalForDb.db) {
-    const dbPath = getDatabasePath();
-    ensureDataDirectory(dbPath);
-    globalForDb.db = openDatabase(dbPath);
-  }
-  return globalForDb.db;
+  return globalForDb.backend;
 }
 
 export function getRepository(): JobApplicationRepository {
-  if (!globalForDb.repository) {
-    globalForDb.repository = new SqliteJobApplicationRepository(getDb());
-  }
-  return globalForDb.repository;
+  return getDatabaseBackend().applications;
 }
 
 export function getNoteRepository(): ApplicationNoteRepository {
-  if (!globalForDb.noteRepository) {
-    globalForDb.noteRepository = new SqliteApplicationNoteRepository(getDb());
-  }
-  return globalForDb.noteRepository;
+  return getDatabaseBackend().notes;
 }
 
 export function getDatabase(): Database.Database {
-  return getDb();
+  const db = getDatabaseBackend().getSqliteDatabase?.();
+  if (!db) {
+    throw new Error("Raw SQLite database access is only available when DATABASE_PROVIDER=sqlite");
+  }
+  return db;
 }
 
-/** Drop cached repositories so they are recreated after schema/data changes. */
-export function resetRepositories(): void {
-  globalForDb.repository = undefined;
-  globalForDb.noteRepository = undefined;
+/** Drop cached backend and repositories so they are recreated after schema/data changes. */
+export function resetDatabaseBackend(): void {
+  globalForDb.backend?.reset();
+  globalForDb.backend = undefined;
 }
 
 /** Point route handlers at an in-memory DB during tests. */
 export function useTestDatabase(db: Database.Database): void {
-  globalForDb.db = db;
-  globalForDb.repository = new SqliteJobApplicationRepository(db);
-  globalForDb.noteRepository = new SqliteApplicationNoteRepository(db);
+  globalForDb.backend = new SqliteDatabaseBackend({ provider: "sqlite", path: ":memory:" }, db);
 }

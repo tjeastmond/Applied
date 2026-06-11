@@ -11,6 +11,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.5.0
         version: 1.5.0(@types/react@19.2.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@tursodatabase/serverless':
+        specifier: ^1.2.1
+        version: 1.2.1
       better-sqlite3:
         specifier: ^12.10.0
         version: 12.10.0
@@ -1113,6 +1116,9 @@ packages:
 
   '@ts-morph/common@0.27.0':
     resolution: {integrity: sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ==}
+
+  '@tursodatabase/serverless@1.2.1':
+    resolution: {integrity: sha512-lkksnxftnXv/6Xnhuc7xMmD2VTW8Q5vczVXkymH6INB9Jqnbr1tILnu3/+tV67RSss6z29YIFG/WE2TWjLxECA==}
 
   '@tybys/wasm-util@0.10.2':
     resolution: {integrity: sha512-RoBvJ2X0wuKlWFIjrwffGw1IqZHKQqzIchKaadZZfnNpsAYp2mM0h36JtPCjNDAHGgYez/15uMBpfGwchhiMgg==}
@@ -4875,6 +4881,8 @@ snapshots:
       fast-glob: 3.3.3
       minimatch: 10.2.5
       path-browserify: 1.0.1
+
+  '@tursodatabase/serverless@1.2.1': {}
 
   '@tybys/wasm-util@0.10.2':
     dependencies:

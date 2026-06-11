@@ -1,6 +1,5 @@
 import { importModeSchema } from "@/lib/schemas/backup";
-import { getDatabase, resetRepositories } from "@/lib/server/db";
-import { importJson, importSql } from "@/lib/server/services/backupService";
+import { getDatabaseBackend, resetDatabaseBackend } from "@/lib/server/db";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -53,14 +52,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const db = getDatabase();
+    const backend = getDatabaseBackend();
     const result =
       format === "json"
-        ? importJson(db, JSON.parse(content) as unknown, modeParsed.data)
-        : importSql(db, content, modeParsed.data);
+        ? await backend.importJson(JSON.parse(content) as unknown, modeParsed.data)
+        : await backend.importSql(content, modeParsed.data);
 
     if (format === "sql" && modeParsed.data === "replace") {
-      resetRepositories();
+      resetDatabaseBackend();
     }
 
     return NextResponse.json(result);

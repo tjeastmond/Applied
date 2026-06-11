@@ -1,34 +1,19 @@
 import type Database from "better-sqlite3";
 import type { ApplicationNote } from "@/types";
 import type { ApplicationNoteRepository } from "../repositories/applicationNoteRepository";
-
-type NoteRow = {
-  id: string;
-  application_id: string;
-  content: string;
-  created_at: string;
-};
-
-function rowToNote(row: NoteRow): ApplicationNote {
-  return {
-    id: row.id,
-    applicationId: row.application_id,
-    content: row.content,
-    createdAt: row.created_at,
-  };
-}
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-const LIST_ALL_SQL = `SELECT * FROM application_notes ORDER BY application_id, created_at DESC, rowid DESC`;
-const LIST_BY_APPLICATION_SQL = `SELECT * FROM application_notes WHERE application_id = ? ORDER BY created_at DESC, rowid DESC`;
-const INSERT_SQL = `INSERT INTO application_notes (id, application_id, content, created_at) VALUES (?, ?, ?, ?)`;
-const GET_FOR_APPLICATION_SQL = `SELECT * FROM application_notes WHERE id = ? AND application_id = ?`;
-const UPDATE_FOR_APPLICATION_SQL = `UPDATE application_notes SET content = ? WHERE id = ? AND application_id = ?`;
-const DELETE_SQL = `DELETE FROM application_notes WHERE id = ?`;
-const DELETE_FOR_APPLICATION_SQL = `DELETE FROM application_notes WHERE id = ? AND application_id = ?`;
+import {
+  buildNote,
+  DELETE_NOTE_FOR_APPLICATION_SQL,
+  DELETE_NOTE_SQL,
+  GET_NOTE_FOR_APPLICATION_SQL,
+  INSERT_NOTE_SQL,
+  LIST_ALL_NOTES_SQL,
+  LIST_NOTES_BY_APPLICATION_SQL,
+  rowToNote,
+  type NoteRow,
+  trimRequiredNoteContent,
+  UPDATE_NOTE_FOR_APPLICATION_SQL,
+} from "./applicationNoteRepositoryShared";
 
 export class SqliteApplicationNoteRepository implements ApplicationNoteRepository {
   private readonly listAllStmt;
@@ -40,13 +25,13 @@ export class SqliteApplicationNoteRepository implements ApplicationNoteRepositor
   private readonly deleteForApplicationStmt;
 
   constructor(db: Database.Database) {
-    this.listAllStmt = db.prepare(LIST_ALL_SQL);
-    this.listByApplicationStmt = db.prepare(LIST_BY_APPLICATION_SQL);
-    this.getForApplicationStmt = db.prepare(GET_FOR_APPLICATION_SQL);
-    this.insertStmt = db.prepare(INSERT_SQL);
-    this.updateForApplicationStmt = db.prepare(UPDATE_FOR_APPLICATION_SQL);
-    this.deleteStmt = db.prepare(DELETE_SQL);
-    this.deleteForApplicationStmt = db.prepare(DELETE_FOR_APPLICATION_SQL);
+    this.listAllStmt = db.prepare(LIST_ALL_NOTES_SQL);
+    this.listByApplicationStmt = db.prepare(LIST_NOTES_BY_APPLICATION_SQL);
+    this.getForApplicationStmt = db.prepare(GET_NOTE_FOR_APPLICATION_SQL);
+    this.insertStmt = db.prepare(INSERT_NOTE_SQL);
+    this.updateForApplicationStmt = db.prepare(UPDATE_NOTE_FOR_APPLICATION_SQL);
+    this.deleteStmt = db.prepare(DELETE_NOTE_SQL);
+    this.deleteForApplicationStmt = db.prepare(DELETE_NOTE_FOR_APPLICATION_SQL);
   }
 
   async listAll(): Promise<ApplicationNote[]> {
@@ -60,29 +45,15 @@ export class SqliteApplicationNoteRepository implements ApplicationNoteRepositor
   }
 
   async create(applicationId: string, content: string): Promise<ApplicationNote> {
-    const trimmed = content.trim();
-    if (trimmed.length === 0) {
-      throw new Error("Note content is required");
-    }
+    const note = buildNote(applicationId, content);
 
-    const id = crypto.randomUUID();
-    const createdAt = nowIso();
+    this.insertStmt.run(note.id, note.applicationId, note.content, note.createdAt);
 
-    this.insertStmt.run(id, applicationId, trimmed, createdAt);
-
-    return {
-      id,
-      applicationId,
-      content: trimmed,
-      createdAt,
-    };
+    return note;
   }
 
   async updateForApplication(applicationId: string, noteId: string, content: string): Promise<ApplicationNote | null> {
-    const trimmed = content.trim();
-    if (trimmed.length === 0) {
-      throw new Error("Note content is required");
-    }
+    const trimmed = trimRequiredNoteContent(content);
 
     const result = this.updateForApplicationStmt.run(trimmed, noteId, applicationId);
     if (result.changes === 0) {

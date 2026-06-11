@@ -1,9 +1,5 @@
 import Database from "better-sqlite3";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
 
 function columnExists(db: Database.Database, column: string): boolean {
   const columns = db.prepare("PRAGMA table_info(applications)").all() as { name: string }[];
@@ -44,20 +40,12 @@ export function migrateLegacyApplicationNotes(db: Database.Database): void {
 export function migrate(db: Database.Database): void {
   db.pragma("foreign_keys = ON");
 
-  const schemaPath = join(__dirname, "schema.sql");
-  const schema = readFileSync(schemaPath, "utf-8");
-  db.exec(schema);
+  db.exec(readSchemaSql());
 
-  if (!columnExists(db, "full_jd")) {
-    db.exec(`ALTER TABLE applications ADD COLUMN full_jd TEXT`);
-  }
-
-  if (!columnExists(db, "salary_range")) {
-    db.exec(`ALTER TABLE applications ADD COLUMN salary_range TEXT`);
-  }
-
-  if (!columnExists(db, "desired_salary")) {
-    db.exec(`ALTER TABLE applications ADD COLUMN desired_salary TEXT`);
+  for (const column of APPLICATION_LEGACY_COLUMNS) {
+    if (!columnExists(db, column)) {
+      db.exec(`ALTER TABLE applications ADD COLUMN ${column} TEXT`);
+    }
   }
 
   migrateLegacyApplicationNotes(db);

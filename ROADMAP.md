@@ -2,6 +2,14 @@
 
 ## Planned Features
 
+### Local And Turso Data Transfer
+
+- Add explicit tooling to push a local SQLite backup to Turso and pull a Turso backup back to local SQLite.
+- Keep transfer commands opt-in and separate from normal app runtime; the app should use either local SQLite or Turso per process, never both.
+- Support safe upsert-style transfers by default, with an explicit destructive flag for replace/import workflows.
+- Add verification tooling to compare application and note counts, latest update timestamps, and backup export validity across providers.
+- Avoid Turso-specific sync features until the core provider toggle has proven stable.
+
 ### Agent API Token Management
 
 - Store agent API tokens in the database as hashed values instead of relying on a single `AGENT_API_TOKEN` environment variable.

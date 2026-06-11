@@ -1,12 +1,9 @@
 import type Database from "better-sqlite3";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { BACKUP_JSON_VERSION, backupJsonSchema, type BackupJson, type ImportMode } from "@/lib/schemas/backup";
 import type { ApplicationNote, JobApplication } from "@/types";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SCHEMA_SQL = readFileSync(join(__dirname, "../db/schema.sql"), "utf-8");
+import type { NoteRow } from "../db/applicationNoteRepositoryShared";
+import { LIST_APPLICATIONS_SQL, type ApplicationRow } from "../db/applicationRepositoryShared";
+import { readSchemaSql } from "../db/schema";
 
 export type ImportResult = {
   applications: JobApplication[];
@@ -16,194 +13,11 @@ export type ImportResult = {
   };
 };
 
-type ApplicationRow = {
-  id: string;
-  url: string;
-  linkedin_url: string | null;
-  title: string | null;
-  company: string | null;
-  applied_at: string;
-  via_recruiter: number;
-  recruiter_name: string | null;
-  recruiter_firm: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  salary_range: string | null;
-  desired_salary: string | null;
+export type ApplicationBackupRow = ApplicationRow & {
   notes: string | null;
-  full_jd: string | null;
-  status: JobApplication["status"];
-  created_at: string;
-  updated_at: string;
 };
 
-type NoteRow = {
-  id: string;
-  application_id: string;
-  content: string;
-  created_at: string;
-};
-
-function rowToApplication(row: ApplicationRow): JobApplication {
-  return {
-    id: row.id,
-    url: row.url,
-    linkedinUrl: row.linkedin_url,
-    title: row.title,
-    company: row.company,
-    appliedAt: row.applied_at,
-    viaRecruiter: row.via_recruiter === 1,
-    recruiterName: row.recruiter_name,
-    recruiterFirm: row.recruiter_firm,
-    contactEmail: row.contact_email,
-    contactPhone: row.contact_phone,
-    salaryRange: row.salary_range,
-    desiredSalary: row.desired_salary,
-    fullJd: row.full_jd,
-    status: row.status,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-function rowToNote(row: NoteRow): ApplicationNote {
-  return {
-    id: row.id,
-    applicationId: row.application_id,
-    content: row.content,
-    createdAt: row.created_at,
-  };
-}
-
-function sqlQuote(value: string | null | undefined): string {
-  if (value === null || value === undefined) {
-    return "NULL";
-  }
-  return `'${value.replace(/'/g, "''")}'`;
-}
-
-function listApplications(db: Database.Database): JobApplication[] {
-  const rows = db
-    .prepare(
-      `SELECT id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm,
-       contact_email, contact_phone, salary_range, desired_salary, full_jd, status, created_at, updated_at
-       FROM applications ORDER BY updated_at DESC, created_at DESC`,
-    )
-    .all() as ApplicationRow[];
-  return rows.map(rowToApplication);
-}
-
-function listNotes(db: Database.Database): ApplicationNote[] {
-  const rows = db
-    .prepare(`SELECT id, application_id, content, created_at FROM application_notes ORDER BY created_at ASC, rowid ASC`)
-    .all() as NoteRow[];
-  return rows.map(rowToNote);
-}
-
-export function exportJson(db: Database.Database): BackupJson {
-  return {
-    version: BACKUP_JSON_VERSION,
-    exportedAt: new Date().toISOString(),
-    applications: listApplications(db),
-    notes: listNotes(db),
-  };
-}
-
-export function exportSql(db: Database.Database): string {
-  const exportedAt = new Date().toISOString();
-  const lines: string[] = [
-    "-- Applied.dev database backup",
-    `-- Exported: ${exportedAt}`,
-    "",
-    "PRAGMA foreign_keys = OFF;",
-    "BEGIN TRANSACTION;",
-    "",
-    "DROP TABLE IF EXISTS application_notes;",
-    "DROP TABLE IF EXISTS applications;",
-    "",
-    SCHEMA_SQL.trim(),
-    "",
-  ];
-
-  const applicationRows = db
-    .prepare(
-      `SELECT id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm,
-       contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, created_at, updated_at FROM applications`,
-    )
-    .all() as ApplicationRow[];
-
-  for (const row of applicationRows) {
-    lines.push(
-      `INSERT INTO applications (id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm, contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, created_at, updated_at) VALUES (${[
-        sqlQuote(row.id),
-        sqlQuote(row.url),
-        sqlQuote(row.linkedin_url),
-        sqlQuote(row.title),
-        sqlQuote(row.company),
-        sqlQuote(row.applied_at),
-        String(row.via_recruiter),
-        sqlQuote(row.recruiter_name),
-        sqlQuote(row.recruiter_firm),
-        sqlQuote(row.contact_email),
-        sqlQuote(row.contact_phone),
-        sqlQuote(row.salary_range),
-        sqlQuote(row.desired_salary),
-        sqlQuote(row.notes),
-        sqlQuote(row.full_jd),
-        sqlQuote(row.status),
-        sqlQuote(row.created_at),
-        sqlQuote(row.updated_at),
-      ].join(", ")});`,
-    );
-  }
-
-  const noteRows = db
-    .prepare(`SELECT id, application_id, content, created_at FROM application_notes`)
-    .all() as NoteRow[];
-
-  for (const row of noteRows) {
-    lines.push(
-      `INSERT INTO application_notes (id, application_id, content, created_at) VALUES (${[
-        sqlQuote(row.id),
-        sqlQuote(row.application_id),
-        sqlQuote(row.content),
-        sqlQuote(row.created_at),
-      ].join(", ")});`,
-    );
-  }
-
-  lines.push("", "COMMIT;", "PRAGMA foreign_keys = ON;", "");
-  return lines.join("\n");
-}
-
-function clearAllData(db: Database.Database): void {
-  db.exec(`DELETE FROM application_notes; DELETE FROM applications;`);
-}
-
-function applicationToRow(application: BackupJson["applications"][number]): ApplicationRow {
-  return {
-    id: application.id,
-    url: application.url,
-    linkedin_url: application.linkedinUrl,
-    title: application.title,
-    company: application.company,
-    applied_at: application.appliedAt,
-    via_recruiter: application.viaRecruiter ? 1 : 0,
-    recruiter_name: application.recruiterName,
-    recruiter_firm: application.recruiterFirm,
-    contact_email: application.contactEmail,
-    contact_phone: application.contactPhone,
-    salary_range: application.salaryRange ?? null,
-    desired_salary: application.desiredSalary ?? null,
-    notes: null,
-    full_jd: application.fullJd,
-    status: application.status,
-    created_at: application.createdAt,
-    updated_at: application.updatedAt,
-  };
-}
-
-const UPSERT_APPLICATION_SQL = `INSERT INTO applications (
+export const UPSERT_APPLICATION_SQL = `INSERT INTO applications (
   id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm,
   contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, created_at, updated_at
 ) VALUES (
@@ -228,12 +42,202 @@ const UPSERT_APPLICATION_SQL = `INSERT INTO applications (
   created_at = excluded.created_at,
   updated_at = excluded.updated_at`;
 
-const UPSERT_NOTE_SQL = `INSERT INTO application_notes (id, application_id, content, created_at)
+export const UPSERT_NOTE_SQL = `INSERT INTO application_notes (id, application_id, content, created_at)
 VALUES (@id, @application_id, @content, @created_at)
 ON CONFLICT(id) DO UPDATE SET
   application_id = excluded.application_id,
   content = excluded.content,
   created_at = excluded.created_at`;
+
+export function rowToBackupApplication(row: ApplicationBackupRow): JobApplication {
+  return {
+    id: row.id,
+    url: row.url,
+    linkedinUrl: row.linkedin_url,
+    title: row.title,
+    company: row.company,
+    appliedAt: row.applied_at,
+    viaRecruiter: row.via_recruiter === 1,
+    recruiterName: row.recruiter_name,
+    recruiterFirm: row.recruiter_firm,
+    contactEmail: row.contact_email,
+    contactPhone: row.contact_phone,
+    salaryRange: row.salary_range,
+    desiredSalary: row.desired_salary,
+    fullJd: row.full_jd,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function rowToBackupNote(row: NoteRow): ApplicationNote {
+  return {
+    id: row.id,
+    applicationId: row.application_id,
+    content: row.content,
+    createdAt: row.created_at,
+  };
+}
+
+export function applicationToRow(application: BackupJson["applications"][number]): ApplicationBackupRow {
+  return {
+    id: application.id,
+    url: application.url,
+    linkedin_url: application.linkedinUrl,
+    title: application.title,
+    company: application.company,
+    applied_at: application.appliedAt,
+    via_recruiter: application.viaRecruiter ? 1 : 0,
+    recruiter_name: application.recruiterName,
+    recruiter_firm: application.recruiterFirm,
+    contact_email: application.contactEmail,
+    contact_phone: application.contactPhone,
+    salary_range: application.salaryRange ?? null,
+    desired_salary: application.desiredSalary ?? null,
+    notes: null,
+    full_jd: application.fullJd,
+    status: application.status,
+    created_at: application.createdAt,
+    updated_at: application.updatedAt,
+  };
+}
+
+export function noteToRow(note: BackupJson["notes"][number]): NoteRow {
+  return {
+    id: note.id,
+    application_id: note.applicationId,
+    content: note.content,
+    created_at: note.createdAt,
+  };
+}
+
+function sqlQuote(value: string | null | undefined): string {
+  if (value === null || value === undefined) {
+    return "NULL";
+  }
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+function listApplications(db: Database.Database): JobApplication[] {
+  const rows = db.prepare(LIST_APPLICATIONS_SQL).all() as ApplicationBackupRow[];
+  return rows.map(rowToBackupApplication);
+}
+
+function listNotes(db: Database.Database): ApplicationNote[] {
+  const rows = db
+    .prepare(`SELECT id, application_id, content, created_at FROM application_notes ORDER BY created_at ASC, rowid ASC`)
+    .all() as NoteRow[];
+  return rows.map(rowToBackupNote);
+}
+
+export function createBackupJson(applications: JobApplication[], notes: ApplicationNote[]): BackupJson {
+  return {
+    version: BACKUP_JSON_VERSION,
+    exportedAt: new Date().toISOString(),
+    applications,
+    notes,
+  };
+}
+
+export function parseBackupJson(raw: unknown): BackupJson {
+  const parsed = backupJsonSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error("Invalid backup JSON format");
+  }
+
+  return parsed.data;
+}
+
+export function exportJson(db: Database.Database): BackupJson {
+  return createBackupJson(listApplications(db), listNotes(db));
+}
+
+function applicationToSqlRow(application: JobApplication): ApplicationBackupRow {
+  return applicationToRow({
+    id: application.id,
+    url: application.url,
+    linkedinUrl: application.linkedinUrl,
+    title: application.title,
+    company: application.company,
+    appliedAt: application.appliedAt,
+    viaRecruiter: application.viaRecruiter,
+    recruiterName: application.recruiterName,
+    recruiterFirm: application.recruiterFirm,
+    contactEmail: application.contactEmail,
+    contactPhone: application.contactPhone,
+    salaryRange: application.salaryRange,
+    desiredSalary: application.desiredSalary,
+    fullJd: application.fullJd,
+    status: application.status,
+    createdAt: application.createdAt,
+    updatedAt: application.updatedAt,
+  });
+}
+
+export function exportSqlFromRecords(applications: JobApplication[], notes: ApplicationNote[]): string {
+  const exportedAt = new Date().toISOString();
+  const lines: string[] = [
+    "-- Applied.dev database backup",
+    `-- Exported: ${exportedAt}`,
+    "",
+    "PRAGMA foreign_keys = OFF;",
+    "BEGIN TRANSACTION;",
+    "",
+    "DROP TABLE IF EXISTS application_notes;",
+    "DROP TABLE IF EXISTS applications;",
+    "",
+    readSchemaSql().trim(),
+    "",
+  ];
+
+  for (const row of applications.map(applicationToSqlRow)) {
+    lines.push(
+      `INSERT INTO applications (id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm, contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, created_at, updated_at) VALUES (${[
+        sqlQuote(row.id),
+        sqlQuote(row.url),
+        sqlQuote(row.linkedin_url),
+        sqlQuote(row.title),
+        sqlQuote(row.company),
+        sqlQuote(row.applied_at),
+        String(row.via_recruiter),
+        sqlQuote(row.recruiter_name),
+        sqlQuote(row.recruiter_firm),
+        sqlQuote(row.contact_email),
+        sqlQuote(row.contact_phone),
+        sqlQuote(row.salary_range),
+        sqlQuote(row.desired_salary),
+        sqlQuote(row.notes),
+        sqlQuote(row.full_jd),
+        sqlQuote(row.status),
+        sqlQuote(row.created_at),
+        sqlQuote(row.updated_at),
+      ].join(", ")});`,
+    );
+  }
+
+  for (const row of notes.map(noteToRow)) {
+    lines.push(
+      `INSERT INTO application_notes (id, application_id, content, created_at) VALUES (${[
+        sqlQuote(row.id),
+        sqlQuote(row.application_id),
+        sqlQuote(row.content),
+        sqlQuote(row.created_at),
+      ].join(", ")});`,
+    );
+  }
+
+  lines.push("", "COMMIT;", "PRAGMA foreign_keys = ON;", "");
+  return lines.join("\n");
+}
+
+export function exportSql(db: Database.Database): string {
+  return exportSqlFromRecords(listApplications(db), listNotes(db));
+}
+
+function clearAllData(db: Database.Database): void {
+  db.exec(`DELETE FROM application_notes; DELETE FROM applications;`);
+}
 
 function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMode): ImportResult {
   const upsertApplication = db.prepare(UPSERT_APPLICATION_SQL);
@@ -249,12 +253,7 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
     }
 
     for (const note of data.notes) {
-      upsertNote.run({
-        id: note.id,
-        application_id: note.applicationId,
-        content: note.content,
-        created_at: note.createdAt,
-      });
+      upsertNote.run(noteToRow(note));
     }
   });
 
@@ -270,22 +269,17 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
 }
 
 export function importJson(db: Database.Database, raw: unknown, mode: ImportMode): ImportResult {
-  const parsed = backupJsonSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new Error("Invalid backup JSON format");
-  }
-
-  return importJsonData(db, parsed.data, mode);
+  return importJsonData(db, parseBackupJson(raw), mode);
 }
 
-function extractInsertStatements(sql: string): string[] {
+export function extractInsertStatements(sql: string): string[] {
   return sql
     .split(";")
     .map((statement) => statement.trim())
     .filter((statement) => /^INSERT\s+INTO\s+/i.test(statement));
 }
 
-function countSqlInserts(sql: string): { applications: number; notes: number } {
+export function countSqlInserts(sql: string): { applications: number; notes: number } {
   const inserts = extractInsertStatements(sql);
   let applications = 0;
   let notes = 0;
@@ -301,18 +295,22 @@ function countSqlInserts(sql: string): { applications: number; notes: number } {
   return { applications, notes };
 }
 
-function importSqlUpsert(db: Database.Database, sql: string): ImportResult {
+export function prepareSqlUpsertStatements(sql: string): string[] {
   const inserts = extractInsertStatements(sql);
   if (inserts.length === 0) {
     throw new Error("No INSERT statements found in SQL backup");
   }
 
+  return inserts.map((insert) => `${insert.replace(/^INSERT\s+INTO/i, "INSERT OR REPLACE INTO")};`);
+}
+
+function importSqlUpsert(db: Database.Database, sql: string): ImportResult {
+  const upserts = prepareSqlUpsertStatements(sql);
   const imported = countSqlInserts(sql);
 
   const run = db.transaction(() => {
-    for (const insert of inserts) {
-      const upsert = insert.replace(/^INSERT\s+INTO/i, "INSERT OR REPLACE INTO");
-      db.exec(`${upsert};`);
+    for (const upsert of upserts) {
+      db.exec(upsert);
     }
   });
 

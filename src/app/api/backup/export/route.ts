@@ -1,11 +1,11 @@
 import { backupFormatSchema } from "@/lib/schemas/backup";
-import { getDatabase } from "@/lib/server/db";
-import { backupFilename, exportJson, exportSql } from "@/lib/server/services/backupService";
+import { getDatabaseBackend } from "@/lib/server/db";
+import { backupFilename } from "@/lib/server/services/backupService";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export function GET(request: Request) {
+export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const parsed = backupFormatSchema.safeParse(searchParams.get("format"));
   if (!parsed.success) {
@@ -13,10 +13,10 @@ export function GET(request: Request) {
   }
 
   const exportedAt = new Date();
-  const db = getDatabase();
+  const backend = getDatabaseBackend();
 
   if (parsed.data === "json") {
-    const payload = exportJson(db);
+    const payload = await backend.exportJson();
     const body = JSON.stringify(payload, null, 2);
     return new NextResponse(body, {
       headers: {
@@ -26,7 +26,7 @@ export function GET(request: Request) {
     });
   }
 
-  const sql = exportSql(db);
+  const sql = await backend.exportSql();
   return new NextResponse(sql, {
     headers: {
       "Content-Type": "application/sql; charset=utf-8",

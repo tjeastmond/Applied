@@ -1,10 +1,10 @@
 import type Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import yazl from "yazl";
-import { getDatabasePath } from "@/lib/server/db";
+import { getDefaultDatabasePath } from "@/lib/server/databaseConfig";
 
 export type DatabaseBackupPayload = {
   filename: string;
@@ -17,22 +17,46 @@ type CreateDatabaseBackupOptions = {
   tempDir?: string;
 };
 
-export function databaseBackupFilename(
-  createdAt = new Date(),
-  databasePath = getDatabasePath(),
-): string {
+export function databaseBackupFilename(createdAt = new Date(), databasePath = getDefaultDatabasePath()): string {
   const stamp = createdAt.toISOString().replace(/[:.]/g, "-");
   const dbBaseName = basename(databasePath).replace(/\.db$/i, "");
   return `${dbBaseName}-backup-${stamp}.zip`;
 }
 
-export function databaseBackupEntryFilename(
-  createdAt = new Date(),
-  databasePath = getDatabasePath(),
-): string {
+export function databaseBackupEntryFilename(createdAt = new Date(), databasePath = getDefaultDatabasePath()): string {
   const stamp = createdAt.toISOString().replace(/[:.]/g, "-");
   const dbBaseName = basename(databasePath).replace(/\.db$/i, "");
   return `${dbBaseName}-backup-${stamp}.db`;
+}
+
+export async function createSqlBackupZip(
+  sql: string,
+  options: CreateDatabaseBackupOptions = {},
+): Promise<DatabaseBackupPayload> {
+  const tempDir = options.tempDir ?? mkdtempSync(join(tmpdir(), "applied-sql-backup-"));
+  const ownsTempDir = options.tempDir === undefined;
+  const tempSqlPath = join(tempDir, `${randomUUID()}.sql`);
+
+  try {
+    writeFileSync(tempSqlPath, sql);
+
+    const createdAt = options.createdAt ?? new Date();
+    const filename = databaseBackupFilename(createdAt, options.databasePath ?? "turso.db");
+    const entryFilename = databaseBackupEntryFilename(createdAt, options.databasePath ?? "turso.db").replace(
+      /\.db$/i,
+      ".sql",
+    );
+    const data = await zipFile(tempSqlPath, entryFilename);
+
+    return {
+      filename,
+      data,
+    };
+  } finally {
+    if (ownsTempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  }
 }
 
 async function zipFile(filePath: string, entryName: string): Promise<Buffer> {

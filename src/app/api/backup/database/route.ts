@@ -1,13 +1,11 @@
-import { getDatabase } from "@/lib/server/db";
-import { createDatabaseBackup } from "@/lib/server/services/databaseBackupService";
+import { getDatabaseBackend } from "@/lib/server/db";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    const db = getDatabase();
-    const { filename, data } = await createDatabaseBackup(db);
+    const { filename, data } = await getDatabaseBackend().createDatabaseBackup();
 
     return new NextResponse(new Uint8Array(data), {
       headers: {

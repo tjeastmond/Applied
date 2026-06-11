@@ -41,11 +41,15 @@ pnpm run start       # next start (production server)
 
 Local defaults live in `.env.local`; copy from `.env.example` when bootstrapping a fresh checkout.
 
-| Variable        | Default           | Purpose                                                                      |
-| --------------- | ----------------- | ---------------------------------------------------------------------------- |
-| `DATABASE_PATH` | `data/applied.db` | SQLite file path                                                             |
-| `NODE_ENV`      | —                 | `production` for optimized build                                             |
-| `PORT`          | `3030`            | HTTP port for `pnpm dev` and `pnpm start`; read from `.env.local` by default |
+| Variable             | Default           | Purpose                                                                      |
+| -------------------- | ----------------- | ---------------------------------------------------------------------------- |
+| `DATABASE_PROVIDER`  | `sqlite`          | Database backend: `sqlite` for local file storage or `turso` for Turso Cloud |
+| `DATABASE_PATH`      | `data/applied.db` | SQLite file path when `DATABASE_PROVIDER=sqlite`                             |
+| `TURSO_DATABASE_URL` | —                 | Turso Cloud database URL when `DATABASE_PROVIDER=turso`                      |
+| `TURSO_AUTH_TOKEN`   | —                 | Turso Cloud auth token when `DATABASE_PROVIDER=turso`                        |
+| `AGENT_API_TOKEN`    | —                 | Bearer token for `/api/agent/*` routes                                       |
+| `NODE_ENV`           | —                 | `production` for optimized build                                             |
+| `PORT`               | `3030`            | HTTP port for `pnpm dev` and `pnpm start`; read from `.env.local` by default |
 
 ---
 
@@ -140,25 +144,25 @@ applied.dev/
 
 ### `JobApplication` (`src/types.ts`)
 
-| Field           | Type                | Notes                                                                            |
-| --------------- | ------------------- | -------------------------------------------------------------------------------- |
-| `id`            | `string`            | UUID, server-generated                                                           |
-| `url`           | `string`            | **Required** — job posting URL                                                   |
-| `linkedinUrl`   | `string \| null`    | Optional                                                                         |
-| `title`         | `string \| null`    | **Required on create** (validated server + client)                               |
-| `company`       | `string \| null`    | **Required on create**                                                           |
-| `appliedAt`     | `string`            | **Required** — ISO date `YYYY-MM-DD`                                             |
-| `viaRecruiter`  | `boolean`           | When false, recruiter fields cleared on save                                     |
-| `recruiterName` | `string \| null`    | Only when `viaRecruiter`                                                         |
-| `recruiterFirm` | `string \| null`    | Only when `viaRecruiter`                                                         |
-| `contactEmail`  | `string \| null`    |                                                                                  |
-| `contactPhone`  | `string \| null`    |                                                                                  |
+| Field           | Type                | Notes                                                                             |
+| --------------- | ------------------- | --------------------------------------------------------------------------------- |
+| `id`            | `string`            | UUID, server-generated                                                            |
+| `url`           | `string`            | **Required** — job posting URL                                                    |
+| `linkedinUrl`   | `string \| null`    | Optional                                                                          |
+| `title`         | `string \| null`    | **Required on create** (validated server + client)                                |
+| `company`       | `string \| null`    | **Required on create**                                                            |
+| `appliedAt`     | `string`            | **Required** — ISO date `YYYY-MM-DD`                                              |
+| `viaRecruiter`  | `boolean`           | When false, recruiter fields cleared on save                                      |
+| `recruiterName` | `string \| null`    | Only when `viaRecruiter`                                                          |
+| `recruiterFirm` | `string \| null`    | Only when `viaRecruiter`                                                          |
+| `contactEmail`  | `string \| null`    |                                                                                   |
+| `contactPhone`  | `string \| null`    |                                                                                   |
 | `salaryRange`   | `string \| null`    | Optional — posting pay range; parsed from job URLs when available (max 100 chars) |
 | `desiredSalary` | `string \| null`    | Optional — user-entered target salary (max 100 chars); not parsed from URLs       |
-| `fullJd`        | `string \| null`    | Parsed job description — cleaned minimal HTML                                    |
-| `status`        | `ApplicationStatus` | `"applied" \| "interviewing" \| "rejected" \| "offer"` — defaults to `"applied"` |
-| `createdAt`     | `string`            | ISO timestamp                                                                    |
-| `updatedAt`     | `string`            | ISO timestamp                                                                    |
+| `fullJd`        | `string \| null`    | Parsed job description — cleaned minimal HTML                                     |
+| `status`        | `ApplicationStatus` | `"applied" \| "interviewing" \| "rejected" \| "offer"` — defaults to `"applied"`  |
+| `createdAt`     | `string`            | ISO timestamp                                                                     |
+| `updatedAt`     | `string`            | ISO timestamp                                                                     |
 
 **SQLite column mapping:** snake_case in DB (`linkedin_url`, `applied_at`, `salary_range`, `desired_salary`, `full_jd`, etc.); camelCase in TypeScript via `rowToApplication()`.
 
@@ -191,18 +195,18 @@ Legacy `applications.notes` values are migrated into `application_notes` on star
 
 All endpoints return JSON unless noted. Errors: `{ "error": "message" }` with 4xx status.
 
-| Method   | Path                                  | Body                                 | Response                 |
-| -------- | ------------------------------------- | ------------------------------------ | ------------------------ |
-| `GET`    | `/api/applications`                   | —                                    | `JobApplication[]`       |
+| Method   | Path                                  | Body                                          | Response                             |
+| -------- | ------------------------------------- | --------------------------------------------- | ------------------------------------ |
+| `GET`    | `/api/applications`                   | —                                             | `JobApplication[]`                   |
 | `POST`   | `/api/applications/bulk`              | `{ "ids"?: string[] }` (omit or `[]` for all) | `{ applications: JobApplication[] }` |
-| `POST`   | `/api/applications`                   | `CreateJobApplicationInput`          | `JobApplication` (201)   |
-| `PATCH`  | `/api/applications/:id`               | `Partial<CreateJobApplicationInput>` | `JobApplication` or 404  |
-| `DELETE` | `/api/applications/:id`               | —                                    | 204 or 404               |
-| `GET`    | `/api/applications/:id/notes`         | —                                    | `ApplicationNote[]`      |
-| `POST`   | `/api/applications/:id/notes`         | `{ "content": string }`              | `ApplicationNote` (201)  |
-| `PATCH`  | `/api/applications/:id/notes/:noteId` | `{ "content": string }`              | `ApplicationNote` or 404 |
-| `DELETE` | `/api/applications/:id/notes/:noteId` | —                                    | 204 or 404               |
-| `POST`   | `/api/jobs/parse`                     | `{ "url": string }`                  | `ParseJobUrlResult`      |
+| `POST`   | `/api/applications`                   | `CreateJobApplicationInput`                   | `JobApplication` (201)               |
+| `PATCH`  | `/api/applications/:id`               | `Partial<CreateJobApplicationInput>`          | `JobApplication` or 404              |
+| `DELETE` | `/api/applications/:id`               | —                                             | 204 or 404                           |
+| `GET`    | `/api/applications/:id/notes`         | —                                             | `ApplicationNote[]`                  |
+| `POST`   | `/api/applications/:id/notes`         | `{ "content": string }`                       | `ApplicationNote` (201)              |
+| `PATCH`  | `/api/applications/:id/notes/:noteId` | `{ "content": string }`                       | `ApplicationNote` or 404             |
+| `DELETE` | `/api/applications/:id/notes/:noteId` | —                                             | 204 or 404                           |
+| `POST`   | `/api/jobs/parse`                     | `{ "url": string }`                           | `ParseJobUrlResult`                  |
 
 **Create validation** (`src/lib/schemas/application.ts` via Zod): `url`, `title`, `company`, `appliedAt` required; optional fields (`salaryRange`, `desiredSalary`, recruiter/contact, etc.) sanitized on persist.
 
@@ -401,12 +405,19 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 ## Dev vs Production
 
-|           | Development              | Production                      |
-| --------- | ------------------------ | ------------------------------- |
-| Server    | `pnpm dev` (Next.js HMR) | `pnpm run build` + `pnpm start` |
-| API       | Same Next.js process     | Same Next.js process            |
-| API calls | Same-origin `/api`       | Same-origin `/api`              |
-| Database  | `data/applied.db`        | Same                            |
+|           | Development                                                  | Production                                                                  |
+| --------- | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Server    | `pnpm dev` (Next.js HMR)                                     | `pnpm run build` + `pnpm start`                                             |
+| API       | Same Next.js process                                         | Same Next.js process                                                        |
+| API calls | Same-origin `/api`                                           | Same-origin `/api`                                                          |
+| Database  | `DATABASE_PROVIDER=sqlite` with `data/applied.db` by default | Local file SQLite for self-hosted Node; `DATABASE_PROVIDER=turso` on Vercel |
+
+**Vercel database settings:**
+
+- Set `DATABASE_PROVIDER=turso`.
+- Set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`.
+- Do not use `DATABASE_PROVIDER=sqlite` on Vercel for writable production data; Vercel's local filesystem is ephemeral.
+- The app uses one selected provider per process. It does not dual-write, use embedded replicas, or automatically sync local SQLite with Turso.
 
 ---
 
@@ -417,11 +428,11 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 - `pnpm dev` runs `scripts/dev-clean.sh` (wipes `.next`, reads `PORT` from `.env.local`, then starts Turbopack on port 3030 by default)
 - Required application form fields: job posting URL, title, company, apply date; all other fields are optional
 - Parsed job postings store cleaned minimal HTML in `full_jd`; user notes live in `application_notes` (many per application)
-- SQLite persistence via better-sqlite3 (`data/applied.db` by default)
+- Database persistence is selected by `DATABASE_PROVIDER`: local SQLite via better-sqlite3 (`data/applied.db` by default) or Turso Cloud via `@tursodatabase/serverless`; runtime uses exactly one provider per process
 - API request bodies are validated with Zod and sanitized before persistence
 - Job URL parse uses `extractJobCompany` and `extractParaformRole`: Y Combinator, Ashby, and Paraform are job boards, not employers; Paraform title/company from JSON-LD, Next data, and og:title patterns; `normalizeJobTitle()` strips `| Y Combinator` and anything after it, and collapses extra whitespace on parse/save
 - Application statuses: `applied`, `to_apply`, `interviewing`, `waiting`, `rejected`, `offer`, `passed` — managed via `ApplicationStatusPicker` on cards and in the detail drawer; status changes auto-create a note `Status Update: {label}` via PATCH; agent API creates use `to_apply` (label "To Apply")
 - `ApplicationDetailSheet` is 60vw, slides from the right with blurred backdrop; theme via `ThemeProvider` + blocking `themeInitScript()` before paint (near-black dark tokens in `styles.css`); Sonner follows active theme
-- Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1`; SQLite database download via `GET /api/backup/database` (`databaseBackupService.ts` uses `better-sqlite3` `backup()` + zip); `BackupMenu` "Create Backup" downloads `.zip` containing the `.db`
+- Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1`; provider-selected database backup via `GET /api/backup/database` (local SQLite returns a zipped `.db`; Turso returns a zipped SQL backup); `BackupMenu` "Create Backup" downloads `.zip`
 - Optional salary fields: `salaryRange` (posting pay range, parsed on job URL fetch) and `desiredSalary` (user target, form-only); both optional on create/patch, searchable, included in backup/export JSON and SQL
-- Deployable to Vercel; thin auth later; SQLite for now, Postgres possible later; Electron is a viable desktop path with local SQLite (no hosted DB required); external-agent workflow via token-protected `/api/agent` (GET discovery; GET/POST `/api/agent/applications` for list/create only); agent create-from-URL persists parsed `salaryRange` when the parser finds it; bearer token from `AGENT_API_TOKEN` (`pnpm agent:token`); agent docs in `LEARNING_PROMPT.md`
+- Deployable to Vercel with Turso Cloud (`DATABASE_PROVIDER=turso`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`); thin auth later; Electron is a viable desktop path with local SQLite (no hosted DB required); external-agent workflow via token-protected `/api/agent` (GET discovery; GET/POST `/api/agent/applications` for list/create only); agent create-from-URL persists parsed `salaryRange` when the parser finds it; bearer token from `AGENT_API_TOKEN` (`pnpm agent:token`); agent docs in `LEARNING_PROMPT.md`
