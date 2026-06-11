@@ -29,4 +29,7 @@ export const toastMessages = {
   backupExportFailed: "Failed to export backup.",
   backupImported: "Backup imported.",
   backupImportFailed: "Failed to import backup.",
+  tursoSyncSuccess: "Synced local data to Turso.",
+  tursoSyncPartial: "Synced to Turso, but databases still differ.",
+  tursoSyncFailed: "Failed to sync to Turso.",
 } as const;

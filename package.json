@@ -15,6 +15,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "agent:token": "node scripts/create-agent-token.mjs",
+    "db:push-turso": "tsx scripts/db-transfer.ts push",
+    "db:pull-turso": "tsx scripts/db-transfer.ts pull",
+    "db:verify-turso": "tsx scripts/db-transfer.ts verify",
     "test": "vitest",
     "test:run": "vitest run",
     "check": "pnpm run typecheck && pnpm run test:run && pnpm run lint && pnpm run format:check && pnpm run build"
@@ -60,6 +63,7 @@
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.7.1",
     "tailwindcss": "^4.1.17",
+    "tsx": "^4.22.4",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4",
     "vitest": "^3.2.4"

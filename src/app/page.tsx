@@ -6,6 +6,7 @@ import {
   parseApplicationPageSize,
 } from "@/lib/applicationPagination";
 import { loadInitialPageData } from "@/lib/server/loadInitialPageData";
+import { isTursoSyncAvailable } from "@/lib/server/services/databaseTransferService";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function Page() {
       initialNotesByApplicationId={notesByApplicationId}
       initialPageSize={storedPageSize ?? DEFAULT_APPLICATION_PAGE_SIZE}
       initialPageSizeFromPreference={storedPageSize !== null}
+      tursoSyncAvailable={isTursoSyncAvailable()}
     />
   );
 }

@@ -51,6 +51,7 @@ type AppPageProps = {
   initialNotesByApplicationId: Record<string, ApplicationNote[]>;
   initialPageSize: ApplicationPageSize;
   initialPageSizeFromPreference: boolean;
+  tursoSyncAvailable: boolean;
 };
 
 let hasRestoredApplicationPageSizePreference = false;
@@ -60,6 +61,7 @@ export function AppPage({
   initialNotesByApplicationId,
   initialPageSize,
   initialPageSizeFromPreference,
+  tursoSyncAvailable,
 }: AppPageProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [applications, setApplications] = useState<JobApplication[]>(() => initialApplications);
@@ -428,7 +430,7 @@ export function AppPage({
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
           <ThemeToggle />
-          <BackupMenu onImported={handleBackupImported} />
+          <BackupMenu onImported={handleBackupImported} tursoSyncAvailable={tursoSyncAvailable} />
           <Button
             type="button"
             variant="outline"

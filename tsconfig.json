@@ -29,6 +29,7 @@
     "src/**/*.tsx",
     "src/app",
     "scripts/**/*.mjs",
+    "scripts/**/*.ts",
     "tests",
     ".next/types/**/*.ts"
   ],

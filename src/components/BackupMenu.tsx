@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { downloadDatabaseBackup, exportBackup, importBackup, type ImportBackupMode } from "@/api";
+import { downloadDatabaseBackup, exportBackup, importBackup, syncTurso, type ImportBackupMode } from "@/api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,11 +33,12 @@ import { errorMessage } from "@/lib/errorMessage";
 import { toastMessages } from "@/lib/toastMessages";
 import { cn } from "@/lib/utils";
 import type { JobApplication } from "@/types";
-import { DatabaseIcon, DownloadIcon, UploadIcon } from "lucide-react";
+import { DatabaseIcon, CloudUploadIcon, DownloadIcon, UploadIcon } from "lucide-react";
 import { toast } from "sonner";
 
 type BackupMenuProps = {
   onImported: (applications: JobApplication[]) => void;
+  tursoSyncAvailable?: boolean;
 };
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -49,8 +50,9 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function BackupMenu({ onImported }: BackupMenuProps) {
+export function BackupMenu({ onImported, tursoSyncAvailable = false }: BackupMenuProps) {
   const [exporting, setExporting] = useState(false);
+  const [syncingTurso, setSyncingTurso] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<ImportBackupMode>("upsert");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -128,6 +130,26 @@ export function BackupMenu({ onImported }: BackupMenuProps) {
     }
   }
 
+  async function handleTursoSync() {
+    setSyncingTurso(true);
+    try {
+      const result = await syncTurso("upsert");
+      const detail = `${result.imported.applications} application(s), ${result.imported.notes} note(s).`;
+      if (result.matches) {
+        toast.success(`${toastMessages.tursoSyncSuccess} ${detail}`);
+        return;
+      }
+
+      toast.success(`${toastMessages.tursoSyncPartial} ${detail}`);
+    } catch (error) {
+      toast.error(errorMessage(error, toastMessages.tursoSyncFailed));
+    } finally {
+      setSyncingTurso(false);
+    }
+  }
+
+  const backupBusy = exporting || syncingTurso;
+
   return (
     <>
       <DropdownMenu>
@@ -138,7 +160,7 @@ export function BackupMenu({ onImported }: BackupMenuProps) {
               variant="outline"
               size="icon"
               className="header-toolbar-outline"
-              disabled={exporting}
+              disabled={backupBusy}
               aria-label="Backup"
               title="Backup"
             >
@@ -147,19 +169,28 @@ export function BackupMenu({ onImported }: BackupMenuProps) {
           }
         />
         <DropdownMenuContent align="end" className="min-w-44">
-          <DropdownMenuItem disabled={exporting} onClick={() => void handleExport("sql")}>
+          <DropdownMenuItem disabled={backupBusy} onClick={() => void handleExport("sql")}>
             <DownloadIcon />
             Export SQL
           </DropdownMenuItem>
-          <DropdownMenuItem disabled={exporting} onClick={() => void handleExport("json")}>
+          <DropdownMenuItem disabled={backupBusy} onClick={() => void handleExport("json")}>
             <DownloadIcon />
             Export JSON
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem disabled={exporting} onClick={() => void handleDownloadDatabaseBackup()}>
+          <DropdownMenuItem disabled={backupBusy} onClick={() => void handleDownloadDatabaseBackup()}>
             <DownloadIcon />
             Create Backup
           </DropdownMenuItem>
+          {tursoSyncAvailable ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled={backupBusy} onClick={() => void handleTursoSync()}>
+                <CloudUploadIcon />
+                {syncingTurso ? "Turso Sync…" : "Turso Sync"}
+              </DropdownMenuItem>
+            </>
+          ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => {

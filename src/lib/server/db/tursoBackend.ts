@@ -118,10 +118,6 @@ function rowToNoteRow(row: Row): NoteRow {
   };
 }
 
-function noteRow(row: ApplicationNote): NamedArgs {
-  return noteToRow(row);
-}
-
 function tursoRowToApplication(row: Row): JobApplication {
   return rowToApplication(rowToApplicationRow(row));
 }
@@ -363,22 +359,19 @@ export class TursoDatabaseBackend implements DatabaseBackend {
   async importJson(raw: unknown, mode: ImportMode) {
     await this.ready;
     const data = parseBackupJson(raw);
-    const statements: InStatement[] = [];
 
     if (mode === "replace") {
-      statements.push("DELETE FROM application_notes", "DELETE FROM applications");
+      await this.client.execute("DELETE FROM application_notes");
+      await this.client.execute("DELETE FROM applications");
     }
 
+    // libsql batch() does not bind named args (@url); execute() does.
     for (const application of data.applications) {
-      statements.push({ sql: UPSERT_APPLICATION_SQL, args: applicationToRow(application) });
+      await this.client.execute({ sql: UPSERT_APPLICATION_SQL, args: applicationToRow(application) });
     }
 
     for (const note of data.notes) {
-      statements.push({ sql: UPSERT_NOTE_SQL, args: noteRow(note) });
-    }
-
-    if (statements.length > 0) {
-      await this.client.batch(statements, "write");
+      await this.client.execute({ sql: UPSERT_NOTE_SQL, args: noteToRow(note) });
     }
 
     return {
