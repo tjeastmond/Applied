@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createApplicationNote, deleteApplicationNote, updateApplication, updateApplicationNote } from "@/api";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
 import { ApplicationMetadataLine } from "@/components/ApplicationMetadataLine";
@@ -39,7 +39,13 @@ import {
   modSShortcutDescription,
   modSShortcutLabel,
 } from "@/lib/keyboardShortcut";
-import { persistNoteSortOrder, readStoredNoteSortOrder, sortNotes, type NoteSortOrder } from "@/lib/noteSort";
+import {
+  DEFAULT_NOTE_SORT_ORDER,
+  persistNoteSortOrder,
+  readStoredNoteSortOrder,
+  sortNotes,
+  type NoteSortOrder,
+} from "@/lib/noteSort";
 import { toastMessages } from "@/lib/toastMessages";
 import type { ApplicationNote, ApplicationStatus, JobApplication } from "@/types";
 import { ChevronDownIcon, CopyIcon, ExternalLinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
@@ -79,7 +85,7 @@ export function ApplicationDetailSheet({
   const [jdOpen, setJdOpen] = useState(false);
   const [unsavedCloseDialogOpen, setUnsavedCloseDialogOpen] = useState(false);
   const [isSavingBeforeClose, setIsSavingBeforeClose] = useState(false);
-  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(() => readStoredNoteSortOrder());
+  const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(DEFAULT_NOTE_SORT_ORDER);
 
   const applicationId = application?.id ?? null;
   const applicationUpdatedAt = application?.updatedAt ?? null;
@@ -108,6 +114,10 @@ export function ApplicationDetailSheet({
         syncedUpdatedAtRef.current = updated.updatedAt;
       },
     });
+
+  useLayoutEffect(() => {
+    setNoteSortOrder(readStoredNoteSortOrder());
+  }, []);
 
   useEffect(() => {
     if (!open || !applicationId || !application || application.id !== applicationId) {

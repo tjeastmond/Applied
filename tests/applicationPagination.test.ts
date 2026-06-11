@@ -5,6 +5,7 @@ import {
   clampPage,
   formatApplicationPageRange,
   paginateItems,
+  parseApplicationPageSize,
 } from "../src/lib/applicationPagination";
 
 describe("applicationPagination", () => {
@@ -45,6 +46,14 @@ describe("applicationPagination", () => {
     expect(formatApplicationPageRange(0, 0, 0)).toBe("No applications");
     expect(formatApplicationPageRange(1, 1, 1)).toBe("1 of 1");
     expect(formatApplicationPageRange(1, 10, 42)).toBe("1–10 of 42");
+  });
+
+  it("parses stored page size values", () => {
+    expect(parseApplicationPageSize("5")).toBe(5);
+    expect(parseApplicationPageSize("all")).toBe(APPLICATION_VIEW_ALL_PAGE_SIZE);
+    expect(parseApplicationPageSize("10")).toBe(10);
+    expect(parseApplicationPageSize("invalid")).toBeNull();
+    expect(parseApplicationPageSize(undefined)).toBeNull();
   });
 
   it("supports five per page and view all", () => {

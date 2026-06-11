@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { deleteApplication, updateApplication } from "@/api";
 import { AddApplicationDialog } from "@/components/AddApplicationDialog";
 import { ApplicationCard } from "@/components/ApplicationCard";
@@ -49,9 +49,18 @@ import { toast } from "sonner";
 type AppPageProps = {
   initialApplications: JobApplication[];
   initialNotesByApplicationId: Record<string, ApplicationNote[]>;
+  initialPageSize: ApplicationPageSize;
+  initialPageSizeFromPreference: boolean;
 };
 
-export function AppPage({ initialApplications, initialNotesByApplicationId }: AppPageProps) {
+let hasRestoredApplicationPageSizePreference = false;
+
+export function AppPage({
+  initialApplications,
+  initialNotesByApplicationId,
+  initialPageSize,
+  initialPageSizeFromPreference,
+}: AppPageProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [applications, setApplications] = useState<JobApplication[]>(() => initialApplications);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -65,7 +74,10 @@ export function AppPage({ initialApplications, initialNotesByApplicationId }: Ap
   const [selectedStatuses, setSelectedStatuses] = useState<Set<ApplicationStatus>>(() => new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState<ApplicationPageSize>(() => readStoredApplicationPageSize());
+  const [pageSize, setPageSize] = useState<ApplicationPageSize>(initialPageSize);
+  const [hasSyncedPageSize, setHasSyncedPageSize] = useState(
+    () => initialPageSizeFromPreference || hasRestoredApplicationPageSizePreference,
+  );
   const applicationsListRef = useRef<HTMLDivElement>(null);
   const lastEscapeAtRef = useRef<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -79,6 +91,25 @@ export function AppPage({ initialApplications, initialNotesByApplicationId }: Ap
     removeApplication: clearNotesCache,
     clearAll: clearNotesCacheAll,
   } = useApplicationNotesCache({ initialNotesByApplicationId });
+
+  useLayoutEffect(() => {
+    if (hasRestoredApplicationPageSizePreference) {
+      setHasSyncedPageSize(true);
+      return;
+    }
+
+    if (initialPageSizeFromPreference) {
+      hasRestoredApplicationPageSizePreference = true;
+      setHasSyncedPageSize(true);
+      return;
+    }
+
+    const storedPageSize = readStoredApplicationPageSize();
+    setPageSize(storedPageSize);
+    persistApplicationPageSize(storedPageSize);
+    hasRestoredApplicationPageSizePreference = true;
+    setHasSyncedPageSize(true);
+  }, [initialPageSizeFromPreference]);
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
@@ -497,6 +528,15 @@ export function AppPage({ initialApplications, initialNotesByApplicationId }: Ap
                 </Button>
               </CardContent>
             </Card>
+          ) : !hasSyncedPageSize ? (
+            <div className="space-y-4" aria-busy="true" aria-label="Loading applications">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div
+                  key={index}
+                  className="bg-card ring-foreground/10 h-[10.5rem] animate-pulse rounded-xl ring-1"
+                />
+              ))}
+            </div>
           ) : (
             <>
               {visibleApplications.map((application) => (

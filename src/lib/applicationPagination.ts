@@ -33,16 +33,33 @@ export function isApplicationPageSize(value: string | number | null | undefined)
   return isApplicationNumericPageSize(parsed);
 }
 
+export function parseApplicationPageSize(value: string | null | undefined): ApplicationPageSize | null {
+  if (value === APPLICATION_VIEW_ALL_PAGE_SIZE) return APPLICATION_VIEW_ALL_PAGE_SIZE;
+  if (typeof value !== "string" || value.length === 0) return null;
+  const parsed = Number.parseInt(value, 10);
+  return isApplicationNumericPageSize(parsed) ? parsed : null;
+}
+
 export function readStoredApplicationPageSize(): ApplicationPageSize {
   if (typeof window === "undefined") return DEFAULT_APPLICATION_PAGE_SIZE;
 
   try {
     const stored = localStorage.getItem(APPLICATION_PAGE_SIZE_STORAGE_KEY);
-    if (stored === APPLICATION_VIEW_ALL_PAGE_SIZE) return APPLICATION_VIEW_ALL_PAGE_SIZE;
-    const parsed = Number.parseInt(stored ?? "", 10);
-    return isApplicationNumericPageSize(parsed) ? parsed : DEFAULT_APPLICATION_PAGE_SIZE;
+    return parseApplicationPageSize(stored) ?? DEFAULT_APPLICATION_PAGE_SIZE;
   } catch {
     return DEFAULT_APPLICATION_PAGE_SIZE;
+  }
+}
+
+const APPLICATION_PAGE_SIZE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+
+export function persistApplicationPageSizeCookie(pageSize: ApplicationPageSize): void {
+  if (typeof document === "undefined") return;
+
+  try {
+    document.cookie = `${APPLICATION_PAGE_SIZE_STORAGE_KEY}=${encodeURIComponent(String(pageSize))};path=/;max-age=${APPLICATION_PAGE_SIZE_COOKIE_MAX_AGE_SECONDS};SameSite=Lax`;
+  } catch {
+    // Ignore cookie failures (blocked storage, etc.)
   }
 }
 
@@ -52,6 +69,12 @@ export function persistApplicationPageSize(pageSize: ApplicationPageSize): void 
   } catch {
     // Ignore storage failures (private browsing, quota, etc.)
   }
+
+  persistApplicationPageSizeCookie(pageSize);
+}
+
+export function applicationPageSizeInitScript(): string {
+  return `(function(){try{var ps=localStorage.getItem("${APPLICATION_PAGE_SIZE_STORAGE_KEY}");if(!ps)return;document.cookie="${APPLICATION_PAGE_SIZE_STORAGE_KEY}="+encodeURIComponent(ps)+";path=/;max-age=${APPLICATION_PAGE_SIZE_COOKIE_MAX_AGE_SECONDS};SameSite=Lax"}catch(e){}})();`;
 }
 
 export function applicationPageSizeTriggerLabel(pageSize: ApplicationPageSize): string {
