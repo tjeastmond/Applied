@@ -2,7 +2,7 @@ import { existsSync, lstatSync, mkdirSync, readlinkSync, renameSync, statSync, s
 import { basename, join } from "node:path";
 import pino, { type DestinationStream, type Logger } from "pino";
 import { readLogConfig } from "./config";
-import { mergeLogContext, serializeError } from "./sanitize";
+import { serializeError } from "./sanitize";
 import type { LogContext, LogLevel } from "./types";
 
 let rootLogger: Logger = pino({ level: "silent" });
@@ -75,7 +75,7 @@ function updateCurrentLogSymlink(logDir: string, targetPath: string): void {
         }
       }
     } catch {
-      // Fall through and recreate the symlink.
+      // Recreate the symlink below.
     }
     unlinkSync(linkPath);
   }
@@ -113,7 +113,6 @@ function maybeRotateLogFile(logDir: string, baseFile: string, maxBytes: number, 
 function createFileTransport(logDir: string, baseFile: string, maxBytes: number, maxFiles: number): DestinationStream {
   const logPath = maybeRotateLogFile(logDir, baseFile, maxBytes, maxFiles);
   activeLogPath = logPath;
-
   // Open the log file before creating the symlink so current.log never dangles.
   const stream = pino.destination({ dest: logPath, sync: true, mkdir: true });
   updateCurrentLogSymlink(logDir, logPath);
@@ -129,7 +128,7 @@ async function writeAsync(level: LogLevel, message: string, context?: LogContext
   await initLogger();
   if (level === "silent") return;
 
-  const payload = mergeLogContext(context);
+  const payload = context ?? {};
   switch (level) {
     case "debug":
       rootLogger.debug(payload, message);
@@ -186,7 +185,6 @@ export async function initLogger(env: Record<string, string | undefined> = proce
   await initPromise;
 }
 
-/** Wait for buffered log lines to flush (mainly for tests). */
 export async function flushLogs(): Promise<void> {
   await writeChain;
   await initLogger();
@@ -195,7 +193,6 @@ export async function flushLogs(): Promise<void> {
   });
 }
 
-/** Reset logger state between tests. */
 export function resetLoggerForTests(): void {
   rootLogger = createSilentLogger();
   initPromise = null;
@@ -218,7 +215,7 @@ export const log = {
   },
   errorFromUnknown(error: unknown, context?: LogContext): void {
     const serialized = serializeError(error);
-    write("error", serialized.message, { ...mergeLogContext(context), error: serialized });
+    write("error", serialized.message, { ...(context ?? {}), error: serialized });
   },
 };
 

@@ -11,12 +11,10 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const AGENT_APPLICATIONS_ROUTE = "/api/agent/applications";
-
 export async function GET(request: Request) {
   const authError = requireAgentAuth(request);
   if (authError) {
-    log.warn("agent auth rejected", { route: AGENT_APPLICATIONS_ROUTE, method: "GET" });
+    log.warn("agent auth rejected", { route: "/api/agent/applications", method: "GET" });
     return authError;
   }
 
@@ -27,7 +25,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const authError = requireAgentAuth(request);
   if (authError) {
-    log.warn("agent auth rejected", { route: AGENT_APPLICATIONS_ROUTE, method: "POST" });
+    log.warn("agent auth rejected", { route: "/api/agent/applications", method: "POST" });
     return authError;
   }
 
@@ -42,7 +40,7 @@ export async function POST(request: Request) {
   }
 
   log.info("agent application created", {
-    route: AGENT_APPLICATIONS_ROUTE,
+    route: "/api/agent/applications",
     method: "POST",
     id: result.application.id,
   });

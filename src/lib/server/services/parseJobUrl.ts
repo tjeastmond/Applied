@@ -102,7 +102,7 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
     const fullJd = buildFullJd(document, metaDescription);
     const { salaryRange } = parseParsedApplicationSalaryFields(extractJobSalary(url, document, html));
 
-    log.debug("parseJobUrl: extracted job metadata", {
+    log.debug("job metadata extracted", {
       host: url.hostname,
       hasTitle: Boolean(title),
       hasCompany: Boolean(company),

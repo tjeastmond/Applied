@@ -6,25 +6,6 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-function logTursoVerification(result: Awaited<ReturnType<typeof pushSqliteToTurso>>, mode: string): void {
-  log.info("turso sync completed", {
-    route: "/api/backup/sync-turso",
-    method: "POST",
-    mode,
-    matches: result.verification.matches,
-    importedApplications: result.imported.applications,
-    importedNotes: result.imported.notes,
-  });
-
-  if (!result.verification.matches) {
-    log.warn("turso verify mismatch", {
-      route: "/api/backup/sync-turso",
-      method: "POST",
-      differences: result.verification.differences,
-    });
-  }
-}
-
 export async function POST(request: Request) {
   if (!isTursoSyncAvailable()) {
     return NextResponse.json(
@@ -34,11 +15,9 @@ export async function POST(request: Request) {
   }
 
   let modeRaw: unknown = "upsert";
-  try {
-    const body = (await request.json()) as { mode?: unknown };
+  const body = (await request.json().catch(() => null)) as { mode?: unknown } | null;
+  if (body) {
     modeRaw = body.mode ?? "upsert";
-  } catch {
-    // Empty body defaults to upsert.
   }
 
   const modeParsed = importModeSchema.safeParse(modeRaw);
@@ -48,7 +27,21 @@ export async function POST(request: Request) {
 
   try {
     const result = await pushSqliteToTurso({ mode: modeParsed.data });
-    logTursoVerification(result, modeParsed.data);
+    log.info("turso sync completed", {
+      route: "/api/backup/sync-turso",
+      method: "POST",
+      mode: modeParsed.data,
+      matches: result.verification.matches,
+      importedApplications: result.imported.applications,
+      importedNotes: result.imported.notes,
+    });
+    if (!result.verification.matches) {
+      log.warn("turso verify mismatch", {
+        route: "/api/backup/sync-turso",
+        method: "POST",
+        differences: result.verification.differences,
+      });
+    }
     return NextResponse.json({
       imported: result.imported,
       matches: result.verification.matches,

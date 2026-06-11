@@ -1,17 +1,8 @@
-import { lstatSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { loadProjectEnvFiles } from "@/lib/server/loadEnvFile";
 import { readLogConfig } from "@/lib/server/logging/config";
 import { flushLogs, initLogger } from "@/lib/server/logging/logger";
-
-function pathEntryExists(path: string): boolean {
-  try {
-    lstatSync(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 loadProjectEnvFiles();
 
@@ -28,7 +19,7 @@ await flushLogs();
 const currentPath = join(config.dir, "current.log");
 const logPath = join(config.dir, config.file);
 
-if (!pathEntryExists(currentPath) && !pathEntryExists(logPath)) {
+if (!existsSync(currentPath) && !existsSync(logPath)) {
   console.error("Log file was not created.");
   process.exit(1);
 }
