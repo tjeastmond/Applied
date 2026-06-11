@@ -71,6 +71,40 @@ describe("SqliteApplicationNoteRepository", () => {
     expect(await notes.updateForApplication(crypto.randomUUID(), note.id, "Nope.")).toBeNull();
   });
 
+  test("listAll returns notes grouped by application in newest-first order", async () => {
+    const db = openDatabase(":memory:");
+    const applications = new SqliteJobApplicationRepository(db);
+    const notes = new SqliteApplicationNoteRepository(db);
+
+    const firstApplication = await applications.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/one",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+      }),
+    );
+    const secondApplication = await applications.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/two",
+        title: "Designer",
+        company: "Beta",
+        appliedAt: "2026-06-02",
+      }),
+    );
+
+    const firstNote = await notes.create(firstApplication.id, "First app note.");
+    const secondNote = await notes.create(firstApplication.id, "Second app note.");
+    const otherNote = await notes.create(secondApplication.id, "Other app note.");
+
+    const listed = await notes.listAll();
+    expect(listed).toHaveLength(3);
+
+    const notesByApplicationId = Object.groupBy(listed, (note) => note.applicationId);
+    expect(notesByApplicationId[firstApplication.id]?.map((note) => note.id)).toEqual([secondNote.id, firstNote.id]);
+    expect(notesByApplicationId[secondApplication.id]?.map((note) => note.id)).toEqual([otherNote.id]);
+  });
+
   test("migrates legacy application notes column into application_notes", async () => {
     const db = openDatabase(":memory:");
     const id = crypto.randomUUID();

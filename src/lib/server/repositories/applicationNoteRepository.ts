@@ -1,6 +1,7 @@
 import type { ApplicationNote } from "@/types";
 
 export interface ApplicationNoteRepository {
+  listAll(): Promise<ApplicationNote[]>;
   listByApplicationId(applicationId: string): Promise<ApplicationNote[]>;
   create(applicationId: string, content: string): Promise<ApplicationNote>;
   updateForApplication(applicationId: string, noteId: string, content: string): Promise<ApplicationNote | null>;

@@ -22,6 +22,7 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+const LIST_ALL_SQL = `SELECT * FROM application_notes ORDER BY application_id, created_at DESC, rowid DESC`;
 const LIST_BY_APPLICATION_SQL = `SELECT * FROM application_notes WHERE application_id = ? ORDER BY created_at DESC, rowid DESC`;
 const INSERT_SQL = `INSERT INTO application_notes (id, application_id, content, created_at) VALUES (?, ?, ?, ?)`;
 const GET_FOR_APPLICATION_SQL = `SELECT * FROM application_notes WHERE id = ? AND application_id = ?`;
@@ -30,6 +31,7 @@ const DELETE_SQL = `DELETE FROM application_notes WHERE id = ?`;
 const DELETE_FOR_APPLICATION_SQL = `DELETE FROM application_notes WHERE id = ? AND application_id = ?`;
 
 export class SqliteApplicationNoteRepository implements ApplicationNoteRepository {
+  private readonly listAllStmt;
   private readonly listByApplicationStmt;
   private readonly getForApplicationStmt;
   private readonly insertStmt;
@@ -38,12 +40,18 @@ export class SqliteApplicationNoteRepository implements ApplicationNoteRepositor
   private readonly deleteForApplicationStmt;
 
   constructor(db: Database.Database) {
+    this.listAllStmt = db.prepare(LIST_ALL_SQL);
     this.listByApplicationStmt = db.prepare(LIST_BY_APPLICATION_SQL);
     this.getForApplicationStmt = db.prepare(GET_FOR_APPLICATION_SQL);
     this.insertStmt = db.prepare(INSERT_SQL);
     this.updateForApplicationStmt = db.prepare(UPDATE_FOR_APPLICATION_SQL);
     this.deleteStmt = db.prepare(DELETE_SQL);
     this.deleteForApplicationStmt = db.prepare(DELETE_FOR_APPLICATION_SQL);
+  }
+
+  async listAll(): Promise<ApplicationNote[]> {
+    const rows = this.listAllStmt.all() as NoteRow[];
+    return rows.map(rowToNote);
   }
 
   async listByApplicationId(applicationId: string): Promise<ApplicationNote[]> {

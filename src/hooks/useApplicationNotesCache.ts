@@ -12,8 +12,14 @@ type LoadNotesOptions = {
   emptyCacheOnError?: boolean;
 };
 
-export function useApplicationNotesCache() {
-  const [entries, setEntries] = useState<Record<string, ApplicationNote[]>>({});
+type UseApplicationNotesCacheOptions = {
+  initialNotesByApplicationId?: Record<string, ApplicationNote[]>;
+};
+
+export function useApplicationNotesCache(options?: UseApplicationNotesCacheOptions) {
+  const [entries, setEntries] = useState<Record<string, ApplicationNote[]>>(
+    () => options?.initialNotesByApplicationId ?? {},
+  );
   const [loadingIds, setLoadingIds] = useState<ReadonlySet<string>>(() => new Set());
   const entriesRef = useRef(entries);
   entriesRef.current = entries;
