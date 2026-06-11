@@ -137,3 +137,17 @@ export async function importBackup(file: File, mode: ImportBackupMode): Promise<
 
   return (await response.json()) as ImportBackupResult;
 }
+
+export async function downloadDatabaseBackup(): Promise<{ blob: Blob; filename: string }> {
+  const response = await fetch("/api/backup/database");
+  if (!response.ok) {
+    throw new Error(await readApiError(response, "Database backup failed"));
+  }
+
+  const blob = await response.blob();
+  const filename =
+    parseContentDispositionFilename(response.headers.get("Content-Disposition")) ??
+    "applied-backup.zip";
+
+  return { blob, filename };
+}

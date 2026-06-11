@@ -13,7 +13,7 @@ const globalForDb = globalThis as unknown as {
   noteRepository?: ApplicationNoteRepository;
 };
 
-function resolveDatabasePath(): string {
+export function getDatabasePath(): string {
   return process.env.DATABASE_PATH ?? join(process.cwd(), "data", "applied.db");
 }
 
@@ -26,7 +26,7 @@ function ensureDataDirectory(dbPath: string): void {
 
 function getDb(): Database.Database {
   if (!globalForDb.db) {
-    const dbPath = resolveDatabasePath();
+    const dbPath = getDatabasePath();
     ensureDataDirectory(dbPath);
     globalForDb.db = openDatabase(dbPath);
   }

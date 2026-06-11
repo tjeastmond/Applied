@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { exportBackup, importBackup, type ImportBackupMode } from "@/api";
+import { downloadDatabaseBackup, exportBackup, importBackup, type ImportBackupMode } from "@/api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,6 +57,19 @@ export function BackupMenu({ onImported }: BackupMenuProps) {
   const [isImporting, setIsImporting] = useState(false);
   const [confirmReplaceOpen, setConfirmReplaceOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleDownloadDatabaseBackup() {
+    setExporting(true);
+    try {
+      const { blob, filename } = await downloadDatabaseBackup();
+      downloadBlob(blob, filename);
+      toast.success(toastMessages.backupExported);
+    } catch (error) {
+      toast.error(errorMessage(error, toastMessages.backupExportFailed));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function handleExport(format: "sql" | "json") {
     setExporting(true);
@@ -141,6 +154,11 @@ export function BackupMenu({ onImported }: BackupMenuProps) {
           <DropdownMenuItem disabled={exporting} onClick={() => void handleExport("json")}>
             <DownloadIcon />
             Export JSON
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem disabled={exporting} onClick={() => void handleDownloadDatabaseBackup()}>
+            <DownloadIcon />
+            Create Backup
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
