@@ -113,6 +113,8 @@ describe("safeFormToInput", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.title).toBe("Engineer");
+      expect(result.data.salaryRange).toBeNull();
+      expect(result.data.desiredSalary).toBeNull();
     }
   });
 
@@ -136,6 +138,8 @@ describe("isFormPristine", () => {
       recruiterFirm: null,
       contactEmail: null,
       contactPhone: null,
+      salaryRange: null,
+      desiredSalary: null,
       fullJd: null,
       status: "applied",
       createdAt: "2026-06-01T00:00:00.000Z",
@@ -158,6 +162,8 @@ describe("isFormPristine", () => {
       recruiterFirm: null,
       contactEmail: null,
       contactPhone: null,
+      salaryRange: null,
+      desiredSalary: null,
       fullJd: null,
       status: "applied",
       createdAt: "2026-06-01T00:00:00.000Z",
@@ -182,6 +188,8 @@ describe("isFormPristine", () => {
       recruiterFirm: null,
       contactEmail: null,
       contactPhone: null,
+      salaryRange: null,
+      desiredSalary: null,
       fullJd: null,
       status: "applied",
       createdAt: "2026-06-01T00:00:00.000Z",
@@ -209,6 +217,8 @@ describe("isFormPristine", () => {
       recruiterFirm: null,
       contactEmail: null,
       contactPhone: null,
+      salaryRange: null,
+      desiredSalary: null,
       fullJd: null,
       status: "applied",
       createdAt: "2026-06-01T00:00:00.000Z",

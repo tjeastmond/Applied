@@ -28,6 +28,8 @@ type ApplicationRow = {
   recruiter_firm: string | null;
   contact_email: string | null;
   contact_phone: string | null;
+  salary_range: string | null;
+  desired_salary: string | null;
   notes: string | null;
   full_jd: string | null;
   status: JobApplication["status"];
@@ -55,6 +57,8 @@ function rowToApplication(row: ApplicationRow): JobApplication {
     recruiterFirm: row.recruiter_firm,
     contactEmail: row.contact_email,
     contactPhone: row.contact_phone,
+    salaryRange: row.salary_range,
+    desiredSalary: row.desired_salary,
     fullJd: row.full_jd,
     status: row.status,
     createdAt: row.created_at,
@@ -82,7 +86,7 @@ function listApplications(db: Database.Database): JobApplication[] {
   const rows = db
     .prepare(
       `SELECT id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm,
-       contact_email, contact_phone, full_jd, status, created_at, updated_at
+       contact_email, contact_phone, salary_range, desired_salary, full_jd, status, created_at, updated_at
        FROM applications ORDER BY updated_at DESC, created_at DESC`,
     )
     .all() as ApplicationRow[];
@@ -124,13 +128,13 @@ export function exportSql(db: Database.Database): string {
   const applicationRows = db
     .prepare(
       `SELECT id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm,
-       contact_email, contact_phone, notes, full_jd, status, created_at, updated_at FROM applications`,
+       contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, created_at, updated_at FROM applications`,
     )
     .all() as ApplicationRow[];
 
   for (const row of applicationRows) {
     lines.push(
-      `INSERT INTO applications (id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm, contact_email, contact_phone, notes, full_jd, status, created_at, updated_at) VALUES (${[
+      `INSERT INTO applications (id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm, contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, created_at, updated_at) VALUES (${[
         sqlQuote(row.id),
         sqlQuote(row.url),
         sqlQuote(row.linkedin_url),
@@ -142,6 +146,8 @@ export function exportSql(db: Database.Database): string {
         sqlQuote(row.recruiter_firm),
         sqlQuote(row.contact_email),
         sqlQuote(row.contact_phone),
+        sqlQuote(row.salary_range),
+        sqlQuote(row.desired_salary),
         sqlQuote(row.notes),
         sqlQuote(row.full_jd),
         sqlQuote(row.status),
@@ -187,6 +193,8 @@ function applicationToRow(application: BackupJson["applications"][number]): Appl
     recruiter_firm: application.recruiterFirm,
     contact_email: application.contactEmail,
     contact_phone: application.contactPhone,
+    salary_range: application.salaryRange ?? null,
+    desired_salary: application.desiredSalary ?? null,
     notes: null,
     full_jd: application.fullJd,
     status: application.status,
@@ -197,10 +205,10 @@ function applicationToRow(application: BackupJson["applications"][number]): Appl
 
 const UPSERT_APPLICATION_SQL = `INSERT INTO applications (
   id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm,
-  contact_email, contact_phone, notes, full_jd, status, created_at, updated_at
+  contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, created_at, updated_at
 ) VALUES (
   @id, @url, @linkedin_url, @title, @company, @applied_at, @via_recruiter, @recruiter_name, @recruiter_firm,
-  @contact_email, @contact_phone, @notes, @full_jd, @status, @created_at, @updated_at
+  @contact_email, @contact_phone, @salary_range, @desired_salary, @notes, @full_jd, @status, @created_at, @updated_at
 ) ON CONFLICT(id) DO UPDATE SET
   url = excluded.url,
   linkedin_url = excluded.linkedin_url,
@@ -212,6 +220,8 @@ const UPSERT_APPLICATION_SQL = `INSERT INTO applications (
   recruiter_firm = excluded.recruiter_firm,
   contact_email = excluded.contact_email,
   contact_phone = excluded.contact_phone,
+  salary_range = excluded.salary_range,
+  desired_salary = excluded.desired_salary,
   notes = excluded.notes,
   full_jd = excluded.full_jd,
   status = excluded.status,

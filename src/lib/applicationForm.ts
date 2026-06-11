@@ -4,9 +4,15 @@ import {
   requiredApplicationFieldsSchema,
   type ParsedCreateJobApplicationInput,
 } from "@/lib/schemas/application";
-import type { ApplicationStatus, JobApplication, ParseJobUrlSuccess } from "@/types";
+import type {
+  ApplicationSalaryFormFields,
+  ApplicationStatus,
+  JobApplication,
+  ParsedApplicationSalaryFields,
+  ParseJobUrlSuccess,
+} from "@/types";
 
-export type FormState = {
+export type FormState = ApplicationSalaryFormFields & {
   id?: string;
   url: string;
   linkedinUrl: string;
@@ -36,6 +42,8 @@ export function emptyForm(): FormState {
     recruiterFirm: "",
     contactEmail: "",
     contactPhone: "",
+    salaryRange: "",
+    desiredSalary: "",
     fullJd: "",
     status: "applied",
   };
@@ -142,6 +150,8 @@ function buildCreateInput(form: FormState) {
     recruiterFirm: hasRecruiterInfo ? form.recruiterFirm : null,
     contactEmail: form.contactEmail,
     contactPhone: form.contactPhone,
+    salaryRange: form.salaryRange,
+    desiredSalary: form.desiredSalary,
     fullJd: form.fullJd,
     status: form.status,
   };
@@ -167,6 +177,8 @@ const FORM_FIELD_KEYS = [
   "recruiterFirm",
   "contactEmail",
   "contactPhone",
+  "salaryRange",
+  "desiredSalary",
   "fullJd",
   "status",
 ] as const satisfies readonly (keyof FormState)[];
@@ -196,12 +208,13 @@ export function isStatusOnlyFormChange(form: FormState, application: JobApplicat
 
 export function mergeParseResult(
   form: FormState,
-  result: Pick<ParseJobUrlSuccess, "title" | "company" | "fullJd">,
+  result: Pick<ParseJobUrlSuccess, "title" | "company" | "fullJd"> & ParsedApplicationSalaryFields,
 ): FormState {
   return {
     ...form,
     title: result.title ?? form.title,
     company: result.company ?? form.company,
+    salaryRange: result.salaryRange ?? form.salaryRange,
     fullJd: result.fullJd ?? form.fullJd,
   };
 }
@@ -246,6 +259,8 @@ export function applicationToForm(application: JobApplication): FormState {
     recruiterFirm: application.recruiterFirm ?? "",
     contactEmail: application.contactEmail ?? "",
     contactPhone: application.contactPhone ?? "",
+    salaryRange: application.salaryRange ?? "",
+    desiredSalary: application.desiredSalary ?? "",
     fullJd: application.fullJd ?? "",
     status: application.status,
   };

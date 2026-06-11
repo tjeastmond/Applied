@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS applications (
   recruiter_firm TEXT,
   contact_email TEXT,
   contact_phone TEXT,
+  salary_range TEXT,
+  desired_salary TEXT,
   notes TEXT,
   full_jd TEXT,
   status TEXT NOT NULL DEFAULT 'applied',

@@ -2,7 +2,18 @@ import type { ApplicationStatus } from "@/lib/applicationStatus";
 
 export type { ApplicationStatus };
 
-export interface JobApplication {
+/** Persisted salary fields on a job application (`salary_range`, `desired_salary`). */
+export type ApplicationSalaryFields = {
+  salaryRange: string | null;
+  desiredSalary: string | null;
+};
+
+/** Salary fields in client form state (empty string when unset). */
+export type ApplicationSalaryFormFields = {
+  [K in keyof ApplicationSalaryFields]: string;
+};
+
+export interface JobApplication extends ApplicationSalaryFields {
   id: string;
   url: string;
   linkedinUrl: string | null;
@@ -21,24 +32,19 @@ export interface JobApplication {
 }
 
 export type {
+  ApplicationSalaryInput,
   CreateJobApplicationInput,
+  ParsedApplicationSalaryFields,
+  ParsedApplicationSalaryInput,
   ParsedCreateJobApplicationInput,
   PatchJobApplicationInput,
 } from "@/lib/schemas/application";
 
-export type ParseJobUrlSuccess = {
-  ok: true;
-  title: string | null;
-  company: string | null;
-  fullJd: string | null;
-};
-
-export type ParseJobUrlFailure = {
-  ok: false;
-  error: string;
-};
-
-export type ParseJobUrlResult = ParseJobUrlSuccess | ParseJobUrlFailure;
+export type {
+  ParseJobUrlFailure,
+  ParseJobUrlResult,
+  ParseJobUrlSuccess,
+} from "@/lib/schemas/parseJob";
 
 export interface ApplicationNote {
   id: string;

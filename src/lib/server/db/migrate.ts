@@ -52,6 +52,14 @@ export function migrate(db: Database.Database): void {
     db.exec(`ALTER TABLE applications ADD COLUMN full_jd TEXT`);
   }
 
+  if (!columnExists(db, "salary_range")) {
+    db.exec(`ALTER TABLE applications ADD COLUMN salary_range TEXT`);
+  }
+
+  if (!columnExists(db, "desired_salary")) {
+    db.exec(`ALTER TABLE applications ADD COLUMN desired_salary TEXT`);
+  }
+
   migrateLegacyApplicationNotes(db);
 }
 

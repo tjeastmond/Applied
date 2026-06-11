@@ -12,6 +12,8 @@ function searchableText(application: JobApplication): string {
     application.recruiterName,
     application.recruiterFirm,
     application.contactEmail,
+    application.salaryRange,
+    application.desiredSalary,
   ]
     .map((value) => value?.trim() ?? "")
     .filter(Boolean)

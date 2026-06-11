@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { applicationSalaryFieldSchemas } from "@/lib/schemas/application";
 import { applicationStatusSchema } from "@/lib/schemas/common";
 
 export const BACKUP_JSON_VERSION = 1 as const;
@@ -15,6 +16,8 @@ const backupApplicationSchema = z.strictObject({
   recruiterFirm: z.string().nullable(),
   contactEmail: z.string().nullable(),
   contactPhone: z.string().nullable(),
+  salaryRange: applicationSalaryFieldSchemas.salaryRange.optional(),
+  desiredSalary: applicationSalaryFieldSchemas.desiredSalary.optional(),
   fullJd: z.string().nullable(),
   status: applicationStatusSchema,
   createdAt: z.string().min(1),

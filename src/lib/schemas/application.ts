@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
+import { emptyToNull, sanitizeOptionalPlainText } from "@/lib/sanitize";
 import {
   applicationStatusSchema,
   isoDateSchema,
@@ -12,6 +13,8 @@ import {
   requiredPlainTextSchema,
   uuidSchema,
 } from "@/lib/schemas/common";
+
+const SALARY_FIELD_MAX_LENGTH = 100;
 
 const titleSchema = requiredPlainTextSchema("title", 200).transform((value) => normalizeJobTitle(value) ?? value);
 
@@ -69,6 +72,36 @@ export const requiredApplicationFieldsSchema = z.strictObject({
   appliedAt: isoDateSchema,
 });
 
+export const applicationSalaryFieldSchemas = {
+  salaryRange: optionalPlainTextSchema(SALARY_FIELD_MAX_LENGTH),
+  desiredSalary: optionalPlainTextSchema(SALARY_FIELD_MAX_LENGTH),
+} as const;
+
+export const applicationSalaryFieldsSchema = z.strictObject(applicationSalaryFieldSchemas);
+
+/** Parsed job URL salary values may be truncated before persistence. */
+export const parsedSalaryRangeSchema = z.preprocess(
+  (value) => {
+    const normalized = emptyToNull(value);
+    return typeof normalized === "string"
+      ? sanitizeOptionalPlainText(normalized, SALARY_FIELD_MAX_LENGTH)
+      : normalized;
+  },
+  applicationSalaryFieldSchemas.salaryRange,
+);
+
+export const parsedApplicationSalaryFieldsSchema = z
+  .strictObject({
+    salaryRange: parsedSalaryRangeSchema.optional(),
+  })
+  .transform((value) => ({ salaryRange: value.salaryRange ?? null }));
+
+export function parseParsedApplicationSalaryFields(
+  fields: z.input<typeof parsedApplicationSalaryFieldsSchema>,
+): z.infer<typeof parsedApplicationSalaryFieldsSchema> {
+  return parsedApplicationSalaryFieldsSchema.parse(fields);
+}
+
 const optionalApplicationFieldsSchema = {
   linkedinUrl: optionalHttpUrlSchema,
   viaRecruiter: z.boolean().optional(),
@@ -76,6 +109,7 @@ const optionalApplicationFieldsSchema = {
   recruiterFirm: optionalPlainTextSchema(200),
   contactEmail: optionalEmailSchema,
   contactPhone: optionalPhoneSchema,
+  ...applicationSalaryFieldSchemas,
   fullJd: optionalFullJdSchema,
   status: applicationStatusSchema.optional(),
 } as const;
@@ -95,6 +129,10 @@ export const bulkFetchApplicationsSchema = z.object({
 });
 
 export type BulkFetchApplicationsInput = z.infer<typeof bulkFetchApplicationsSchema>;
+
+export type ApplicationSalaryInput = z.input<typeof applicationSalaryFieldsSchema>;
+export type ParsedApplicationSalaryInput = z.infer<typeof applicationSalaryFieldsSchema>;
+export type ParsedApplicationSalaryFields = z.infer<typeof parsedApplicationSalaryFieldsSchema>;
 
 export type CreateJobApplicationInput = z.input<typeof createJobApplicationSchema>;
 export type ParsedCreateJobApplicationInput = z.infer<typeof createJobApplicationSchema>;

@@ -13,6 +13,8 @@ export function makeJobApplication(overrides: Partial<JobApplication> & Pick<Job
     recruiterFirm: overrides.recruiterFirm ?? null,
     contactEmail: overrides.contactEmail ?? null,
     contactPhone: overrides.contactPhone ?? null,
+    salaryRange: overrides.salaryRange ?? null,
+    desiredSalary: overrides.desiredSalary ?? null,
     fullJd: overrides.fullJd ?? null,
     status: overrides.status ?? "applied",
     createdAt: overrides.createdAt ?? "2026-06-01T10:00:00.000Z",

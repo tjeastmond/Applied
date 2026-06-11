@@ -20,6 +20,8 @@ describe("SqliteJobApplicationRepository", () => {
         recruiterFirm: "TechRecruit LLC",
         contactEmail: "jane@acme.com",
         contactPhone: "555-1234",
+        salaryRange: "$150k–$180k",
+        desiredSalary: "$175k",
         fullJd: "<p><strong>Summary</strong> Great role.</p>",
         status: "applied",
       }),
@@ -28,6 +30,8 @@ describe("SqliteJobApplicationRepository", () => {
     expect(created.id).toBeTruthy();
     expect(created.viaRecruiter).toBe(true);
     expect(created.linkedinUrl).toBe("https://linkedin.com/company/acme");
+    expect(created.salaryRange).toBe("$150k–$180k");
+    expect(created.desiredSalary).toBe("$175k");
     expect(created.fullJd).toContain("Summary");
 
     const listed = await repository.list();
