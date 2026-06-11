@@ -406,7 +406,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 - Parsed job postings store cleaned minimal HTML in `full_jd`; user notes live in `application_notes` (many per application)
 - SQLite persistence via better-sqlite3 (`data/applied.db` by default)
 - API request bodies are validated with Zod and sanitized before persistence
-- Job URL parse uses `extractJobCompany` and `extractParaformRole`: Y Combinator, Ashby, and Paraform are job boards, not employers; Paraform title/company from JSON-LD, Next data, and og:title patterns; `normalizeJobTitle()` strips trailing board suffixes on parse/save
+- Job URL parse uses `extractJobCompany` and `extractParaformRole`: Y Combinator, Ashby, and Paraform are job boards, not employers; Paraform title/company from JSON-LD, Next data, and og:title patterns; `normalizeJobTitle()` strips `| Y Combinator` and anything after it, and collapses extra whitespace on parse/save
 - Application statuses: `applied`, `interviewing`, `waiting`, `rejected`, `offer`, `passed` — managed via `ApplicationStatusPicker` on cards and in the detail drawer; status changes auto-create a note `Status Update: {label}` via PATCH
 - `ApplicationDetailSheet` is 60vw, slides from the right with blurred backdrop; theme via `ThemeProvider` + blocking `themeInitScript()` before paint (near-black dark tokens in `styles.css`); Sonner follows active theme
 - Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1`

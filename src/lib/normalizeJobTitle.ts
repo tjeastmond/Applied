@@ -1,12 +1,12 @@
-const Y_COMBINATOR_TITLE_SUFFIX = " | Y Combinator";
+const Y_COMBINATOR_TITLE_SUFFIX = /\s*\|\s*Y Combinator.*$/i;
+
+function collapseWhitespace(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
 
 export function normalizeJobTitle(title: string | null | undefined): string | null {
   if (title == null) return null;
 
-  const trimmed = title.trim();
-  if (!trimmed.endsWith(Y_COMBINATOR_TITLE_SUFFIX)) {
-    return trimmed;
-  }
-
-  return trimmed.slice(0, -Y_COMBINATOR_TITLE_SUFFIX.length).trimEnd();
+  const withoutSuffix = title.replace(Y_COMBINATOR_TITLE_SUFFIX, "");
+  return collapseWhitespace(withoutSuffix);
 }

@@ -101,6 +101,26 @@ describe("parseJobUrl", () => {
     expect(result.title).toBe("Founding Engineer");
   });
 
+  it("strips the Work at a Startup suffix and collapses title whitespace", async () => {
+    const html = `<!doctype html><html><head>
+      <meta property="og:title" content="Software Engineer  at MindFort | Y Combinator's Work at a Startup" />
+    </head><body></body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+
+    const result = await parseJobUrl("https://www.workatastartup.com/jobs/84795");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.title).toBe("Software Engineer at MindFort");
+  });
+
   it("extracts the hiring company from Y Combinator job pages", async () => {
     const html = `<!doctype html><html><head>
       <meta property="og:site_name" content="Y Combinator" />
