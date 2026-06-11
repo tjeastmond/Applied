@@ -5,6 +5,7 @@ import {
   type ApplicationIdRouteContext,
   requireApplicationId,
 } from "@/lib/server/applicationRouteHelpers";
+import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
 import { createApplicationNoteSchema } from "@/lib/schemas/note";
 import { NextResponse } from "next/server";
@@ -35,5 +36,11 @@ export async function POST(request: Request, context: ApplicationIdRouteContext)
   }
 
   const note = await getNoteRepository().create(applicationId, parsed.data.content);
+  log.info("note created", {
+    route: "/api/applications/[id]/notes",
+    method: "POST",
+    applicationId,
+    noteId: note.id,
+  });
   return NextResponse.json(note, { status: 201 });
 }

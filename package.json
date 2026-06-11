@@ -18,6 +18,7 @@
     "db:push-turso": "tsx scripts/db-transfer.ts push",
     "db:pull-turso": "tsx scripts/db-transfer.ts pull",
     "db:verify-turso": "tsx scripts/db-transfer.ts verify",
+    "logs:tail": "sh scripts/logs-tail.sh",
     "test": "vitest",
     "test:run": "vitest run",
     "check": "pnpm run typecheck && pnpm run test:run && pnpm run lint && pnpm run format:check && pnpm run build"
@@ -31,6 +32,7 @@
     "linkedom": "^0.18.12",
     "lucide-react": "^1.17.0",
     "next": "^15.5.7",
+    "pino": "^10.3.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "shadcn": "^4.10.0",

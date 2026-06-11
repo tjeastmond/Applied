@@ -8,10 +8,10 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 
 - Use Shadcn UI for frontend components
 - Show status feedback with Sonner toasts in the top-right corner; success toasts pastel green with darker green border, errors red — not inline alert banners
-- Add applications in a Shadcn Dialog modal; view/edit in `ApplicationDetailSheet` (card click): status saves immediately in the sheet (same path as cards; `isManualSaveFormDirty` excludes status from unsaved-close prompt); notes default newest-first with sort picker (newest/oldest, persisted in `localStorage` as `applied-dev-note-sort`), linkify http(s) URLs in note body with long URLs truncated inside the border, edit/copy/delete on note date row (muted ghost icons; inline textarea with Save Note / Cancel when editing), green-styled Add Note save; unsaved edits show Alert Dialog on close (Save Now, Don't Save with `warnOutline`, Cancel keeps editing); Cmd/Ctrl+S saves dirty fields and prevents browser save (info toast "No changes." when clean); Cmd/Ctrl+Enter saves a new or edited note; Escape cancels note edit
+- Add applications in a Shadcn Dialog modal; view/edit in `ApplicationDetailSheet` (card click): status saves immediately in the sheet (same path as cards; `isManualSaveFormDirty` excludes status from unsaved-close prompt); notes default newest-first with sort picker (newest/oldest, persisted in `localStorage` as `applied-dev-note-sort`), linkify http(s) URLs in note body with long URLs truncated inside the border, edit/copy/delete on note date row (muted ghost icons; inline textarea with Save Note / Cancel when editing), compose row above the notes list (textarea with min-height plus square green height-matched Save Note button on the right); unsaved edits show Alert Dialog on close (Save Now, Don't Save with `warnOutline`, Cancel keeps editing); Cmd/Ctrl+S saves dirty fields and prevents browser save (info toast "No changes." when clean); Cmd/Ctrl+Enter saves a new or edited note; Escape cancels note edit
 - Cmd+K (Mac) / Ctrl+K (Windows) opens the new application modal
 - Save/submit buttons green and title case; Cancel uses `cancelOutline` (red border, transparent background, light red tint on hover) in modals and sheets
-- Form inputs: blue border on focus without a gray focus ring; red border (`aria-invalid`) on required fields left empty after a failed submit; date inputs use a muted calendar picker icon; list filters in `ApplicationFilters`: search above equal-width company/status multi-selects with fixed trigger widths, animated chevrons, and no layout shift when menus open; always-visible clear-filters icon button (pale red background and white X when active, muted X when disabled, border unchanged when active; `cursor-not-allowed` on wrapper when inactive); double-tap Escape clears filters on card view; `/` focuses search when sheet closed and no field focused; `Separator` below the filter block; keep controls `h-8` via `FILTER_CONTROL_HEIGHT_CLASS` in `src/lib/filterControls.ts`
+- Form inputs: blue border on focus without a gray focus ring; red border (`aria-invalid`) on required fields left empty after a failed submit; date inputs use a muted calendar picker icon; list filters in `ApplicationFilters`: search above equal-width company/status multi-selects labeled "Filter By Company" and "Filter By Status" with fixed trigger widths, animated chevrons, and no layout shift when menus open; always-visible clear-filters icon button (pale red background and white X when active, muted X when disabled, border unchanged when active; `cursor-not-allowed` on wrapper when inactive); double-tap Escape clears filters on card view; `/` focuses search when sheet closed and no field focused; `Separator` below the filter block; keep controls `h-8` via `FILTER_CONTROL_HEIGHT_CLASS` in `src/lib/filterControls.ts`
 - Add-application dialog: hide notes (manage in detail drawer); no section dividers; recruiter/contact fields optional by default; auto-parse on URL paste; on open, clipboard-only URL prefill, parse, then focus Save Application
 - Label the field "Company LinkedIn URL"; use "Contact Name" for the recruiter name field; optional salary fields labeled "Salary Range" (parsed from postings) and "Desired Salary" (user-entered only) in `ApplicationFormFields`; when `linkedinUrl` is set, show a LinkedIn link before Job Description on cards and sheet via `ApplicationMetadataLine`
 - Use Shadcn Alert Dialog for delete confirmations, not `window.confirm`; no edit/delete on application cards — delete only from the detail drawer
@@ -48,6 +48,12 @@ Local defaults live in `.env.local`; copy from `.env.example` when bootstrapping
 | `TURSO_DATABASE_URL` | —                 | Turso Cloud database URL when `DATABASE_PROVIDER=turso`                      |
 | `TURSO_AUTH_TOKEN`   | —                 | Turso Cloud auth token when `DATABASE_PROVIDER=turso`                        |
 | `AGENT_API_TOKEN`    | —                 | Bearer token for `/api/agent/*` routes                                       |
+| `LOG_ENABLED`        | `true`            | Write logs to local file; set `false` on Vercel                              |
+| `LOG_LEVEL`          | `info`            | Minimum level: `debug`, `info`, `warn`, or `error`                           |
+| `LOG_DIR`            | `data/logs`       | Directory for rotated log files                                              |
+| `LOG_FILE`           | `applied.log`     | Base log filename                                                            |
+| `LOG_MAX_SIZE`       | `5m`              | Rotate when file exceeds this size                                           |
+| `LOG_MAX_FILES`      | `7`               | Number of rotated files to keep                                              |
 | `NODE_ENV`           | —                 | `production` for optimized build                                             |
 | `PORT`               | `3030`            | HTTP port for `pnpm dev` and `pnpm start`; read from `.env.local` by default |
 
@@ -55,20 +61,21 @@ Local defaults live in `.env.local`; copy from `.env.example` when bootstrapping
 
 ## Stack
 
-| Layer        | Technology                                                               |
-| ------------ | ------------------------------------------------------------------------ |
-| Runtime      | Node.js                                                                  |
-| Package mgr  | pnpm                                                                     |
-| Framework    | Next.js 15 (App Router)                                                  |
-| Frontend     | React 19, TypeScript (strict)                                            |
-| Styling      | Tailwind CSS 4, Shadcn UI (`base-nova` style), Roboto Mono (self-hosted) |
-| Icons        | Lucide React                                                             |
-| Toasts       | Sonner (`<Toaster />` in `src/app/layout.tsx`)                           |
-| Backend      | Next.js Route Handlers (`src/app/api/**`)                                |
-| Database     | SQLite via `better-sqlite3`                                              |
-| HTML parsing | linkedom (server-side job URL fetch + parse)                             |
-| Tests        | Vitest (unit + SQLite integration)                                       |
-| Lint/format  | ESLint 9 (type-checked), Prettier + tailwind plugin                      |
+| Layer        | Technology                                                                    |
+| ------------ | ----------------------------------------------------------------------------- |
+| Runtime      | Node.js                                                                       |
+| Package mgr  | pnpm                                                                          |
+| Framework    | Next.js 15 (App Router)                                                       |
+| Frontend     | React 19, TypeScript (strict)                                                 |
+| Styling      | Tailwind CSS 4, Shadcn UI (`base-nova` style), Roboto Mono (self-hosted)      |
+| Icons        | Lucide React                                                                  |
+| Toasts       | Sonner (`<Toaster />` in `src/app/layout.tsx`)                                |
+| Backend      | Next.js Route Handlers (`src/app/api/**`)                                     |
+| Database     | SQLite via `better-sqlite3`                                                   |
+| HTML parsing | linkedom (server-side job URL fetch + parse)                                  |
+| Tests        | Vitest (unit + SQLite integration)                                            |
+| Logging      | pino → `data/logs/` (JSON lines, custom size rotation, `current.log` symlink) |
+| Lint/format  | ESLint 9 (type-checked), Prettier + tailwind plugin                           |
 
 ---
 
@@ -287,6 +294,21 @@ Client component (`"use client"`). Contains the full application UI:
 
 ---
 
+## Logging
+
+Local structured logs go to `data/logs/` (gitignored, rotated by size). Tail the active file with `pnpm logs:tail` (symlink at `data/logs/current.log`). Rotated files use the `applied.log.N` pattern.
+
+| Level | Use for                                                                |
+| ----- | ---------------------------------------------------------------------- |
+| debug | Internal steps (parse extraction, transfer verification detail)        |
+| info  | Completed operations (CRUD, backup, sync, DB ready)                    |
+| warn  | Handled problems (parse failure, agent auth rejected, verify mismatch) |
+| error | Failures and uncaught route errors                                     |
+
+Server code uses `log.*` from `@/lib/server/logging/logger` — not `console.*`. Do not log validation `400`s, expected `403`s, or `404`s. Use `hostFromUrl()` instead of full job URLs. The logger initializes lazily on the first write. Set `LOG_ENABLED=false` on Vercel until remote shipping exists.
+
+---
+
 ## Testing
 
 | Command             | What it runs                      |
@@ -433,6 +455,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 - Job URL parse uses `extractJobCompany` and `extractParaformRole`: Y Combinator, Ashby, and Paraform are job boards, not employers; Paraform title/company from JSON-LD, Next data, and og:title patterns; `normalizeJobTitle()` strips `| Y Combinator` and anything after it, and collapses extra whitespace on parse/save
 - Application statuses: `applied`, `to_apply`, `interviewing`, `waiting`, `rejected`, `offer`, `passed` — managed via `ApplicationStatusPicker` on cards and in the detail drawer; status changes auto-create a note `Status Update: {label}` via PATCH; agent API creates use `to_apply` (label "To Apply")
 - `ApplicationDetailSheet` is 60vw, slides from the right with blurred backdrop; theme via `ThemeProvider` + blocking `themeInitScript()` before paint (near-black dark tokens in `styles.css`); Sonner follows active theme
-- Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1`; provider-selected database backup via `GET /api/backup/database` (local SQLite returns a zipped `.db`; Turso returns a zipped SQL backup); `BackupMenu` "Create Backup" downloads `.zip`
+- Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1`; provider-selected database backup via `GET /api/backup/database` (local SQLite returns a zipped `.db`; Turso returns a zipped SQL backup); `BackupMenu` "Create Backup" downloads `.zip`; when running local SQLite with Turso env configured, `BackupMenu` also offers "Turso Sync" via `POST /api/backup/sync-turso` (CLI: `pnpm db:push-turso`, `pnpm db:pull-turso`, `pnpm db:verify-turso`)
+- Local logging: pino → `data/logs/` with size rotation; active symlink `current.log`; levels debug/info/warn/error; `pnpm logs:tail`; disabled in Vitest by default unless `LOG_ENABLED=true`; use `LOG_ENABLED=false` on Vercel
 - Optional salary fields: `salaryRange` (posting pay range, parsed on job URL fetch) and `desiredSalary` (user target, form-only); both optional on create/patch, searchable, included in backup/export JSON and SQL
 - Deployable to Vercel with Turso Cloud (`DATABASE_PROVIDER=turso`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`); thin auth later; Electron is a viable desktop path with local SQLite (no hosted DB required); external-agent workflow via token-protected `/api/agent` (GET discovery; GET/POST `/api/agent/applications` for list/create only); agent create-from-URL persists parsed `salaryRange` when the parser finds it; bearer token from `AGENT_API_TOKEN` (`pnpm agent:token`); agent docs in `LEARNING_PROMPT.md`

@@ -2,6 +2,7 @@
 
 import { existsSync } from "node:fs";
 import type { ImportMode } from "@/lib/schemas/backup";
+import { initLogger, log } from "@/lib/server/logging/logger";
 import { loadProjectEnvFiles } from "@/lib/server/loadEnvFile";
 import {
   pullTursoToSqlite,
@@ -111,8 +112,32 @@ function printTransferResult(direction: "push" | "pull", mode: ImportMode, resul
   printVerification(result.verification);
 }
 
+function logTransferVerification(command: Command, verification: TransferVerification): void {
+  if (verification.matches) {
+    log.debug("db transfer verification matched", { command });
+    return;
+  }
+
+  log.warn("db transfer verification mismatch", {
+    command,
+    differences: verification.differences,
+  });
+}
+
+function logTransferSuccess(direction: "push" | "pull", mode: ImportMode, result: TransferResult): void {
+  log.info("db transfer completed", {
+    command: direction,
+    mode,
+    matches: result.verification.matches,
+    importedApplications: result.imported.applications,
+    importedNotes: result.imported.notes,
+  });
+  logTransferVerification(direction, result.verification);
+}
+
 async function main(): Promise<void> {
   loadProjectEnvFiles();
+  await initLogger();
 
   const parsed = parseArgs(process.argv.slice(2));
   if (parsed.help) {
@@ -132,20 +157,24 @@ async function main(): Promise<void> {
     if (parsed.command === "push") {
       const result = await pushSqliteToTurso(parsed);
       printTransferResult("push", parsed.mode, result);
+      logTransferSuccess("push", parsed.mode, result);
       process.exit(result.verification.matches ? 0 : 2);
     }
 
     if (parsed.command === "pull") {
       const result = await pullTursoToSqlite(parsed);
       printTransferResult("pull", parsed.mode, result);
+      logTransferSuccess("pull", parsed.mode, result);
       process.exit(result.verification.matches ? 0 : 2);
     }
 
     const verification = await verifySqliteAndTurso(parsed);
     printVerification(verification);
+    logTransferVerification("verify", verification);
     process.exit(verification.matches ? 0 : 2);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Transfer failed";
+    log.errorFromUnknown(error, { command: parsed.command });
     process.stderr.write(`${message}\n`);
     process.exit(1);
   }

@@ -1,4 +1,6 @@
 import Database from "better-sqlite3";
+import { log } from "@/lib/server/logging/logger";
+import { tursoHostFromUrl } from "@/lib/server/logging/sanitize";
 import { getDefaultDatabasePath, readDatabaseConfig } from "./databaseConfig";
 import type { DatabaseBackend } from "./databaseBackend";
 import { SqliteDatabaseBackend } from "./db/sqliteBackend";
@@ -15,11 +17,24 @@ export function getDatabasePath(): string {
   return config.provider === "sqlite" ? config.path : getDefaultDatabasePath();
 }
 
+function logDatabaseBackendReady(config: ReturnType<typeof readDatabaseConfig>): void {
+  if (config.provider === "sqlite") {
+    log.info("database backend ready", { provider: config.provider, path: config.path });
+    return;
+  }
+
+  log.info("database backend ready", {
+    provider: config.provider,
+    tursoHost: tursoHostFromUrl(config.url),
+  });
+}
+
 export function getDatabaseBackend(): DatabaseBackend {
   if (!globalForDb.backend) {
     const config = readDatabaseConfig();
     globalForDb.backend =
       config.provider === "sqlite" ? new SqliteDatabaseBackend(config) : new TursoDatabaseBackend(config);
+    logDatabaseBackendReady(config);
   }
 
   return globalForDb.backend;

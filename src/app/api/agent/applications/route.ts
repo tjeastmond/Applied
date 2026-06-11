@@ -1,6 +1,7 @@
 import { agentCreateApplicationSchema } from "@/lib/schemas/agent";
 import { badRequestResponse } from "@/lib/server/applicationRouteHelpers";
 import { requireAgentAuth } from "@/lib/server/agentAuth";
+import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
 import {
   createApplicationFromUrlForAgent,
@@ -10,9 +11,14 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+const AGENT_APPLICATIONS_ROUTE = "/api/agent/applications";
+
 export async function GET(request: Request) {
   const authError = requireAgentAuth(request);
-  if (authError) return authError;
+  if (authError) {
+    log.warn("agent auth rejected", { route: AGENT_APPLICATIONS_ROUTE, method: "GET" });
+    return authError;
+  }
 
   const applications = await listApplicationsForAgent();
   return NextResponse.json({ applications });
@@ -20,7 +26,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const authError = requireAgentAuth(request);
-  if (authError) return authError;
+  if (authError) {
+    log.warn("agent auth rejected", { route: AGENT_APPLICATIONS_ROUTE, method: "POST" });
+    return authError;
+  }
 
   const parsed = await parseRequestBody(request, agentCreateApplicationSchema);
   if (!parsed.ok) {
@@ -31,6 +40,12 @@ export async function POST(request: Request) {
   if (!result.ok) {
     return badRequestResponse(result.error);
   }
+
+  log.info("agent application created", {
+    route: AGENT_APPLICATIONS_ROUTE,
+    method: "POST",
+    id: result.application.id,
+  });
 
   return NextResponse.json(result.application, { status: 201 });
 }

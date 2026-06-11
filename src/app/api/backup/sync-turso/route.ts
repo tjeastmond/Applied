@@ -1,8 +1,29 @@
 import { importModeSchema } from "@/lib/schemas/backup";
+import { logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
+import { log } from "@/lib/server/logging/logger";
 import { isTursoSyncAvailable, pushSqliteToTurso } from "@/lib/server/services/databaseTransferService";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+
+function logTursoVerification(result: Awaited<ReturnType<typeof pushSqliteToTurso>>, mode: string): void {
+  log.info("turso sync completed", {
+    route: "/api/backup/sync-turso",
+    method: "POST",
+    mode,
+    matches: result.verification.matches,
+    importedApplications: result.imported.applications,
+    importedNotes: result.imported.notes,
+  });
+
+  if (!result.verification.matches) {
+    log.warn("turso verify mismatch", {
+      route: "/api/backup/sync-turso",
+      method: "POST",
+      differences: result.verification.differences,
+    });
+  }
+}
 
 export async function POST(request: Request) {
   if (!isTursoSyncAvailable()) {
@@ -27,6 +48,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await pushSqliteToTurso({ mode: modeParsed.data });
+    logTursoVerification(result, modeParsed.data);
     return NextResponse.json({
       imported: result.imported,
       matches: result.verification.matches,
@@ -34,6 +56,9 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Turso sync failed";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return logAndRespondFromUnknown(error, message, 400, {
+      route: "/api/backup/sync-turso",
+      method: "POST",
+    });
   }
 }

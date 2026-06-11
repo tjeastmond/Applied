@@ -1,5 +1,7 @@
 import { parseHTML } from "linkedom";
 import { errorMessage } from "@/lib/errorMessage";
+import { log } from "@/lib/server/logging/logger";
+import { hostFromUrl } from "@/lib/server/logging/sanitize";
 import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
 import { parseParsedApplicationSalaryFields } from "@/lib/schemas/application";
 import { parseJobUrlResultSchema, type ParseJobUrlResult } from "@/lib/schemas/parseJob";
@@ -100,6 +102,14 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
     const fullJd = buildFullJd(document, metaDescription);
     const { salaryRange } = parseParsedApplicationSalaryFields(extractJobSalary(url, document, html));
 
+    log.debug("parseJobUrl: extracted job metadata", {
+      host: url.hostname,
+      hasTitle: Boolean(title),
+      hasCompany: Boolean(company),
+      hasSalary: Boolean(salaryRange),
+      hasFullJd: Boolean(fullJd),
+    });
+
     return parseJobUrlResultSchema.parse({
       ok: true,
       title,
@@ -108,12 +118,16 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
       fullJd,
     });
   } catch (error) {
+    const host = hostFromUrl(urlString);
     if (error instanceof Error && error.name === "AbortError") {
+      log.warn("job url parse failed", { host, error: "Request timed out" });
       return { ok: false, error: "Request timed out" };
     }
+    const message = errorMessage(error, "Failed to fetch URL");
+    log.warn("job url parse failed", { host, error: message });
     return {
       ok: false,
-      error: errorMessage(error, "Failed to fetch URL"),
+      error: message,
     };
   } finally {
     clearTimeout(timeout);

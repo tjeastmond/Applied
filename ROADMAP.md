@@ -17,6 +17,12 @@
 - Scope application data to authenticated users once accounts exist.
 - Keep a migration path for the current single-user local database.
 
+### Log Tracing And Tracking
+
+- Adopt a structured logging and tracing stack with request correlation across API routes and server services.
+- Add end-to-end visibility for slow or failure-prone paths (job URL parse, database operations, backup/import, agent API).
+- Make production logs searchable and actionable on Vercel/Turso deployments.
+
 ## Completed Foundations
 
 - Local and Turso data transfer CLI (`pnpm db:push-turso`, `pnpm db:pull-turso`, `pnpm db:verify-turso`).

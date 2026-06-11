@@ -1,4 +1,6 @@
 import { getDatabaseBackend } from "@/lib/server/db";
+import { logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
+import { log } from "@/lib/server/logging/logger";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -6,6 +8,12 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     const { filename, data } = await getDatabaseBackend().createDatabaseBackup();
+    log.info("database backup downloaded", {
+      route: "/api/backup/database",
+      method: "GET",
+      filename,
+      byteLength: data.byteLength,
+    });
 
     return new NextResponse(new Uint8Array(data), {
       headers: {
@@ -15,6 +23,9 @@ export async function GET() {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Database backup failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return logAndRespondFromUnknown(error, message, 500, {
+      route: "/api/backup/database",
+      method: "GET",
+    });
   }
 }

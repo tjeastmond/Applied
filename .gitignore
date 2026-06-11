@@ -1,6 +1,7 @@
 node_modules/
 dist/
 data/*.db
+data/logs/
 .DS_Store
 *.local
 .cursor/hooks/state/

@@ -1,5 +1,7 @@
 import { importModeSchema } from "@/lib/schemas/backup";
 import { getDatabaseBackend, resetDatabaseBackend } from "@/lib/server/db";
+import { logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
+import { log } from "@/lib/server/logging/logger";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -62,12 +64,29 @@ export async function POST(request: Request) {
       resetDatabaseBackend();
     }
 
+    log.info("backup imported", {
+      route: "/api/backup/import",
+      method: "POST",
+      format,
+      mode: modeParsed.data,
+      importedApplications: result.imported.applications,
+      importedNotes: result.imported.notes,
+    });
+
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Import failed";
     if (message.includes("JSON") || message.includes("Unexpected token")) {
+      log.warn("backup import rejected", {
+        route: "/api/backup/import",
+        method: "POST",
+        reason: "Invalid backup JSON format",
+      });
       return NextResponse.json({ error: "Invalid backup JSON format" }, { status: 400 });
     }
-    return NextResponse.json({ error: message }, { status: 400 });
+    return logAndRespondFromUnknown(error, message, 400, {
+      route: "/api/backup/import",
+      method: "POST",
+    });
   }
 }

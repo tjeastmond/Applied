@@ -7,6 +7,7 @@ import {
   noteNotFoundResponse,
   requireApplicationId,
 } from "@/lib/server/applicationRouteHelpers";
+import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
 import { createApplicationNoteSchema } from "@/lib/schemas/note";
 import { NextResponse } from "next/server";
@@ -35,6 +36,13 @@ export async function PATCH(request: Request, context: ApplicationNoteRouteConte
     return noteNotFoundResponse();
   }
 
+  log.info("note updated", {
+    route: "/api/applications/[id]/notes/[noteId]",
+    method: "PATCH",
+    applicationId,
+    noteId,
+  });
+
   return NextResponse.json(note);
 }
 
@@ -54,6 +62,13 @@ export async function DELETE(_request: Request, context: ApplicationNoteRouteCon
   if (!deleted) {
     return noteNotFoundResponse();
   }
+
+  log.info("note deleted", {
+    route: "/api/applications/[id]/notes/[noteId]",
+    method: "DELETE",
+    applicationId,
+    noteId,
+  });
 
   return new NextResponse(null, { status: 204 });
 }
