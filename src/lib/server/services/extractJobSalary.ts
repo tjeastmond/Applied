@@ -41,8 +41,7 @@ function formatMonetaryRange(amount: MonetaryAmount): string | null {
   const rawValue = amount.value;
   if (rawValue == null) return null;
 
-  const quantitative: QuantitativeValue =
-    typeof rawValue === "number" ? { value: rawValue } : rawValue;
+  const quantitative: QuantitativeValue = typeof rawValue === "number" ? { value: rawValue } : rawValue;
 
   const min = quantitative.minValue ?? quantitative.value;
   const max = quantitative.maxValue ?? quantitative.value;
@@ -111,10 +110,7 @@ function salaryRangeFromEmbeddedJson(html: string, jobId: string | null): string
   const decoded = decodeHtmlEntities(html);
 
   if (jobId) {
-    const scopedPattern = new RegExp(
-      `"id"\\s*:\\s*"?${jobId}"?[^}]*"salaryRange"\\s*:\\s*"([^"]+)"`,
-      "i",
-    );
+    const scopedPattern = new RegExp(`"id"\\s*:\\s*"?${jobId}"?[^}]*"salaryRange"\\s*:\\s*"([^"]+)"`, "i");
     const scopedMatch = decoded.match(scopedPattern);
     if (scopedMatch?.[1]) {
       return collapseWhitespace(scopedMatch[1]);

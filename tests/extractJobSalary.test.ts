@@ -40,11 +40,7 @@ describe("extractJobSalary", () => {
       {"id":94337,"title":"Founding SDR","salaryRange":"$80K - $160K"}
     </body></html>`;
 
-    const salary = extractJobSalary(
-      new URL("https://www.workatastartup.com/jobs/84795"),
-      parseDocument(html),
-      html,
-    );
+    const salary = extractJobSalary(new URL("https://www.workatastartup.com/jobs/84795"), parseDocument(html), html);
 
     expect(salary).toEqual({ salaryRange: "$150K - $250K" });
   });
@@ -54,11 +50,7 @@ describe("extractJobSalary", () => {
       &quot;id&quot;:84795,&quot;salaryRange&quot;:&quot;$150K - $250K&quot;
     </body></html>`;
 
-    const salary = extractJobSalary(
-      new URL("https://www.workatastartup.com/jobs/84795"),
-      parseDocument(html),
-      html,
-    );
+    const salary = extractJobSalary(new URL("https://www.workatastartup.com/jobs/84795"), parseDocument(html), html);
 
     expect(salary).toEqual({ salaryRange: "$150K - $250K" });
   });

@@ -80,15 +80,10 @@ export const applicationSalaryFieldSchemas = {
 export const applicationSalaryFieldsSchema = z.strictObject(applicationSalaryFieldSchemas);
 
 /** Parsed job URL salary values may be truncated before persistence. */
-export const parsedSalaryRangeSchema = z.preprocess(
-  (value) => {
-    const normalized = emptyToNull(value);
-    return typeof normalized === "string"
-      ? sanitizeOptionalPlainText(normalized, SALARY_FIELD_MAX_LENGTH)
-      : normalized;
-  },
-  applicationSalaryFieldSchemas.salaryRange,
-);
+export const parsedSalaryRangeSchema = z.preprocess((value) => {
+  const normalized = emptyToNull(value);
+  return typeof normalized === "string" ? sanitizeOptionalPlainText(normalized, SALARY_FIELD_MAX_LENGTH) : normalized;
+}, applicationSalaryFieldSchemas.salaryRange);
 
 export const parsedApplicationSalaryFieldsSchema = z
   .strictObject({

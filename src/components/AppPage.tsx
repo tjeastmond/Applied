@@ -531,10 +531,7 @@ export function AppPage({
           ) : !hasSyncedPageSize ? (
             <div className="space-y-4" aria-busy="true" aria-label="Loading applications">
               {Array.from({ length: 3 }, (_, index) => (
-                <div
-                  key={index}
-                  className="bg-card ring-foreground/10 h-[10.5rem] animate-pulse rounded-xl ring-1"
-                />
+                <div key={index} className="bg-card ring-foreground/10 h-[10.5rem] animate-pulse rounded-xl ring-1" />
               ))}
             </div>
           ) : (

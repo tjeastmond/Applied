@@ -15,9 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={robotoMono.variable} suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{ __html: `${themeInitScript()}${applicationPageSizeInitScript()}` }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: `${themeInitScript()}${applicationPageSizeInitScript()}` }} />
       </head>
       <body className={`${robotoMono.className} min-h-screen antialiased`}>
         <ThemeProvider>

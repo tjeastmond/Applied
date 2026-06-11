@@ -40,11 +40,7 @@ export type {
   PatchJobApplicationInput,
 } from "@/lib/schemas/application";
 
-export type {
-  ParseJobUrlFailure,
-  ParseJobUrlResult,
-  ParseJobUrlSuccess,
-} from "@/lib/schemas/parseJob";
+export type { ParseJobUrlFailure, ParseJobUrlResult, ParseJobUrlSuccess } from "@/lib/schemas/parseJob";
 
 export interface ApplicationNote {
   id: string;

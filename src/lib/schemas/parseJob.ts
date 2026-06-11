@@ -19,10 +19,7 @@ export const parseJobUrlFailureSchema = z.strictObject({
   error: z.string(),
 });
 
-export const parseJobUrlResultSchema = z.discriminatedUnion("ok", [
-  parseJobUrlSuccessSchema,
-  parseJobUrlFailureSchema,
-]);
+export const parseJobUrlResultSchema = z.discriminatedUnion("ok", [parseJobUrlSuccessSchema, parseJobUrlFailureSchema]);
 
 export type ParseJobUrlRequest = z.infer<typeof parseJobUrlRequestSchema>;
 export type ParseJobUrlSuccess = z.infer<typeof parseJobUrlSuccessSchema>;

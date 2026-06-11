@@ -6,11 +6,7 @@ import {
   patchJobApplicationSchema,
 } from "@/lib/schemas/application";
 import { createApplicationNoteSchema } from "@/lib/schemas/note";
-import {
-  parseJobUrlRequestSchema,
-  parseJobUrlResultSchema,
-  parseJobUrlSuccessSchema,
-} from "@/lib/schemas/parseJob";
+import { parseJobUrlRequestSchema, parseJobUrlResultSchema, parseJobUrlSuccessSchema } from "@/lib/schemas/parseJob";
 
 describe("createJobApplicationSchema", () => {
   it("parses and sanitizes valid create payloads", () => {

@@ -145,9 +145,7 @@ export async function downloadDatabaseBackup(): Promise<{ blob: Blob; filename: 
   }
 
   const blob = await response.blob();
-  const filename =
-    parseContentDispositionFilename(response.headers.get("Content-Disposition")) ??
-    "applied-backup.zip";
+  const filename = parseContentDispositionFilename(response.headers.get("Content-Disposition")) ?? "applied-backup.zip";
 
   return { blob, filename };
 }

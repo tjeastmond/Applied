@@ -474,7 +474,7 @@ export function ApplicationDetailSheet({
                       <Button
                         type="button"
                         variant="save"
-                        className="aspect-square h-auto! w-auto shrink-0 self-stretch flex-col gap-0 rounded-md px-1.5 text-xs leading-snug whitespace-normal"
+                        className="aspect-square h-auto! w-auto shrink-0 flex-col gap-0 self-stretch rounded-md px-1.5 text-xs leading-snug whitespace-normal"
                         disabled={isAddingNote || !newNote.trim()}
                         title={modEnterShortcutDescription()}
                         onClick={() => void handleAddNote()}
