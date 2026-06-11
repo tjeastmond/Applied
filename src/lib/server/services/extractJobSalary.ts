@@ -86,7 +86,7 @@ function readJsonLdSalary(scriptText: string): string | null {
       const baseSalary = (record as { baseSalary?: unknown }).baseSalary;
       if (!baseSalary || typeof baseSalary !== "object") continue;
 
-      const formatted = formatMonetaryRange(baseSalary as MonetaryAmount);
+      const formatted = formatMonetaryRange(baseSalary);
       if (formatted) return formatted;
     }
   } catch {
