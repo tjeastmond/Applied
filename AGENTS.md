@@ -291,11 +291,13 @@ Client component (`"use client"`). Contains the full application UI:
 
 ## Git: Branches, Commits, and PRs
 
-Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) for **all** branch names, commit messages, and pull request titles.
+Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) for **all** commit messages (and branch/PR titles when used).
+
+**Default workflow:** commit and push directly to `main`. Use a feature branch or PR only when the user creates one, asks for a branch, or asks for a PR.
 
 ### Branch names
 
-Use the commit type as a prefix, then a short kebab-case slug:
+When a feature branch is needed, use the commit type as a prefix, then a short kebab-case slug:
 
 ```
 feat/status-picker

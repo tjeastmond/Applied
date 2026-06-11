@@ -1,0 +1,25 @@
+---
+description: Commit to main by default; branches and PRs only when requested
+alwaysApply: true
+---
+
+# Git workflow
+
+Solo-dev project — default to committing directly on `main`.
+
+## Default
+
+- Commit and push to `main` unless the user explicitly asks otherwise.
+- Do **not** create a feature branch or open a PR on your own initiative.
+
+## Use a branch or PR only when
+
+- The user creates a separate branch themselves, or
+- The user asks you to create a separate branch, or
+- The user asks you to create a PR.
+
+## Commits
+
+- Still follow Conventional Commits for messages.
+- Split into logical commits when the change set warrants it.
+- Only create commits when the user asks (see user commit rule).
