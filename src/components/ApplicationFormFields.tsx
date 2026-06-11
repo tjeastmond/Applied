@@ -153,6 +153,27 @@ export function ApplicationFormFields({
 
       {minimal ? null : (
         <>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="salaryRange">Salary Range</FieldLabel>
+              <Input
+                id="salaryRange"
+                placeholder="$150k–$180k"
+                value={form.salaryRange ?? ""}
+                onChange={(e) => updateField("salaryRange", e.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="desiredSalary">Desired Salary</FieldLabel>
+              <Input
+                id="desiredSalary"
+                placeholder="$175k"
+                value={form.desiredSalary ?? ""}
+                onChange={(e) => updateField("desiredSalary", e.target.value)}
+              />
+            </Field>
+          </div>
+
           <Separator className={fullBleedSeparatorClassName} />
           <Field>
             <FieldLabel htmlFor="linkedinUrl">Company LinkedIn</FieldLabel>
