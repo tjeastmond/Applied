@@ -461,6 +461,27 @@ export function ApplicationDetailSheet({
                       <h3 className="text-sm font-semibold tracking-wide uppercase">Notes</h3>
                       <NoteSortPicker sortOrder={noteSortOrder} onSortOrderChange={handleNoteSortOrderChange} />
                     </div>
+                    <div className="flex items-stretch gap-2">
+                      <Textarea
+                        placeholder="Add a note…"
+                        value={newNote}
+                        rows={3}
+                        disabled={isAddingNote}
+                        className="min-h-20 min-w-0 flex-1"
+                        onChange={(e) => setNewNote(e.target.value)}
+                        onKeyDown={handleNewNoteKeyDown}
+                      />
+                      <Button
+                        type="button"
+                        variant="save"
+                        className="aspect-square h-auto! w-auto shrink-0 self-stretch flex-col gap-0 rounded-md px-1.5 text-xs leading-snug whitespace-normal"
+                        disabled={isAddingNote || !newNote.trim()}
+                        title={modEnterShortcutDescription()}
+                        onClick={() => void handleAddNote()}
+                      >
+                        {isAddingNote ? "Saving…" : "Save Note"}
+                      </Button>
+                    </div>
                     {notesLoading && notes.length === 0 ? (
                       <p className="text-muted-foreground text-sm">Loading notes…</p>
                     ) : null}
@@ -556,30 +577,6 @@ export function ApplicationDetailSheet({
                           </li>
                         );
                       })}
-                      <li>
-                        <Textarea
-                          placeholder="Add a note…"
-                          value={newNote}
-                          rows={3}
-                          onChange={(e) => setNewNote(e.target.value)}
-                          onKeyDown={handleNewNoteKeyDown}
-                        />
-                      </li>
-                      <li>
-                        <Button
-                          type="button"
-                          variant="saveOutline"
-                          className="self-start"
-                          disabled={isAddingNote || !newNote.trim()}
-                          title={modEnterShortcutDescription()}
-                          onClick={() => void handleAddNote()}
-                        >
-                          {isAddingNote ? "Adding…" : "Add Note"}
-                          <kbd className="pointer-events-none hidden rounded border border-green-600/30 bg-green-600/10 px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide text-green-700/80 sm:inline dark:text-green-400/90">
-                            {modEnterShortcutLabel()}
-                          </kbd>
-                        </Button>
-                      </li>
                     </ul>
                   </section>
                 </div>
@@ -636,7 +633,7 @@ export function ApplicationDetailSheet({
                 title={modSShortcutDescription()}
                 onClick={() => void save()}
               >
-                {isSaving ? "Saving…" : "Save changes"}
+                {isSaving ? "Saving…" : "Save Changes"}
                 <kbd className="bg-primary-foreground/15 text-primary-foreground/90 pointer-events-none hidden rounded px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline">
                   {modSShortcutLabel()}
                 </kbd>
