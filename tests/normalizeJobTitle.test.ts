@@ -7,9 +7,9 @@ describe("normalizeJobTitle", () => {
   });
 
   it("removes the Work at a Startup suffix", () => {
-    expect(
-      normalizeJobTitle("Software Engineer  at MindFort | Y Combinator's Work at a Startup"),
-    ).toBe("Software Engineer at MindFort");
+    expect(normalizeJobTitle("Software Engineer  at MindFort | Y Combinator's Work at a Startup")).toBe(
+      "Software Engineer at MindFort",
+    );
   });
 
   it("trims whitespace before returning", () => {
