@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { createJobApplicationSchema, patchJobApplicationSchema } from "@/lib/schemas/application";
+import {
+  applicationSalaryFieldsSchema,
+  createJobApplicationSchema,
+  parseParsedApplicationSalaryFields,
+  patchJobApplicationSchema,
+} from "@/lib/schemas/application";
 import { createApplicationNoteSchema } from "@/lib/schemas/note";
-import { parseJobUrlRequestSchema } from "@/lib/schemas/parseJob";
+import {
+  parseJobUrlRequestSchema,
+  parseJobUrlResultSchema,
+  parseJobUrlSuccessSchema,
+} from "@/lib/schemas/parseJob";
 
 describe("createJobApplicationSchema", () => {
   it("parses and sanitizes valid create payloads", () => {
@@ -53,6 +62,58 @@ describe("createJobApplicationSchema", () => {
     expect(parsed.status).toBe("to_apply");
   });
 
+  it("accepts omitted salary fields", () => {
+    const parsed = createJobApplicationSchema.parse({
+      url: "https://jobs.example.com/role",
+      title: "Engineer",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+    });
+
+    expect(parsed.salaryRange ?? null).toBeNull();
+    expect(parsed.desiredSalary ?? null).toBeNull();
+  });
+
+  it("normalizes empty and null salary fields to null", () => {
+    const parsed = createJobApplicationSchema.parse({
+      url: "https://jobs.example.com/role",
+      title: "Engineer",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+      salaryRange: "",
+      desiredSalary: null,
+    });
+
+    expect(parsed.salaryRange).toBeNull();
+    expect(parsed.desiredSalary).toBeNull();
+  });
+
+  it("parses optional salary fields", () => {
+    const parsed = createJobApplicationSchema.parse({
+      url: "https://jobs.example.com/role",
+      title: "Engineer",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+      salaryRange: "$150K - $250K",
+      desiredSalary: "$200K",
+    });
+
+    expect(parsed.salaryRange).toBe("$150K - $250K");
+    expect(parsed.desiredSalary).toBe("$200K");
+  });
+
+  it("rejects salary fields longer than 100 characters", () => {
+    const result = createJobApplicationSchema.safeParse({
+      url: "https://jobs.example.com/role",
+      title: "Engineer",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+      salaryRange: "x".repeat(101),
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it("rejects recruiter fields when viaRecruiter is false", () => {
     const result = createJobApplicationSchema.safeParse({
       url: "https://jobs.example.com/role",
@@ -91,12 +152,97 @@ describe("patchJobApplicationSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("validates salary-only patches", () => {
+    const parsed = patchJobApplicationSchema.parse({
+      salaryRange: "  $150K - $250K  ",
+      desiredSalary: " $175K ",
+    });
+
+    expect(parsed.salaryRange).toBe("$150K - $250K");
+    expect(parsed.desiredSalary).toBe("$175K");
+  });
 });
 
 describe("parseJobUrlRequestSchema", () => {
   it("requires a valid URL", () => {
     expect(parseJobUrlRequestSchema.safeParse({ url: "https://example.com/jobs/1" }).success).toBe(true);
     expect(parseJobUrlRequestSchema.safeParse({ url: "not-a-url" }).success).toBe(false);
+  });
+});
+
+describe("applicationSalaryFieldsSchema", () => {
+  it("accepts an empty object", () => {
+    const parsed = applicationSalaryFieldsSchema.parse({});
+    expect(parsed.salaryRange ?? null).toBeNull();
+    expect(parsed.desiredSalary ?? null).toBeNull();
+  });
+
+  it("sanitizes salary field input", () => {
+    const parsed = applicationSalaryFieldsSchema.parse({
+      salaryRange: "  $150K - $250K  ",
+      desiredSalary: " $200K ",
+    });
+
+    expect(parsed.salaryRange).toBe("$150K - $250K");
+    expect(parsed.desiredSalary).toBe("$200K");
+  });
+});
+
+describe("parseParsedApplicationSalaryFields", () => {
+  it("defaults missing salaryRange to null", () => {
+    expect(parseParsedApplicationSalaryFields({})).toEqual({ salaryRange: null });
+  });
+
+  it("normalizes empty salaryRange to null", () => {
+    expect(parseParsedApplicationSalaryFields({ salaryRange: "" })).toEqual({ salaryRange: null });
+    expect(parseParsedApplicationSalaryFields({ salaryRange: "   " })).toEqual({ salaryRange: null });
+  });
+
+  it("truncates extracted salary ranges before persistence", () => {
+    const parsed = parseParsedApplicationSalaryFields({
+      salaryRange: `$${"9".repeat(120)}`,
+    });
+
+    expect(parsed.salaryRange).toHaveLength(100);
+  });
+});
+
+describe("parseJobUrlResultSchema", () => {
+  it("accepts parse payloads without salaryRange", () => {
+    const parsed = parseJobUrlSuccessSchema.parse({
+      ok: true,
+      title: "Engineer",
+      company: "Acme",
+      fullJd: null,
+    });
+
+    expect(parsed.salaryRange).toBeNull();
+  });
+
+  it("accepts successful parse payloads with salaryRange", () => {
+    const parsed = parseJobUrlSuccessSchema.parse({
+      ok: true,
+      title: "Engineer",
+      company: "Acme",
+      salaryRange: "$150K - $250K",
+      fullJd: null,
+    });
+
+    expect(parsed.salaryRange).toBe("$150K - $250K");
+    expect(parseJobUrlResultSchema.safeParse(parsed).success).toBe(true);
+  });
+
+  it("truncates oversized salaryRange values in parse responses", () => {
+    const parsed = parseJobUrlSuccessSchema.parse({
+      ok: true,
+      title: "Engineer",
+      company: "Acme",
+      salaryRange: "x".repeat(101),
+      fullJd: null,
+    });
+
+    expect(parsed.salaryRange).toHaveLength(100);
   });
 });
 

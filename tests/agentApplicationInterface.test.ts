@@ -58,6 +58,7 @@ describe("agent application interface", () => {
       ok: true,
       title: "Founding Engineer",
       company: "Acme",
+      salaryRange: null,
       fullJd: "<p>Build things.</p>",
     });
 
@@ -83,6 +84,7 @@ describe("agent application interface", () => {
       ok: true,
       title: null,
       company: "Acme",
+      salaryRange: null,
       fullJd: null,
     });
 

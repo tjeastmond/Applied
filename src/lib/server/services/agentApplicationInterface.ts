@@ -50,6 +50,7 @@ export async function createApplicationFromUrlForAgent(rawUrl: string): Promise<
     title: parsedJob.title,
     company: parsedJob.company,
     appliedAt: today(),
+    salaryRange: parsedJob.salaryRange,
     fullJd: parsedJob.fullJd,
     status: "to_apply",
   });

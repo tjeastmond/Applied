@@ -122,6 +122,7 @@ describe("agent API routes", () => {
       ok: true,
       title: "Parsed Role",
       company: "Acme",
+      salaryRange: null,
       fullJd: "<p>Parsed JD</p>",
     });
 

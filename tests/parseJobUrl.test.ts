@@ -39,6 +39,7 @@ describe("parseJobUrl", () => {
     if (!result.ok) return;
     expect(result.title).toBe("Senior Engineer");
     expect(result.company).toBe("Acme Corp");
+    expect(result.salaryRange).toBeNull();
     expect(result.fullJd).toContain("<strong>Summary</strong>");
     expect(result.fullJd).toContain("<li>TypeScript</li>");
   });
@@ -99,6 +100,62 @@ describe("parseJobUrl", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.title).toBe("Founding Engineer");
+  });
+
+  it("extracts salaryRange from Work at a Startup embedded job data", async () => {
+    const html = `<!doctype html><html><head>
+      <meta property="og:title" content="Software Engineer at MindFort | Y Combinator's Work at a Startup" />
+    </head><body>
+      &quot;id&quot;:84795,&quot;title&quot;:&quot;Software Engineer &quot;,&quot;salaryRange&quot;:&quot;$150K - $250K&quot;
+    </body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+
+    const result = await parseJobUrl("https://www.workatastartup.com/jobs/84795");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.salaryRange).toBe("$150K - $250K");
+  });
+
+  it("extracts salaryRange from JSON-LD baseSalary", async () => {
+    const html = `<!doctype html><html><head>
+      <script type="application/ld+json">{
+        "@type": "JobPosting",
+        "title": "Security Engineer, Cloud",
+        "hiringOrganization": { "@type": "Organization", "name": "Ramp" },
+        "baseSalary": {
+          "@type": "MonetaryAmount",
+          "currency": "USD",
+          "value": {
+            "@type": "QuantitativeValue",
+            "minValue": 211400,
+            "maxValue": 290600,
+            "unitText": "YEAR"
+          }
+        }
+      }</script>
+    </head><body></body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+
+    const result = await parseJobUrl("https://jobs.ashbyhq.com/ramp/34413f8d-26bf-4bbc-8ade-eb309a0e2245");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.salaryRange).toBe("$211K–$291K");
   });
 
   it("strips the Work at a Startup suffix and collapses title whitespace", async () => {

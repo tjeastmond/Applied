@@ -1,7 +1,7 @@
 import { parseJobUrl } from "@/lib/server/services/parseJobUrl";
 import { badRequestResponse } from "@/lib/server/applicationRouteHelpers";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
-import { parseJobUrlRequestSchema } from "@/lib/schemas/parseJob";
+import { parseJobUrlRequestSchema, parseJobUrlResultSchema } from "@/lib/schemas/parseJob";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -12,6 +12,6 @@ export async function POST(request: Request) {
     return badRequestResponse(parsed.error);
   }
 
-  const result = await parseJobUrl(parsed.data.url);
+  const result = parseJobUrlResultSchema.parse(await parseJobUrl(parsed.data.url));
   return NextResponse.json(result);
 }

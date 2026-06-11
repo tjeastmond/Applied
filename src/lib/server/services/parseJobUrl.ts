@@ -1,9 +1,11 @@
 import { parseHTML } from "linkedom";
 import { errorMessage } from "@/lib/errorMessage";
 import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
-import type { ParseJobUrlResult } from "@/types";
+import { parseParsedApplicationSalaryFields } from "@/lib/schemas/application";
+import { parseJobUrlResultSchema, type ParseJobUrlResult } from "@/lib/schemas/parseJob";
 import { buildFullJd } from "./extractFullJd";
 import { extractJobCompany } from "./extractJobCompany";
+import { extractJobSalary } from "./extractJobSalary";
 import { extractParaformRole, isParaformHost } from "./extractParaformRole";
 
 const USER_AGENT =
@@ -96,13 +98,15 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
       getMetaContent(document, "og:description") ?? getMetaContent(document, "description") ?? null;
 
     const fullJd = buildFullJd(document, metaDescription);
+    const { salaryRange } = parseParsedApplicationSalaryFields(extractJobSalary(url, document, html));
 
-    return {
+    return parseJobUrlResultSchema.parse({
       ok: true,
       title,
       company,
+      salaryRange,
       fullJd,
-    };
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       return { ok: false, error: "Request timed out" };
