@@ -13,7 +13,7 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 - Save/submit buttons green and title case; Cancel uses `cancelOutline` (red border, transparent background, light red tint on hover) in modals and sheets
 - Form inputs: blue border on focus without a gray focus ring; red border (`aria-invalid`) on required fields left empty after a failed submit; date inputs use a muted calendar picker icon; list filters in `ApplicationFilters`: search above equal-width company/status multi-selects with fixed trigger widths, animated chevrons, and no layout shift when menus open; always-visible clear-filters icon button (pale red background and white X when active, muted X when disabled, border unchanged when active; `cursor-not-allowed` on wrapper when inactive); double-tap Escape clears filters on card view; `/` focuses search when sheet closed and no field focused; `Separator` below the filter block; keep controls `h-8` via `FILTER_CONTROL_HEIGHT_CLASS` in `src/lib/filterControls.ts`
 - Add-application dialog: hide notes (manage in detail drawer); no section dividers; recruiter/contact fields optional by default; auto-parse on URL paste; on open, clipboard-only URL prefill, parse, then focus Save Application
-- Label the field "Company LinkedIn URL"; use "Contact Name" for the recruiter name field; when `linkedinUrl` is set, show a LinkedIn link before Job Description on cards and sheet via `ApplicationMetadataLine`
+- Label the field "Company LinkedIn URL"; use "Contact Name" for the recruiter name field; optional salary fields labeled "Salary Range" (parsed from postings) and "Desired Salary" (user-entered only) in `ApplicationFormFields`; when `linkedinUrl` is set, show a LinkedIn link before Job Description on cards and sheet via `ApplicationMetadataLine`
 - Use Shadcn Alert Dialog for delete confirmations, not `window.confirm`; no edit/delete on application cards — delete only from the detail drawer
 - Application cards use color-coded `ApplicationStatusPicker` (tag-like dropdown, closes on select; Applied first, then alphabetical); job URLs via `JobDescriptionLink` with copy icon; drawer overlay blurs background; header has icon-only `BackupMenu` (database icon), Copy All URLs, and Add Application; card pagination supports 5/10/20/50 per page plus View all, persisted as `applied-dev-page-size`
 - Light/dark theme toggle in header (Lucide Sun/Moon); persist choice in `localStorage` (`applied-dev-theme`); default light; dark-mode header toolbar outline buttons use `header-toolbar-outline` in `styles.css` for lighter borders and visible hover
@@ -153,12 +153,14 @@ applied.dev/
 | `recruiterFirm` | `string \| null`    | Only when `viaRecruiter`                                                         |
 | `contactEmail`  | `string \| null`    |                                                                                  |
 | `contactPhone`  | `string \| null`    |                                                                                  |
+| `salaryRange`   | `string \| null`    | Optional — posting pay range; parsed from job URLs when available (max 100 chars) |
+| `desiredSalary` | `string \| null`    | Optional — user-entered target salary (max 100 chars); not parsed from URLs       |
 | `fullJd`        | `string \| null`    | Parsed job description — cleaned minimal HTML                                    |
 | `status`        | `ApplicationStatus` | `"applied" \| "interviewing" \| "rejected" \| "offer"` — defaults to `"applied"` |
 | `createdAt`     | `string`            | ISO timestamp                                                                    |
 | `updatedAt`     | `string`            | ISO timestamp                                                                    |
 
-**SQLite column mapping:** snake_case in DB (`linkedin_url`, `applied_at`, `full_jd`, etc.); camelCase in TypeScript via `rowToApplication()`.
+**SQLite column mapping:** snake_case in DB (`linkedin_url`, `applied_at`, `salary_range`, `desired_salary`, `full_jd`, etc.); camelCase in TypeScript via `rowToApplication()`.
 
 **List order:** `updated_at DESC, created_at DESC` (main application cards; application saves bump `updated_at`).
 
@@ -180,7 +182,7 @@ Legacy `applications.notes` values are migrated into `application_notes` on star
 ### Schema migrations
 
 - `src/lib/server/db/schema.sql` — `CREATE TABLE IF NOT EXISTS` + index
-- `src/lib/server/db/migrate.ts` — runs schema on startup; includes legacy `ALTER TABLE` for `full_jd` if missing
+- `src/lib/server/db/migrate.ts` — runs schema on startup; includes legacy `ALTER TABLE` for `full_jd`, `salary_range`, and `desired_salary` if missing
 - Add new columns via `migrate.ts` (check `PRAGMA table_info`) — do not rely on ALTER in schema.sql alone for existing DBs
 
 ---
@@ -192,6 +194,7 @@ All endpoints return JSON unless noted. Errors: `{ "error": "message" }` with 4x
 | Method   | Path                                  | Body                                 | Response                 |
 | -------- | ------------------------------------- | ------------------------------------ | ------------------------ |
 | `GET`    | `/api/applications`                   | —                                    | `JobApplication[]`       |
+| `POST`   | `/api/applications/bulk`              | `{ "ids"?: string[] }` (omit or `[]` for all) | `{ applications: JobApplication[] }` |
 | `POST`   | `/api/applications`                   | `CreateJobApplicationInput`          | `JobApplication` (201)   |
 | `PATCH`  | `/api/applications/:id`               | `Partial<CreateJobApplicationInput>` | `JobApplication` or 404  |
 | `DELETE` | `/api/applications/:id`               | —                                    | 204 or 404               |
@@ -201,13 +204,15 @@ All endpoints return JSON unless noted. Errors: `{ "error": "message" }` with 4x
 | `DELETE` | `/api/applications/:id/notes/:noteId` | —                                    | 204 or 404               |
 | `POST`   | `/api/jobs/parse`                     | `{ "url": string }`                  | `ParseJobUrlResult`      |
 
-**Create validation** (`src/lib/schemas/application.ts` via Zod): `url`, `title`, `company`, `appliedAt` required; optional fields sanitized on persist.
+**Create validation** (`src/lib/schemas/application.ts` via Zod): `url`, `title`, `company`, `appliedAt` required; optional fields (`salaryRange`, `desiredSalary`, recruiter/contact, etc.) sanitized on persist.
+
+**Bulk fetch:** `POST /api/applications/bulk` returns full `JobApplication` records (including `salaryRange` and `desiredSalary`). The client hydrates the list via `bulkFetchApplications()` in `src/api.ts`.
 
 **Parse response:**
 
 ```ts
 // success
-{ ok: true, title: string | null, company: string | null, fullJd: string | null }
+{ ok: true, title: string | null, company: string | null, salaryRange: string | null, fullJd: string | null }
 // failure
 { ok: false, error: string }
 ```
@@ -226,7 +231,7 @@ Client component (`"use client"`). Contains the full application UI:
 
 1. **List view** — cards sorted by server; empty state with CTA
 2. **Add/Edit** — Shadcn `Dialog` with `ApplicationFormFields`
-3. **Parse** — "Parse" button on URL field calls `/api/jobs/parse`; fills `title`, `company`, `fullJd` in form state (not shown as editable field)
+3. **Parse** — "Parse" button on URL field (and auto-parse on URL paste in the add dialog) calls `/api/jobs/parse`; fills `title`, `company`, `salaryRange`, and `fullJd` in form state (`fullJd` not shown as editable field; `salaryRange` and `desiredSalary` are editable in `ApplicationFormFields`)
 4. **Save** — validates required fields client-side (`isFormValid`), then POST or PATCH
 5. **Delete** — `window.confirm` then DELETE
 6. **Job description** — card link opens second Dialog rendering `fullJd` via `dangerouslySetInnerHTML` with scoped Tailwind prose classes
@@ -260,7 +265,13 @@ Client component (`"use client"`). Contains the full application UI:
 3. Parses HTML with linkedom
 4. **Title:** `og:title` → `<title>` → first `<h1>`
 5. **Company:** `og:site_name` → `application-name` meta → hostname heuristic
-6. **fullJd:** delegated to `extractFullJd.ts`
+6. **salaryRange:** delegated to `extractJobSalary.ts` (JSON-LD `baseSalary`, embedded `salaryRange` JSON, labeled page text); truncated to 100 chars before persist
+7. **fullJd:** delegated to `extractFullJd.ts`
+
+### Salary extraction (`src/lib/server/services/extractJobSalary.ts`)
+
+- Tries JSON-LD `JobPosting.baseSalary`, embedded job JSON (`salaryRange`), then labeled text (`Salary range:`, `Pay range:`, etc.)
+- Returns `{ salaryRange: string | null }`; `desiredSalary` is never inferred from postings
 
 ### JD extraction (`src/lib/server/services/extractFullJd.ts`)
 
@@ -401,7 +412,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 ## Learned Workspace Facts
 
-- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (header/tab title `APPLIED.`; `ThemeToggle`, icon-only `BackupMenu`, Copy All URLs; initial application hydration via `/api/applications/bulk`; `ApplicationFilters` for company/status/search via `filterApplications`; card pagination via `ApplicationCardPagination`/`applicationPagination`; list footer with `hello@swoo.io` and MIT License link to GitHub; notes prefetched on load and sheet open through `useApplicationNotesCache`; clipboard-only URL prefill on new-application open)
+- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (header/tab title `APPLIED.`; `ThemeToggle`, icon-only `BackupMenu`, Copy All URLs; initial application hydration via `POST /api/applications/bulk` including `salaryRange` and `desiredSalary`; `ApplicationFilters` for company/status/search via `filterApplications` (search includes salary fields); card pagination via `ApplicationCardPagination`/`applicationPagination`; list footer with `hello@swoo.io` and MIT License link to GitHub; notes prefetched on load and sheet open through `useApplicationNotesCache`; clipboard-only URL prefill on new-application open with parse filling `salaryRange` when found)
 - Stack: Next.js App Router, Node.js, pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI, self-hosted Roboto Mono
 - `pnpm dev` runs `scripts/dev-clean.sh` (wipes `.next`, reads `PORT` from `.env.local`, then starts Turbopack on port 3030 by default)
 - Required application form fields: job posting URL, title, company, apply date; all other fields are optional
@@ -412,4 +423,5 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 - Application statuses: `applied`, `to_apply`, `interviewing`, `waiting`, `rejected`, `offer`, `passed` — managed via `ApplicationStatusPicker` on cards and in the detail drawer; status changes auto-create a note `Status Update: {label}` via PATCH; agent API creates use `to_apply` (label "To Apply")
 - `ApplicationDetailSheet` is 60vw, slides from the right with blurred backdrop; theme via `ThemeProvider` + blocking `themeInitScript()` before paint (near-black dark tokens in `styles.css`); Sonner follows active theme
 - Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1`
-- Deployable to Vercel; thin auth later; SQLite for now, Postgres possible later; Electron is a viable desktop path with local SQLite (no hosted DB required); external-agent workflow via token-protected `/api/agent` (GET discovery; GET/POST `/api/agent/applications` for list/create only); bearer token from `AGENT_API_TOKEN` (`pnpm agent:token`); agent docs in `LEARNING_PROMPT.md`
+- Optional salary fields: `salaryRange` (posting pay range, parsed on job URL fetch) and `desiredSalary` (user target, form-only); both optional on create/patch, searchable, included in backup/export JSON and SQL
+- Deployable to Vercel; thin auth later; SQLite for now, Postgres possible later; Electron is a viable desktop path with local SQLite (no hosted DB required); external-agent workflow via token-protected `/api/agent` (GET discovery; GET/POST `/api/agent/applications` for list/create only); agent create-from-URL persists parsed `salaryRange` when the parser finds it; bearer token from `AGENT_API_TOKEN` (`pnpm agent:token`); agent docs in `LEARNING_PROMPT.md`
