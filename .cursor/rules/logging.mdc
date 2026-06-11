@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Logging
 
-Applied.dev writes structured JSON logs under `data/logs/` (rotated by size). The active file is symlinked at `data/logs/current.log` — tail with `pnpm logs:tail`.
+Applied.dev writes structured JSON logs under `data/logs/` (rotated by size). The active file is symlinked at `data/logs/current.log` — tail with `pnpm logs:tail` (runs `scripts/ensure-log-file.ts` first to create the log dir when enabled).
 
 ## When debugging server issues
 

@@ -27,6 +27,7 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 pnpm install         # install dependencies
 pnpm dev             # Next.js dev server with Turbopack (port 3030 from .env.local)
 pnpm dev:clean       # wipe .next and start dev (if HMR/CSS breaks)
+pnpm logs:tail       # tail local server logs (data/logs/current.log)
 pnpm run check       # typecheck + tests + lint + format + build (full CI gate)
 ```
 
@@ -131,15 +132,25 @@ applied.dev/
 │   │       │   └── sqliteRepository.ts
 │   │       ├── repositories/
 │   │       │   └── jobApplicationRepository.ts
+│   │       ├── logging/            # pino logger, config, rotation, sanitize
+│   │       │   ├── logger.ts
+│   │       │   ├── config.ts
+│   │       │   ├── sanitize.ts
+│   │       │   └── types.ts
 │   │       └── services/
 │   │           ├── parseJobUrl.ts  # Fetch URL, extract title/company/JD
 │   │           └── extractFullJd.ts
 │   └── components/ui/              # Shadcn components (do not lint)
+├── scripts/
+│   ├── dev-clean.sh                # pnpm dev entry (wipe .next, start Turbopack)
+│   ├── ensure-log-file.ts          # init log dir/symlink for logs:tail
+│   └── logs-tail.sh                # pnpm logs:tail entry
 ├── tests/                          # Vitest (*.test.ts)
-├── data/                           # SQLite DB (gitignored); auto-created
+├── data/                           # SQLite DB + logs (gitignored); auto-created
+├── .cursor/rules/logging.mdc       # Agent logging conventions
 ├── .ai/issues.md                   # Track bugs/issues found during work
 ├── components.json                 # Shadcn config (style: base-nova)
-├── next.config.ts                  # Next.js config (externalizes better-sqlite3)
+├── next.config.ts                  # Next.js config (externalizes better-sqlite3, pino)
 ├── postcss.config.mjs              # Tailwind PostCSS
 ├── vitest.config.ts
 └── AGENTS.md                       # This file
@@ -296,7 +307,9 @@ Client component (`"use client"`). Contains the full application UI:
 
 ## Logging
 
-Local structured logs go to `data/logs/` (gitignored, rotated by size). Tail the active file with `pnpm logs:tail` (symlink at `data/logs/current.log`). Rotated files use the `applied.log.N` pattern.
+Local structured logs go to `data/logs/` (gitignored, rotated by size). Rotated files use the `applied.log.N` pattern; the active file is symlinked at `data/logs/current.log`.
+
+Tail logs with `pnpm logs:tail` (`scripts/logs-tail.sh`). The script runs `scripts/ensure-log-file.ts` first to create the log directory and symlink when logging is enabled, then tails `current.log` (falls back to `applied.log`, or waits if the dev server has not written yet). Exits with a message when `LOG_ENABLED=false`.
 
 | Level | Use for                                                                |
 | ----- | ---------------------------------------------------------------------- |
@@ -305,7 +318,7 @@ Local structured logs go to `data/logs/` (gitignored, rotated by size). Tail the
 | warn  | Handled problems (parse failure, agent auth rejected, verify mismatch) |
 | error | Failures and uncaught route errors                                     |
 
-Server code uses `log.*` from `@/lib/server/logging/logger` — not `console.*`. Do not log validation `400`s, expected `403`s, or `404`s. Use `hostFromUrl()` instead of full job URLs. The logger initializes lazily on the first write. Set `LOG_ENABLED=false` on Vercel until remote shipping exists.
+Server code uses `log.*` from `@/lib/server/logging/logger` — not `console.*`. Do not log validation `400`s, expected `403`s, or `404`s. Use `hostFromUrl()` instead of full job URLs. The logger initializes lazily on the first write (or when `ensure-log-file.ts` / `initLogger()` runs). Set `LOG_ENABLED=false` on Vercel until remote shipping exists.
 
 ---
 
@@ -323,6 +336,9 @@ Server code uses `log.*` from `@/lib/server/logging/logger` — not `console.*`.
 - `tests/parseJobUrl.test.ts` — parse service (mocked fetch)
 - `tests/extractFullJd.test.ts` — JD HTML sanitization
 - `tests/sqliteRepository.test.ts` — full CRUD lifecycle (better-sqlite3 in-memory)
+- `tests/logger.test.ts` — log levels, rotation, disabled mode
+- `tests/loggerSymlink.test.ts` — `current.log` symlink behavior
+- `tests/loggingSanitize.test.ts` — `hostFromUrl()` and error serialization
 
 ---
 
@@ -456,6 +472,6 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 - Application statuses: `applied`, `to_apply`, `interviewing`, `waiting`, `rejected`, `offer`, `passed` — managed via `ApplicationStatusPicker` on cards and in the detail drawer; status changes auto-create a note `Status Update: {label}` via PATCH; agent API creates use `to_apply` (label "To Apply")
 - `ApplicationDetailSheet` is 60vw, slides from the right with blurred backdrop; theme via `ThemeProvider` + blocking `themeInitScript()` before paint (near-black dark tokens in `styles.css`); Sonner follows active theme
 - Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1`; provider-selected database backup via `GET /api/backup/database` (local SQLite returns a zipped `.db`; Turso returns a zipped SQL backup); `BackupMenu` "Create Backup" downloads `.zip`; when running local SQLite with Turso env configured, `BackupMenu` also offers "Turso Sync" via `POST /api/backup/sync-turso` (CLI: `pnpm db:push-turso`, `pnpm db:pull-turso`, `pnpm db:verify-turso`)
-- Local logging: pino → `data/logs/` with size rotation; active symlink `current.log`; levels debug/info/warn/error; `pnpm logs:tail`; disabled in Vitest by default unless `LOG_ENABLED=true`; use `LOG_ENABLED=false` on Vercel
+- Local logging: pino → `data/logs/` with size rotation; active symlink `current.log`; levels debug/info/warn/error; `pnpm logs:tail` runs `ensure-log-file.ts` then tails (creates log dir if missing); disabled in Vitest by default unless `LOG_ENABLED=true`; use `LOG_ENABLED=false` on Vercel
 - Optional salary fields: `salaryRange` (posting pay range, parsed on job URL fetch) and `desiredSalary` (user target, form-only); both optional on create/patch, searchable, included in backup/export JSON and SQL
 - Deployable to Vercel with Turso Cloud (`DATABASE_PROVIDER=turso`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`); thin auth later; Electron is a viable desktop path with local SQLite (no hosted DB required); external-agent workflow via token-protected `/api/agent` (GET discovery; GET/POST `/api/agent/applications` for list/create only); agent create-from-URL persists parsed `salaryRange` when the parser finds it; bearer token from `AGENT_API_TOKEN` (`pnpm agent:token`); agent docs in `LEARNING_PROMPT.md`
