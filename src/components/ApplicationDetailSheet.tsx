@@ -439,7 +439,7 @@ export function ApplicationDetailSheet({
           <div className="flex-1 overflow-y-auto">
             {form && formMatchesApplication ? (
               <>
-                <div className="px-6 py-4">
+                <div className="py-4">
                   <ApplicationFormFields
                     form={form}
                     requiredValidation={requiredValidation}
