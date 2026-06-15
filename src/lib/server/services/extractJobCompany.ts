@@ -1,4 +1,5 @@
 import { normalizeHost } from "@/lib/server/normalizeHost";
+import { parseJsonLdScripts } from "@/lib/server/services/parseUtils";
 import { extractParaformRole, isParaformHost } from "./extractParaformRole";
 
 const JOB_BOARD_HOSTS = new Set(["ycombinator.com", "jobs.ashbyhq.com", "paraform.com"]);
@@ -83,36 +84,18 @@ function companyFromTitleLikeText(text: string | null): string | null {
   return null;
 }
 
-function readJsonLdOrganization(scriptText: string): string | null {
-  try {
-    const data: unknown = JSON.parse(scriptText);
-    const records = Array.isArray(data) ? data : [data];
-
-    for (const record of records) {
-      if (!record || typeof record !== "object") continue;
-      const hiringOrganization = (record as { hiringOrganization?: unknown }).hiringOrganization;
-      if (!hiringOrganization || typeof hiringOrganization !== "object") continue;
-
-      const name = (hiringOrganization as { name?: unknown }).name;
-      if (typeof name === "string" && name.trim()) {
-        return name.trim();
-      }
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
 function companyFromJsonLd(document: Document): string | null {
-  const scripts = document.querySelectorAll('script[type="application/ld+json"]');
-  for (const script of scripts) {
-    const text = script.textContent?.trim();
-    if (!text) continue;
-    const company = readJsonLdOrganization(text);
-    if (company) return company;
+  for (const record of parseJsonLdScripts(document)) {
+    if (!record || typeof record !== "object") continue;
+    const hiringOrganization = (record as { hiringOrganization?: unknown }).hiringOrganization;
+    if (!hiringOrganization || typeof hiringOrganization !== "object") continue;
+
+    const name = (hiringOrganization as { name?: unknown }).name;
+    if (typeof name === "string" && name.trim()) {
+      return name.trim();
+    }
   }
+
   return null;
 }
 

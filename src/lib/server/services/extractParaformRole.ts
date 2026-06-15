@@ -1,4 +1,5 @@
 import { normalizeHost } from "@/lib/server/normalizeHost";
+import { parseJsonLdScripts } from "@/lib/server/services/parseUtils";
 
 export function isParaformHost(hostname: string): boolean {
   return normalizeHost(hostname) === "paraform.com";
@@ -73,30 +74,17 @@ function extractFromDocumentTitle(document: Document): ParaformRole | null {
 }
 
 function extractFromJsonLd(document: Document): ParaformRole | null {
-  const scripts = document.querySelectorAll('script[type="application/ld+json"]');
-  for (const script of scripts) {
-    const text = script.textContent?.trim();
-    if (!text) continue;
+  for (const record of parseJsonLdScripts(document)) {
+    if (!record || typeof record !== "object") continue;
+    const title = readString((record as { title?: unknown }).title);
+    const hiringOrganization = (record as { hiringOrganization?: unknown }).hiringOrganization;
+    const company =
+      hiringOrganization && typeof hiringOrganization === "object"
+        ? readString((hiringOrganization as { name?: unknown }).name)
+        : "";
 
-    try {
-      const data: unknown = JSON.parse(text);
-      const records = Array.isArray(data) ? data : [data];
-
-      for (const record of records) {
-        if (!record || typeof record !== "object") continue;
-        const title = readString((record as { title?: unknown }).title);
-        const hiringOrganization = (record as { hiringOrganization?: unknown }).hiringOrganization;
-        const company =
-          hiringOrganization && typeof hiringOrganization === "object"
-            ? readString((hiringOrganization as { name?: unknown }).name)
-            : "";
-
-        if (title && company) {
-          return { title, company };
-        }
-      }
-    } catch {
-      continue;
+    if (title && company) {
+      return { title, company };
     }
   }
 

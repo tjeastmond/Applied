@@ -1,5 +1,7 @@
 import { parseHTML } from "linkedom";
 
+import { collapseWhitespace } from "@/lib/server/services/parseUtils";
+
 const ALLOWED_TAGS = new Set(["p", "ul", "ol", "li", "h2", "h3", "h4", "strong", "em", "br"]);
 const REMOVED_TAGS = new Set([
   "script",
@@ -29,10 +31,6 @@ const DESCRIPTION_SELECTORS = [
   '[role="main"]',
   "main",
 ];
-
-function collapseWhitespace(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
-}
 
 function extractSentences(text: string, maxSentences = 3): string {
   const sentences = text

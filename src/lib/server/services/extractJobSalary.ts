@@ -1,3 +1,4 @@
+import { collapseWhitespace, parseJsonLdScripts } from "@/lib/server/services/parseUtils";
 import type { ParsedApplicationSalaryFields } from "@/types";
 
 type QuantitativeValue = {
@@ -11,10 +12,6 @@ type MonetaryAmount = {
   currency?: string;
   value?: QuantitativeValue | number;
 };
-
-function collapseWhitespace(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
-}
 
 function decodeHtmlEntities(text: string): string {
   return text
@@ -75,34 +72,16 @@ function formatMonetaryRange(amount: MonetaryAmount): string | null {
   return range;
 }
 
-function readJsonLdSalary(scriptText: string): string | null {
-  try {
-    const data: unknown = JSON.parse(scriptText);
-    const records = Array.isArray(data) ? data : [data];
-
-    for (const record of records) {
-      if (!record || typeof record !== "object") continue;
-      const baseSalary = (record as { baseSalary?: unknown }).baseSalary;
-      if (!baseSalary || typeof baseSalary !== "object") continue;
-
-      const formatted = formatMonetaryRange(baseSalary);
-      if (formatted) return formatted;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
 function salaryFromJsonLd(document: Document): string | null {
-  const scripts = document.querySelectorAll('script[type="application/ld+json"]');
-  for (const script of scripts) {
-    const text = script.textContent?.trim();
-    if (!text) continue;
-    const salary = readJsonLdSalary(text);
-    if (salary) return salary;
+  for (const record of parseJsonLdScripts(document)) {
+    if (!record || typeof record !== "object") continue;
+    const baseSalary = (record as { baseSalary?: unknown }).baseSalary;
+    if (!baseSalary || typeof baseSalary !== "object") continue;
+
+    const formatted = formatMonetaryRange(baseSalary);
+    if (formatted) return formatted;
   }
+
   return null;
 }
 
