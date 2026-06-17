@@ -25,12 +25,12 @@ type ParsedArgs = {
 
 function printHelp(): void {
   process.stdout.write(`Usage:
-  pnpm db:push-turso [--replace] [--sqlite-path PATH] [--turso-url URL]
-  pnpm db:pull-turso [--replace] [--sqlite-path PATH] [--turso-url URL]
+  pnpm db:push-turso [--upsert] [--sqlite-path PATH] [--turso-url URL]
+  pnpm db:pull-turso [--upsert] [--sqlite-path PATH] [--turso-url URL]
   pnpm db:verify-turso [--sqlite-path PATH] [--turso-url URL]
 
 Transfers data between local SQLite and Turso using JSON export/import.
-Default mode is upsert (merge by ID). Pass --replace to wipe the target first.
+Default mode is replace (target mirrors source). Pass --upsert to merge by ID without deleting extras.
 
 Environment (from .env.local when flags are omitted):
   DATABASE_PATH         Local SQLite file (default: data/applied.db)
@@ -45,10 +45,10 @@ function parseArgs(argv: string[]): ParsedArgs {
   const command = commandRaw === "push" || commandRaw === "pull" || commandRaw === "verify" ? commandRaw : null;
 
   if (!command) {
-    return { command: "push", mode: "upsert", help: true };
+    return { command: "push", mode: "replace", help: true };
   }
 
-  let mode: ImportMode = "upsert";
+  let mode: ImportMode = "replace";
   let sqlitePath: string | undefined;
   let tursoUrl: string | undefined;
   let help = false;
@@ -61,6 +61,10 @@ function parseArgs(argv: string[]): ParsedArgs {
     }
     if (arg === "--replace") {
       mode = "replace";
+      continue;
+    }
+    if (arg === "--upsert") {
+      mode = "upsert";
       continue;
     }
     if (arg === "--sqlite-path") {

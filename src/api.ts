@@ -196,7 +196,7 @@ export type TursoSyncResult = {
   differences: string[];
 };
 
-export async function syncTurso(mode: ImportBackupMode = "upsert"): Promise<TursoSyncResult> {
+export async function syncTurso(mode: ImportBackupMode = "replace"): Promise<TursoSyncResult> {
   return request<TursoSyncResult>("/api/backup/sync-turso", {
     method: "POST",
     body: JSON.stringify({ mode }),

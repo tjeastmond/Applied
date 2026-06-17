@@ -158,7 +158,7 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
   async function handleTursoSync() {
     setSyncingTurso(true);
     try {
-      const result = await syncTurso("upsert");
+      const result = await syncTurso();
       const detail = `${result.imported.applications} application(s), ${result.imported.notes} note(s).`;
       if (result.matches) {
         toast.success(`${toastMessages.tursoSyncSuccess} ${detail}`);

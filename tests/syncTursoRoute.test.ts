@@ -58,7 +58,7 @@ describe("POST /api/backup/sync-turso", () => {
       authorizedAppRequest("/api/backup/sync-turso", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "upsert" }),
+        body: JSON.stringify({ mode: "replace" }),
       }),
     );
 
@@ -68,6 +68,28 @@ describe("POST /api/backup/sync-turso", () => {
       matches: true,
       differences: [],
     });
-    expect(databaseTransferService.pushSqliteToTurso).toHaveBeenCalledWith({ mode: "upsert" });
+    expect(databaseTransferService.pushSqliteToTurso).toHaveBeenCalledWith({ mode: "replace" });
+  });
+
+  test("defaults to replace mode when body is omitted", async () => {
+    vi.spyOn(databaseTransferService, "isTursoSyncAvailable").mockReturnValue(true);
+    vi.spyOn(databaseTransferService, "pushSqliteToTurso").mockResolvedValue({
+      imported: { applications: 0, notes: 0 },
+      verification: {
+        source: { applicationCount: 0, noteCount: 0, latestUpdatedAt: null },
+        target: { applicationCount: 0, noteCount: 0, latestUpdatedAt: null },
+        matches: true,
+        differences: [],
+      },
+    });
+
+    const response = await syncTurso(
+      authorizedAppRequest("/api/backup/sync-turso", {
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(databaseTransferService.pushSqliteToTurso).toHaveBeenCalledWith({ mode: "replace" });
   });
 });

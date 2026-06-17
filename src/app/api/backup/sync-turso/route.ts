@@ -20,10 +20,10 @@ export async function POST(request: Request) {
     );
   }
 
-  let modeRaw: unknown = "upsert";
+  let modeRaw: unknown = "replace";
   const body = (await request.json().catch(() => null)) as { mode?: unknown } | null;
   if (body) {
-    modeRaw = body.mode ?? "upsert";
+    modeRaw = body.mode ?? "replace";
   }
 
   const modeParsed = importModeSchema.safeParse(modeRaw);
