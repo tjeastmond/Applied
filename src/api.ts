@@ -4,6 +4,7 @@ import type {
   AgentApiTokenSummary,
   CreateAgentApiTokenResult,
   CreateJobApplicationInput,
+  ImportAgentApiTokenResult,
   JobApplication,
   ParseJobUrlResult,
 } from "./types";
@@ -217,6 +218,7 @@ export async function downloadDatabaseBackup(): Promise<{ blob: Blob; filename: 
 export type ListAgentTokensResult = {
   tokens: AgentApiTokenSummary[];
   envTokenConfigured: boolean;
+  envTokenRegistered: boolean;
 };
 
 export function listAgentTokens(): Promise<ListAgentTokensResult> {
@@ -226,6 +228,20 @@ export function listAgentTokens(): Promise<ListAgentTokensResult> {
 export function createAgentToken(name: string): Promise<CreateAgentApiTokenResult> {
   return request<CreateAgentApiTokenResult>("/api/admin/agent-tokens", {
     method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function importAgentTokenFromEnv(name: string): Promise<ImportAgentApiTokenResult> {
+  return request<ImportAgentApiTokenResult>("/api/admin/agent-tokens/from-env", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function renameAgentToken(id: string, name: string): Promise<AgentApiTokenSummary> {
+  return request<AgentApiTokenSummary>(`/api/admin/agent-tokens/${id}`, {
+    method: "PATCH",
     body: JSON.stringify({ name }),
   });
 }

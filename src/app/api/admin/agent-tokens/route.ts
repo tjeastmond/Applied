@@ -22,9 +22,15 @@ export async function GET(request: Request) {
 
   try {
     const tokens = await Promise.resolve(repository.listActive());
+    const envTokenConfigured = isAgentEnvTokenConfigured();
+    const envToken = process.env.AGENT_API_TOKEN?.trim();
+    const envTokenRegistered =
+      envTokenConfigured && envToken ? await Promise.resolve(repository.hasActiveTokenWithHash(envToken)) : false;
+
     return NextResponse.json({
       tokens,
-      envTokenConfigured: isAgentEnvTokenConfigured(),
+      envTokenConfigured,
+      envTokenRegistered,
     });
   } catch (error) {
     return logAndRespondFromUnknown(error, "Failed to list agent tokens", 500, {

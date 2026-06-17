@@ -42,4 +42,8 @@ export const toastMessages = {
   agentTokensLoadFailed: "Failed to load agent tokens.",
   agentTokenCopied: "Agent token copied.",
   agentTokenCopyFailed: "Failed to copy agent token.",
+  agentTokenImported: "Environment token registered in database.",
+  agentTokenImportFailed: "Failed to register environment token.",
+  agentTokenRenamed: "Agent token renamed.",
+  agentTokenRenameFailed: "Failed to rename agent token.",
 } as const;
