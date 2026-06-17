@@ -117,7 +117,7 @@ describe("application API routes", () => {
 
     const refreshed = await getRepository().getById(app.id);
     expect(refreshed?.updatedAt).toBe(body.applicationUpdatedAt);
-    expect(refreshed?.updatedAt >= beforeUpdatedAt).toBe(true);
+    expect(refreshed?.updatedAt && refreshed.updatedAt >= beforeUpdatedAt).toBe(true);
   });
 
   test("PATCH status change creates a status update note", async () => {

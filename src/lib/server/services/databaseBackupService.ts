@@ -1,10 +1,12 @@
-import type Database from "better-sqlite3";
+import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import yazl from "yazl";
 import { getDefaultDatabasePath } from "@/lib/server/databaseConfig";
+
+export const APP_ACCESS_CONFIG_TABLE = "app_access_config";
 
 export type DatabaseBackupPayload = {
   filename: string;
@@ -77,6 +79,20 @@ async function zipFile(filePath: string, entryName: string): Promise<Buffer> {
   });
 }
 
+export function stripAppAccessConfigFromDatabase(dbPath: string): void {
+  const db = new Database(dbPath);
+  try {
+    const table = db
+      .prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`)
+      .get(APP_ACCESS_CONFIG_TABLE);
+    if (table) {
+      db.exec(`DELETE FROM ${APP_ACCESS_CONFIG_TABLE};`);
+    }
+  } finally {
+    db.close();
+  }
+}
+
 export async function createDatabaseBackup(
   db: Database.Database,
   options: CreateDatabaseBackupOptions = {},
@@ -87,6 +103,7 @@ export async function createDatabaseBackup(
 
   try {
     await db.backup(tempDbPath);
+    stripAppAccessConfigFromDatabase(tempDbPath);
 
     const createdAt = options.createdAt ?? new Date();
     const filename = databaseBackupFilename(createdAt, options.databasePath);

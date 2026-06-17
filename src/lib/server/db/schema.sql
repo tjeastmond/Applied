@@ -30,3 +30,10 @@ CREATE TABLE IF NOT EXISTS application_notes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_application_notes_application_id ON application_notes (application_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS app_access_config (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  access_token TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);

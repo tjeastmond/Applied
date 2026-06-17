@@ -3,7 +3,7 @@ import { BACKUP_JSON_VERSION, backupJsonSchema, type BackupJson, type ImportMode
 import type { ApplicationNote, JobApplication } from "@/types";
 import type { NoteRow } from "../db/applicationNoteRepositoryShared";
 import { LIST_APPLICATIONS_SQL, type ApplicationRow } from "../db/applicationRepositoryShared";
-import { readSchemaSql } from "../db/schema";
+import { readBackupSchemaSql } from "../db/schema";
 
 export type ImportResult = {
   applications: JobApplication[];
@@ -185,7 +185,7 @@ export function exportSqlFromRecords(applications: JobApplication[], notes: Appl
     "DROP TABLE IF EXISTS application_notes;",
     "DROP TABLE IF EXISTS applications;",
     "",
-    readSchemaSql().trim(),
+    readBackupSchemaSql().trim(),
     "",
   ];
 

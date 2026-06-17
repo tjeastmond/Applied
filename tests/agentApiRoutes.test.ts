@@ -83,11 +83,9 @@ describe("agent API routes", () => {
         }),
       ]),
     );
-    expect(body.errors.codes).toMatchObject({
-      "400": expect.any(String),
-      "401": expect.any(String),
-      "503": expect.any(String),
-    });
+    expect(typeof body.errors.codes["400"]).toBe("string");
+    expect(typeof body.errors.codes["401"]).toBe("string");
+    expect(typeof body.errors.codes["503"]).toBe("string");
     expect(body.limitations).toContain("No delete endpoint");
     expect(body.limitations).toContain(
       "No access to recruiter, contact, salary, or job-description fields in responses",
@@ -125,14 +123,14 @@ describe("agent API routes", () => {
     const body = (await response.json()) as { applications: Record<string, unknown>[] };
     expect(body.applications).toHaveLength(1);
     expect(body.applications[0]).toMatchObject({
-      id: expect.any(String),
       url: "https://jobs.example.com/listed",
       status: "to_apply",
       title: "Listed Role",
       company: "Acme",
       appliedAt: "2026-06-01",
-      updatedAt: expect.any(String),
     });
+    expect(typeof body.applications[0]?.id).toBe("string");
+    expect(typeof body.applications[0]?.updatedAt).toBe("string");
     expect(body.applications[0]).not.toHaveProperty("contactEmail");
     expect(body.applications[0]).not.toHaveProperty("fullJd");
   });
@@ -157,9 +155,7 @@ describe("agent API routes", () => {
       }),
     );
 
-    const response = await agentApplicationsRoute.GET(
-      authorizedRequest("/api/agent/applications?search=globex"),
-    );
+    const response = await agentApplicationsRoute.GET(authorizedRequest("/api/agent/applications?search=globex"));
 
     expect(response.status).toBe(200);
     const body = (await response.json()) as { applications: { company: string }[] };

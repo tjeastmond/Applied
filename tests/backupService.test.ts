@@ -1,8 +1,14 @@
+import { randomUUID } from "node:crypto";
+import { rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { openDatabase } from "@/lib/server/db/migrate";
+import { SqliteAppAccessConfigRepository } from "@/lib/server/db/sqliteAppAccessConfigRepository";
 import { SqliteApplicationNoteRepository } from "@/lib/server/db/sqliteApplicationNoteRepository";
 import { SqliteJobApplicationRepository } from "@/lib/server/db/sqliteRepository";
+import { stripAppAccessConfigFromDatabase } from "@/lib/server/services/databaseBackupService";
 import { exportJson, exportSql, importJson, importSql } from "@/lib/server/services/backupService";
 
 async function seedSampleData(db: ReturnType<typeof openDatabase>) {
@@ -147,6 +153,35 @@ describe("backupService", () => {
     const updated = result.applications.find((application) => application.id === original.id);
     expect(updated?.company).toBe("Acme Updated");
     expect(updated?.createdAt).toBe(original.createdAt);
+  });
+
+  test("exports omit app access tokens", async () => {
+    const db = openDatabase(":memory:");
+    await seedSampleData(db);
+    const repository = new SqliteAppAccessConfigRepository(db);
+    const token = repository.ensureToken();
+
+    const exportedJson = exportJson(db);
+    const exportedSql = exportSql(db);
+
+    expect(JSON.stringify(exportedJson)).not.toContain(token);
+    expect(exportedSql).not.toContain(token);
+    expect(exportedSql).not.toContain("app_access_config");
+  });
+
+  test("stripAppAccessConfigFromDatabase removes stored token from a database file", () => {
+    const dbPath = join(tmpdir(), `applied-backup-strip-${randomUUID()}.db`);
+    const db = openDatabase(dbPath);
+    const repository = new SqliteAppAccessConfigRepository(db);
+    repository.ensureToken();
+    db.close();
+
+    stripAppAccessConfigFromDatabase(dbPath);
+
+    const reopened = openDatabase(dbPath);
+    expect(new SqliteAppAccessConfigRepository(reopened).getToken()).toBeNull();
+    reopened.close();
+    rmSync(dbPath, { force: true });
   });
 });
 

@@ -1,8 +1,10 @@
 import { constantTimeEquals, bearerTokenFromRequest } from "@/lib/server/bearerAuth";
 import { getAppAccessToken, isAppAccessAuthorized } from "@/lib/appAccessAuth";
+import { ensureAppAccessTokenHydrated } from "@/lib/server/appAccessToken";
 import { jsonError } from "@/lib/server/applicationRouteHelpers";
 
 export async function requireAppAccess(request: Request): Promise<Response | null> {
+  ensureAppAccessTokenHydrated();
   const configuredToken = getAppAccessToken();
   if (!configuredToken) {
     return jsonError("App access token is not configured", 503);

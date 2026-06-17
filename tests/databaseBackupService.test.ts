@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, test } from "vitest";
 import { openDatabase } from "@/lib/server/db/migrate";
+import { SqliteAppAccessConfigRepository } from "@/lib/server/db/sqliteAppAccessConfigRepository";
 import {
   createDatabaseBackup,
   databaseBackupEntryFilename,
@@ -35,6 +36,23 @@ describe("databaseBackupService", () => {
     expect(result.filename).toBe("applied-backup-2026-06-11T12-30-00-000Z.zip");
     expect(result.data.byteLength).toBeGreaterThan(0);
     expect(result.data.subarray(0, 4).toString("utf8")).toBe("PK\u0003\u0004");
+
+    db.close();
+    rmSync(tempRoot, { recursive: true, force: true });
+  });
+
+  test("createDatabaseBackup omits stored app access tokens", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "applied-db-backup-token-"));
+    const db = openDatabase(":memory:");
+    const repository = new SqliteAppAccessConfigRepository(db);
+    const token = repository.ensureToken();
+
+    const result = await createDatabaseBackup(db, {
+      tempDir: tempRoot,
+      createdAt: new Date("2026-06-11T12:30:00.000Z"),
+    });
+
+    expect(result.data.toString("utf8")).not.toContain(token);
 
     db.close();
     rmSync(tempRoot, { recursive: true, force: true });

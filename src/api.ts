@@ -45,6 +45,12 @@ export function loginApp(accessToken: string): Promise<{ ok: true }> {
   });
 }
 
+export function devLoginApp(): Promise<{ ok: true }> {
+  return request<{ ok: true }>("/api/auth/dev-login", {
+    method: "POST",
+  });
+}
+
 export function logoutApp(): Promise<{ ok: true }> {
   return request<{ ok: true }>("/api/auth/logout", {
     method: "POST",

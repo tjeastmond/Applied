@@ -33,6 +33,6 @@ export const toastMessages = {
   tursoSyncPartial: "Synced to Turso, but databases still differ.",
   tursoSyncFailed: "Failed to sync to Turso.",
   loginTokenRequired: "Enter your access token.",
-  loginSuccess: "Signed in.",
   loginFailed: "Sign in failed.",
+  logoutFailed: "Sign out failed.",
 } as const;

@@ -8,10 +8,13 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const authError = await requireAppAccess(request);
   if (authError) {
+    if (authError.status === 401) {
+      log.warn("app logout failed", { route: "/api/auth/logout", method: "POST", reason: "unauthorized" });
+    }
     return authError;
   }
 
-  log.info("app session cleared", { route: "/api/auth/logout", method: "POST" });
+  log.info("app logout succeeded", { route: "/api/auth/logout", method: "POST" });
 
   return NextResponse.json({ ok: true }, { headers: { "Set-Cookie": buildSessionClearCookieHeader() } });
 }

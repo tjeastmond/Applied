@@ -6,7 +6,9 @@ import type { DatabaseBackend } from "../databaseBackend";
 import type { SqliteDatabaseConfig } from "../databaseConfig";
 import { createDatabaseBackup } from "../services/databaseBackupService";
 import { exportJson, exportSql, importJson, importSql } from "../services/backupService";
+import { hydrateAppAccessTokenFromDatabase } from "../appAccessToken";
 import { openDatabase } from "./migrate";
+import { SqliteAppAccessConfigRepository } from "./sqliteAppAccessConfigRepository";
 import { SqliteApplicationNoteRepository } from "./sqliteApplicationNoteRepository";
 import { SqliteJobApplicationRepository } from "./sqliteRepository";
 
@@ -21,6 +23,7 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
   readonly provider = "sqlite";
   readonly applications;
   readonly notes;
+  readonly appAccessConfig;
 
   private readonly db: Database.Database;
   private readonly path: string;
@@ -32,6 +35,8 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
     }
 
     this.db = db ?? openDatabase(this.path);
+    this.appAccessConfig = new SqliteAppAccessConfigRepository(this.db);
+    hydrateAppAccessTokenFromDatabase(this.appAccessConfig.getToken());
     this.applications = new SqliteJobApplicationRepository(this.db);
     this.notes = new SqliteApplicationNoteRepository(this.db);
   }

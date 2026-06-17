@@ -6,6 +6,7 @@ import type { DatabaseBackend } from "./databaseBackend";
 import { SqliteDatabaseBackend } from "./db/sqliteBackend";
 import { TursoDatabaseBackend } from "./db/tursoBackend";
 import type { ApplicationNoteRepository } from "./repositories/applicationNoteRepository";
+import type { AppAccessConfigRepository } from "./repositories/appAccessConfigRepository";
 import type { JobApplicationRepository } from "./repositories/jobApplicationRepository";
 
 const globalForDb = globalThis as unknown as {
@@ -42,6 +43,10 @@ export function getRepository(): JobApplicationRepository {
 
 export function getNoteRepository(): ApplicationNoteRepository {
   return getDatabaseBackend().notes;
+}
+
+export function getAppAccessConfigRepository(): AppAccessConfigRepository | null {
+  return getDatabaseBackend().appAccessConfig ?? null;
 }
 
 export function getDatabase(): Database.Database {
