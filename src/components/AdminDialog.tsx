@@ -5,7 +5,9 @@ import {
   createAgentToken,
   downloadDatabaseBackup,
   exportBackup,
+  importAgentTokenFromEnv,
   listAgentTokens,
+  renameAgentToken,
   revokeAgentToken,
   syncTurso,
 } from "@/api";
@@ -41,6 +43,7 @@ import {
   CloudUploadIcon,
   CopyIcon,
   DownloadIcon,
+  PencilIcon,
   SettingsIcon,
   Trash2Icon,
   UploadIcon,
@@ -62,12 +65,20 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function formatTokenCreatedAt(value: string): string {
+function formatTokenDate(value: string): string {
   return new Date(value).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
+}
+
+function formatTokenMetadata(token: AgentApiTokenSummary): string {
+  const created = `Created ${formatTokenDate(token.createdAt)}`;
+  if (token.lastUsedAt) {
+    return `${token.tokenPrefix}… · ${created} · Last used ${formatTokenDate(token.lastUsedAt)}`;
+  }
+  return `${token.tokenPrefix}… · ${created}`;
 }
 
 export function AdminDialog({ applications, onImported, tursoSyncAvailable = false }: AdminDialogProps) {
@@ -78,12 +89,17 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
 
   const [tokens, setTokens] = useState<AgentApiTokenSummary[]>([]);
   const [envTokenConfigured, setEnvTokenConfigured] = useState(false);
+  const [envTokenRegistered, setEnvTokenRegistered] = useState(false);
   const [tokensLoading, setTokensLoading] = useState(false);
   const [tokenName, setTokenName] = useState("");
   const [creatingToken, setCreatingToken] = useState(false);
+  const [importingEnvToken, setImportingEnvToken] = useState(false);
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<AgentApiTokenSummary | null>(null);
   const [revoking, setRevoking] = useState(false);
+  const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
 
   const backupBusy = exporting || syncingTurso;
 
@@ -93,6 +109,7 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
       const result = await listAgentTokens();
       setTokens(result.tokens);
       setEnvTokenConfigured(result.envTokenConfigured);
+      setEnvTokenRegistered(result.envTokenRegistered);
     } catch (error) {
       toast.error(errorMessage(error, toastMessages.agentTokensLoadFailed));
     } finally {
@@ -104,6 +121,8 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
     if (!open) {
       setRevealedToken(null);
       setTokenName("");
+      setRenameTargetId(null);
+      setRenameValue("");
       return;
     }
 
@@ -151,6 +170,50 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
       toast.error(errorMessage(error, toastMessages.tursoSyncFailed));
     } finally {
       setSyncingTurso(false);
+    }
+  }
+
+  async function handleImportEnvToken() {
+    const trimmedName = tokenName.trim() || "Environment";
+    setImportingEnvToken(true);
+    try {
+      const imported = await importAgentTokenFromEnv(trimmedName);
+      setTokens((current) => [imported.record, ...current]);
+      setEnvTokenRegistered(true);
+      toast.success(toastMessages.agentTokenImported);
+    } catch (error) {
+      toast.error(errorMessage(error, toastMessages.agentTokenImportFailed));
+    } finally {
+      setImportingEnvToken(false);
+    }
+  }
+
+  function startRename(token: AgentApiTokenSummary) {
+    setRenameTargetId(token.id);
+    setRenameValue(token.name);
+  }
+
+  function cancelRename() {
+    setRenameTargetId(null);
+    setRenameValue("");
+  }
+
+  async function handleSaveRename(tokenId: string) {
+    const trimmedName = renameValue.trim();
+    if (!trimmedName) {
+      return;
+    }
+
+    setRenaming(true);
+    try {
+      const updated = await renameAgentToken(tokenId, trimmedName);
+      setTokens((current) => current.map((token) => (token.id === tokenId ? updated : token)));
+      cancelRename();
+      toast.success(toastMessages.agentTokenRenamed);
+    } catch (error) {
+      toast.error(errorMessage(error, toastMessages.agentTokenRenameFailed));
+    } finally {
+      setRenaming(false);
     }
   }
 
@@ -336,9 +399,28 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
               </div>
 
               {envTokenConfigured ? (
-                <p className="text-muted-foreground rounded-lg border px-3 py-2 text-xs">
-                  An environment token is also active. It is not listed here and cannot be revoked from the UI.
-                </p>
+                <div className="space-y-2 rounded-lg border px-3 py-2 text-xs">
+                  <p className="text-muted-foreground">
+                    An environment token is also active
+                    {envTokenRegistered
+                      ? " and registered in the database."
+                      : ". Register it here to manage and revoke it from the UI."}
+                    {!envTokenRegistered
+                      ? " Remove AGENT_API_TOKEN from the environment when you no longer need both."
+                      : null}
+                  </p>
+                  {!envTokenRegistered ? (
+                    <Button
+                      type="button"
+                      variant="save"
+                      size="sm"
+                      disabled={importingEnvToken}
+                      onClick={() => void handleImportEnvToken()}
+                    >
+                      {importingEnvToken ? "Registering…" : "Register in Database"}
+                    </Button>
+                  ) : null}
+                </div>
               ) : null}
 
               <div className="flex gap-2">
@@ -389,28 +471,85 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
                 {tokensLoading ? (
                   <p className="text-muted-foreground text-sm">Loading tokens…</p>
                 ) : tokens.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No agent tokens yet. Create one for external agent tools.</p>
+                  <p className="text-muted-foreground text-sm">
+                    No agent tokens yet. Create one for external agent tools.
+                  </p>
                 ) : (
                   <ul className="divide-border divide-y rounded-lg border">
                     {tokens.map((token) => (
                       <li key={token.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium">{token.name}</p>
-                          <p className="text-muted-foreground text-xs">
-                            {token.tokenPrefix}… · {formatTokenCreatedAt(token.createdAt)}
-                          </p>
+                          {renameTargetId === token.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={renameValue}
+                                onChange={(event) => setRenameValue(event.target.value)}
+                                className={FILTER_CONTROL_HEIGHT_CLASS}
+                                disabled={renaming}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    void handleSaveRename(token.id);
+                                  }
+                                  if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    cancelRename();
+                                  }
+                                }}
+                                autoFocus
+                              />
+                              <Button
+                                type="button"
+                                variant="save"
+                                size="sm"
+                                disabled={renaming || renameValue.trim().length === 0}
+                                onClick={() => void handleSaveRename(token.id)}
+                              >
+                                {renaming ? "Saving…" : "Save"}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="cancelOutline"
+                                size="sm"
+                                disabled={renaming}
+                                onClick={cancelRename}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="truncate font-medium">{token.name}</p>
+                              <p className="text-muted-foreground text-xs">{formatTokenMetadata(token)}</p>
+                            </>
+                          )}
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-muted-foreground hover:text-destructive shrink-0"
-                          aria-label={`Revoke ${token.name}`}
-                          title="Revoke token"
-                          onClick={() => setRevokeTarget(token)}
-                        >
-                          <Trash2Icon />
-                        </Button>
+                        {renameTargetId === token.id ? null : (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground shrink-0"
+                              aria-label={`Rename ${token.name}`}
+                              title="Rename token"
+                              onClick={() => startRename(token)}
+                            >
+                              <PencilIcon />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground hover:text-destructive shrink-0"
+                              aria-label={`Revoke ${token.name}`}
+                              title="Revoke token"
+                              onClick={() => setRevokeTarget(token)}
+                            >
+                              <Trash2Icon />
+                            </Button>
+                          </>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -430,9 +569,7 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
             <AlertDialogDescription>
               {revokeTarget
                 ? `Revoke "${revokeTarget.name}"? External agents using this token will lose access${
-                    !envTokenConfigured && tokens.length === 1
-                      ? " unless an environment token is configured"
-                      : ""
+                    !envTokenConfigured && tokens.length === 1 ? " unless an environment token is configured" : ""
                   }.`
                 : "Revoke this agent token?"}
             </AlertDialogDescription>

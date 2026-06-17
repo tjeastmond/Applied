@@ -341,7 +341,6 @@ export function AuthenticatedApp({
     [isDeleting],
   );
 
-
   const confirmDelete = useCallback(async () => {
     if (!pendingDeleteId) return;
     const id = pendingDeleteId;
