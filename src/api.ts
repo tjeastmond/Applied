@@ -1,4 +1,10 @@
-import type { ApplicationNote, CreateJobApplicationInput, JobApplication, ParseJobUrlResult } from "./types";
+import type {
+  ApplicationNote,
+  ApplicationNoteMutationResult,
+  CreateJobApplicationInput,
+  JobApplication,
+  ParseJobUrlResult,
+} from "./types";
 import { notifyUnauthorized, UnauthorizedError } from "./lib/apiUnauthorized";
 
 async function readApiError(response: Response, fallback: string): Promise<string> {
@@ -87,8 +93,8 @@ export function listApplicationNotes(applicationId: string): Promise<Application
   return request<ApplicationNote[]>(`/api/applications/${applicationId}/notes`);
 }
 
-export function createApplicationNote(applicationId: string, content: string): Promise<ApplicationNote> {
-  return request<ApplicationNote>(`/api/applications/${applicationId}/notes`, {
+export function createApplicationNote(applicationId: string, content: string): Promise<ApplicationNoteMutationResult> {
+  return request<ApplicationNoteMutationResult>(`/api/applications/${applicationId}/notes`, {
     method: "POST",
     body: JSON.stringify({ content }),
   });
@@ -98,8 +104,8 @@ export function updateApplicationNote(
   applicationId: string,
   noteId: string,
   content: string,
-): Promise<ApplicationNote> {
-  return request<ApplicationNote>(`/api/applications/${applicationId}/notes/${noteId}`, {
+): Promise<ApplicationNoteMutationResult> {
+  return request<ApplicationNoteMutationResult>(`/api/applications/${applicationId}/notes/${noteId}`, {
     method: "PATCH",
     body: JSON.stringify({ content }),
   });

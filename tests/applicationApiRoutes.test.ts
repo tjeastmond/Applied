@@ -88,6 +88,38 @@ describe("application API routes", () => {
     expect(missingResponse.status).toBe(404);
   });
 
+  test("PATCH note bumps application updatedAt", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/note-touch",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+      }),
+    );
+    const beforeUpdatedAt = app.updatedAt;
+
+    const note = await getNoteRepository().create(app.id, "Initial note");
+
+    const patchResponse = await patchNote(
+      authorizedAppRequest("/api/applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Updated note" }),
+      }),
+      { params: Promise.resolve({ id: app.id, noteId: note.id }) },
+    );
+
+    expect(patchResponse.status).toBe(200);
+    const body = (await patchResponse.json()) as { content: string; applicationUpdatedAt: string };
+    expect(body.content).toBe("Updated note");
+    expect(body.applicationUpdatedAt >= beforeUpdatedAt).toBe(true);
+
+    const refreshed = await getRepository().getById(app.id);
+    expect(refreshed?.updatedAt).toBe(body.applicationUpdatedAt);
+    expect(refreshed?.updatedAt >= beforeUpdatedAt).toBe(true);
+  });
+
   test("PATCH status change creates a status update note", async () => {
     const app = await getRepository().create(
       createJobApplicationSchema.parse({

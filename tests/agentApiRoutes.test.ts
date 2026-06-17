@@ -42,16 +42,56 @@ describe("agent API routes", () => {
 
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
-      capabilities: { method: string; path: string }[];
+      authentication: { discoveryIsPublic: boolean; requiredFor: string[] };
+      applicationSummaryFields: string[];
+      statuses: string[];
+      capabilities: { method: string; path: string; response: unknown }[];
       limitations: string[];
+      errors: { codes: Record<string, string> };
     };
+    expect(body.authentication).toMatchObject({
+      discoveryIsPublic: true,
+      requiredFor: ["/api/agent/applications"],
+    });
+    expect(body.applicationSummaryFields).toEqual([
+      "id",
+      "url",
+      "status",
+      "title",
+      "company",
+      "appliedAt",
+      "updatedAt",
+    ]);
+    expect(body.statuses).toContain("to_apply");
     expect(body.capabilities).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ method: "GET", path: "/api/agent/applications" }),
-        expect.objectContaining({ method: "POST", path: "/api/agent/applications" }),
+        expect.objectContaining({
+          method: "GET",
+          path: "/api/agent/applications",
+          query: {
+            search:
+              "optional case-insensitive filter matching title, company, status, status label, URL, and applied date",
+          },
+          response: {
+            applications: body.applicationSummaryFields,
+          },
+        }),
+        expect.objectContaining({
+          method: "POST",
+          path: "/api/agent/applications",
+          response: body.applicationSummaryFields,
+        }),
       ]),
     );
+    expect(body.errors.codes).toMatchObject({
+      "400": expect.any(String),
+      "401": expect.any(String),
+      "503": expect.any(String),
+    });
     expect(body.limitations).toContain("No delete endpoint");
+    expect(body.limitations).toContain(
+      "No access to recruiter, contact, salary, or job-description fields in responses",
+    );
   });
 
   test("GET /api/agent/applications rejects missing and invalid bearer tokens", async () => {
@@ -85,11 +125,54 @@ describe("agent API routes", () => {
     const body = (await response.json()) as { applications: Record<string, unknown>[] };
     expect(body.applications).toHaveLength(1);
     expect(body.applications[0]).toMatchObject({
+      id: expect.any(String),
       url: "https://jobs.example.com/listed",
       status: "to_apply",
+      title: "Listed Role",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+      updatedAt: expect.any(String),
     });
     expect(body.applications[0]).not.toHaveProperty("contactEmail");
     expect(body.applications[0]).not.toHaveProperty("fullJd");
+  });
+
+  test("GET /api/agent/applications filters results with search query", async () => {
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/backend",
+        title: "Backend Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "applied",
+      }),
+    );
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/design",
+        title: "Product Designer",
+        company: "Globex",
+        appliedAt: "2026-06-02",
+        status: "interviewing",
+      }),
+    );
+
+    const response = await agentApplicationsRoute.GET(
+      authorizedRequest("/api/agent/applications?search=globex"),
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { applications: { company: string }[] };
+    expect(body.applications).toHaveLength(1);
+    expect(body.applications[0]?.company).toBe("Globex");
+  });
+
+  test("GET /api/agent/applications rejects invalid search query", async () => {
+    const response = await agentApplicationsRoute.GET(
+      authorizedRequest(`/api/agent/applications?search=${"x".repeat(201)}`),
+    );
+
+    expect(response.status).toBe(400);
   });
 
   test("POST /api/agent/applications rejects missing and invalid bearer tokens", async () => {

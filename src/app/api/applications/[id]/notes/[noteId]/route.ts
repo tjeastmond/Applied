@@ -1,6 +1,7 @@
 import { parseUuid } from "@/lib/schemas/common";
 import { requireAppAccess } from "@/lib/server/appAuth";
 import { getNoteRepository } from "@/lib/server/db";
+import { touchApplicationUpdatedAt } from "@/lib/server/touchApplicationUpdatedAt";
 import {
   applicationNotFoundResponse,
   badRequestResponse,
@@ -42,6 +43,8 @@ export async function PATCH(request: Request, context: ApplicationNoteRouteConte
     return noteNotFoundResponse();
   }
 
+  const applicationUpdatedAt = await touchApplicationUpdatedAt(applicationId);
+
   log.info("note updated", {
     route: "/api/applications/[id]/notes/[noteId]",
     method: "PATCH",
@@ -49,7 +52,7 @@ export async function PATCH(request: Request, context: ApplicationNoteRouteConte
     noteId,
   });
 
-  return NextResponse.json(note);
+  return NextResponse.json({ ...note, applicationUpdatedAt });
 }
 
 export async function DELETE(request: Request, context: ApplicationNoteRouteContext) {
@@ -73,6 +76,8 @@ export async function DELETE(request: Request, context: ApplicationNoteRouteCont
   if (!deleted) {
     return noteNotFoundResponse();
   }
+
+  await touchApplicationUpdatedAt(applicationId);
 
   log.info("note deleted", {
     route: "/api/applications/[id]/notes/[noteId]",

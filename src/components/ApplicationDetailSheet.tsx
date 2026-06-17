@@ -188,6 +188,16 @@ export function ApplicationDetailSheet({
     persistNoteSortOrder(order);
   }
 
+  const syncApplicationUpdatedAt = useCallback(
+    (updatedAt: string) => {
+      const app = applicationRef.current;
+      if (!app) return;
+      onApplicationChange({ ...app, updatedAt });
+      syncedUpdatedAtRef.current = updatedAt;
+    },
+    [onApplicationChange],
+  );
+
   async function handleAddNote() {
     if (!applicationId || !newNote.trim()) {
       toast.error(toastMessages.noteTextRequired);
@@ -195,10 +205,11 @@ export function ApplicationDetailSheet({
     }
     setIsAddingNote(true);
     try {
-      const note = await createApplicationNote(applicationId, newNote);
+      const result = await createApplicationNote(applicationId, newNote);
       if (applicationRef.current?.id !== applicationId) return;
       setNewNote("");
-      onNotesChange([...notes, note]);
+      onNotesChange([...notes, result]);
+      syncApplicationUpdatedAt(result.applicationUpdatedAt);
       toast.success(toastMessages.noteAdded);
     } catch (error) {
       toast.error(errorMessage(error, toastMessages.noteAddFailed));
@@ -246,9 +257,10 @@ export function ApplicationDetailSheet({
 
     setIsSavingNote(true);
     try {
-      const updated = await updateApplicationNote(applicationId, noteId, trimmed);
+      const result = await updateApplicationNote(applicationId, noteId, trimmed);
       if (applicationRef.current?.id !== applicationId) return;
-      onNotesChange(notes.map((note) => (note.id === noteId ? updated : note)));
+      onNotesChange(notes.map((note) => (note.id === noteId ? result : note)));
+      syncApplicationUpdatedAt(result.applicationUpdatedAt);
       cancelEditingNote();
       toast.success(toastMessages.noteUpdated);
     } catch (error) {
@@ -299,6 +311,7 @@ export function ApplicationDetailSheet({
       if (applicationRef.current?.id !== applicationId) return;
       setPendingNoteId(null);
       onNotesChange(notes.filter((note) => note.id !== noteId));
+      syncApplicationUpdatedAt(new Date().toISOString());
       toast.success(toastMessages.noteDeleted);
     } catch (error) {
       toast.error(errorMessage(error, toastMessages.noteDeleteFailed));

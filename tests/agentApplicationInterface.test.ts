@@ -53,6 +53,32 @@ describe("agent application interface", () => {
     expect(applications[0]).not.toHaveProperty("fullJd");
   });
 
+  test("filters listed applications by search query", async () => {
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/backend",
+        title: "Backend Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "applied",
+      }),
+    );
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/design",
+        title: "Product Designer",
+        company: "Globex",
+        appliedAt: "2026-06-02",
+        status: "interviewing",
+      }),
+    );
+
+    const applications = await listApplicationsForAgent("interviewing");
+
+    expect(applications).toHaveLength(1);
+    expect(applications[0]?.title).toBe("Product Designer");
+  });
+
   test("creates an application from a parsed job URL with to_apply status", async () => {
     mockedParseJobUrl.mockResolvedValue({
       ok: true,

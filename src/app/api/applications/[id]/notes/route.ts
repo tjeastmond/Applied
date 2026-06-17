@@ -1,5 +1,6 @@
 import { getNoteRepository } from "@/lib/server/db";
 import { requireAppAccess } from "@/lib/server/appAuth";
+import { touchApplicationUpdatedAt } from "@/lib/server/touchApplicationUpdatedAt";
 import {
   applicationNotFoundResponse,
   badRequestResponse,
@@ -47,11 +48,12 @@ export async function POST(request: Request, context: ApplicationIdRouteContext)
   }
 
   const note = await getNoteRepository().create(applicationId, parsed.data.content);
+  const applicationUpdatedAt = await touchApplicationUpdatedAt(applicationId);
   log.info("note created", {
     route: "/api/applications/[id]/notes",
     method: "POST",
     applicationId,
     noteId: note.id,
   });
-  return NextResponse.json(note, { status: 201 });
+  return NextResponse.json({ ...note, applicationUpdatedAt }, { status: 201 });
 }

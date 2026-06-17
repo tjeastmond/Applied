@@ -1,4 +1,5 @@
-import { agentCreateApplicationSchema } from "@/lib/schemas/agent";
+import { formatZodError } from "@/lib/formatZodError";
+import { agentCreateApplicationSchema, agentListApplicationsQuerySchema } from "@/lib/schemas/agent";
 import { badRequestResponse } from "@/lib/server/applicationRouteHelpers";
 import { requireAgentAuth } from "@/lib/server/agentAuth";
 import { log } from "@/lib/server/logging/logger";
@@ -18,7 +19,15 @@ export async function GET(request: Request) {
     return authError;
   }
 
-  const applications = await listApplicationsForAgent();
+  const { searchParams } = new URL(request.url);
+  const parsedQuery = agentListApplicationsQuerySchema.safeParse({
+    search: searchParams.get("search") ?? undefined,
+  });
+  if (!parsedQuery.success) {
+    return badRequestResponse(formatZodError(parsedQuery.error));
+  }
+
+  const applications = await listApplicationsForAgent(parsedQuery.data.search ?? "");
   return NextResponse.json({ applications });
 }
 
