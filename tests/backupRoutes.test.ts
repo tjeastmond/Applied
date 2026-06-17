@@ -1,20 +1,33 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { GET as getDatabaseBackup } from "@/app/api/backup/database/route";
 import { GET as exportBackup } from "@/app/api/backup/export/route";
 import { POST as importBackup } from "@/app/api/backup/import/route";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { getRepository, useTestDatabase } from "@/lib/server/db";
 import { openDatabase } from "@/lib/server/db/migrate";
+import { authorizedAppRequest, restoreAppAccessToken, withTestAppAccessToken } from "./testAppAuth";
+
+const originalAppAccessToken = process.env.APP_ACCESS_TOKEN;
 
 describe("backup API routes", () => {
   beforeEach(() => {
+    withTestAppAccessToken();
     useTestDatabase(openDatabase(":memory:"));
+  });
+
+  afterEach(() => {
+    restoreAppAccessToken(originalAppAccessToken);
+  });
+
+  test("rejects unauthenticated backup export", async () => {
+    const response = await exportBackup(new Request("http://localhost/api/backup/export?format=json"));
+    expect(response.status).toBe(401);
   });
 
   test("exports JSON through the selected backend", async () => {
     await seedApplication();
 
-    const response = await exportBackup(new Request("http://localhost/api/backup/export?format=json"));
+    const response = await exportBackup(authorizedAppRequest("/api/backup/export?format=json"));
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/json");
 
@@ -25,7 +38,7 @@ describe("backup API routes", () => {
 
   test("imports JSON through the selected backend", async () => {
     await seedApplication();
-    const exportResponse = await exportBackup(new Request("http://localhost/api/backup/export?format=json"));
+    const exportResponse = await exportBackup(authorizedAppRequest("/api/backup/export?format=json"));
     const backup = await exportResponse.text();
 
     await getRepository().create(
@@ -42,7 +55,7 @@ describe("backup API routes", () => {
     formData.set("file", new File([backup], "backup.json", { type: "application/json" }));
 
     const response = await importBackup(
-      new Request("http://localhost/api/backup/import", {
+      authorizedAppRequest("/api/backup/import", {
         method: "POST",
         body: formData,
       }),
@@ -57,7 +70,7 @@ describe("backup API routes", () => {
   test("creates a database backup through the selected backend", async () => {
     await seedApplication();
 
-    const response = await getDatabaseBackup();
+    const response = await getDatabaseBackup(authorizedAppRequest("/api/backup/database"));
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/zip");
     expect(response.headers.get("content-disposition")).toContain(".zip");

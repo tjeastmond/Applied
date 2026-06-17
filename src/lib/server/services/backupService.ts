@@ -39,15 +39,13 @@ export const UPSERT_APPLICATION_SQL = `INSERT INTO applications (
   notes = excluded.notes,
   full_jd = excluded.full_jd,
   status = excluded.status,
-  created_at = excluded.created_at,
   updated_at = excluded.updated_at`;
 
 export const UPSERT_NOTE_SQL = `INSERT INTO application_notes (id, application_id, content, created_at)
 VALUES (@id, @application_id, @content, @created_at)
 ON CONFLICT(id) DO UPDATE SET
   application_id = excluded.application_id,
-  content = excluded.content,
-  created_at = excluded.created_at`;
+  content = excluded.content`;
 
 export function rowToBackupApplication(row: ApplicationBackupRow): JobApplication {
   return {
@@ -279,6 +277,88 @@ export function extractInsertStatements(sql: string): string[] {
     .filter((statement) => /^INSERT\s+INTO\s+/i.test(statement));
 }
 
+function splitSqlStatements(sql: string): string[] {
+  return sql
+    .split(";")
+    .map((statement) => statement.trim())
+    .filter((statement) => statement.length > 0);
+}
+
+function stripSqlComments(statement: string): string {
+  return statement
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("--"))
+    .join("\n")
+    .trim();
+}
+
+function isAllowedSqlBackupStatement(statement: string): boolean {
+  const withoutComments = stripSqlComments(statement);
+  if (withoutComments.length === 0) {
+    return true;
+  }
+
+  const normalized = withoutComments.replace(/\s+/g, " ").trim();
+
+  if (/^PRAGMA\s+foreign_keys\s*=\s*(ON|OFF)$/i.test(normalized)) {
+    return true;
+  }
+
+  if (/^BEGIN(?:\s+TRANSACTION)?$/i.test(normalized)) {
+    return true;
+  }
+
+  if (/^COMMIT$/i.test(normalized)) {
+    return true;
+  }
+
+  if (/^DROP TABLE IF EXISTS (?:applications|application_notes)$/i.test(normalized)) {
+    return true;
+  }
+
+  if (/^CREATE TABLE IF NOT EXISTS applications\s*\(/i.test(normalized)) {
+    return true;
+  }
+
+  if (/^CREATE TABLE IF NOT EXISTS application_notes\s*\(/i.test(normalized)) {
+    return true;
+  }
+
+  if (/^CREATE INDEX IF NOT EXISTS idx_/i.test(normalized)) {
+    return true;
+  }
+
+  if (/^INSERT\s+INTO\s+(?:applications|application_notes)\b/i.test(normalized)) {
+    return true;
+  }
+
+  return false;
+}
+
+export function assertSqlBackupIsSafe(sql: string): void {
+  const forbiddenPattern = /\b(?:ATTACH|DETACH|ALTER)\b/i;
+  if (forbiddenPattern.test(sql)) {
+    throw new Error("SQL backup contains forbidden statements");
+  }
+
+  for (const statement of splitSqlStatements(sql)) {
+    if (forbiddenPattern.test(statement)) {
+      throw new Error("SQL backup contains forbidden statements");
+    }
+
+    if (
+      /^PRAGMA\b/i.test(statement) &&
+      !/^PRAGMA\s+foreign_keys\s*=\s*(?:ON|OFF)\s*$/i.test(statement.replace(/\s+/g, " ").trim())
+    ) {
+      throw new Error("SQL backup contains forbidden PRAGMA statements");
+    }
+
+    if (!isAllowedSqlBackupStatement(statement)) {
+      throw new Error("SQL backup contains unsupported statements");
+    }
+  }
+}
+
 export function countSqlInserts(sql: string): { applications: number; notes: number } {
   const inserts = extractInsertStatements(sql);
   let applications = 0;
@@ -304,11 +384,16 @@ export function prepareSqlUpsertStatements(sql: string): string[] {
   return inserts.map((insert) => `${insert.replace(/^INSERT\s+INTO/i, "INSERT OR REPLACE INTO")};`);
 }
 
-function importSqlUpsert(db: Database.Database, sql: string): ImportResult {
+function importSqlStatements(db: Database.Database, sql: string, mode: ImportMode): ImportResult {
+  assertSqlBackupIsSafe(sql);
   const upserts = prepareSqlUpsertStatements(sql);
   const imported = countSqlInserts(sql);
 
   const run = db.transaction(() => {
+    if (mode === "replace") {
+      clearAllData(db);
+    }
+
     for (const upsert of upserts) {
       db.exec(upsert);
     }
@@ -322,6 +407,10 @@ function importSqlUpsert(db: Database.Database, sql: string): ImportResult {
   };
 }
 
+function importSqlUpsert(db: Database.Database, sql: string): ImportResult {
+  return importSqlStatements(db, sql, "upsert");
+}
+
 export function importSql(db: Database.Database, sql: string, mode: ImportMode): ImportResult {
   const trimmed = sql.trim();
   if (trimmed.length === 0) {
@@ -332,13 +421,7 @@ export function importSql(db: Database.Database, sql: string, mode: ImportMode):
     return importSqlUpsert(db, trimmed);
   }
 
-  const imported = countSqlInserts(trimmed);
-  db.exec(trimmed);
-
-  return {
-    applications: listApplications(db),
-    imported,
-  };
+  return importSqlStatements(db, trimmed, "replace");
 }
 
 export function backupFilename(format: "sql" | "json", exportedAt = new Date()): string {

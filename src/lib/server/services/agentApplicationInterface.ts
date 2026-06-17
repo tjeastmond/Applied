@@ -1,15 +1,12 @@
+import { filterAgentApplicationsBySearch } from "@/lib/applicationSearch";
 import { normalizePastedJobUrl, today } from "@/lib/applicationForm";
 import { formatZodError } from "@/lib/formatZodError";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
+import type { AgentApplicationSummary } from "@/lib/schemas/agent";
 import { getRepository } from "@/lib/server/db";
 import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
 import type { JobApplication } from "@/types";
 import { parseJobUrl } from "./parseJobUrl";
-
-export type AgentApplicationSummary = Pick<
-  JobApplication,
-  "id" | "url" | "status" | "title" | "company" | "appliedAt" | "updatedAt"
->;
 
 type CreateApplicationFromUrlResult = { ok: true; application: AgentApplicationSummary } | { ok: false; error: string };
 
@@ -25,9 +22,10 @@ function toAgentApplicationSummary(application: JobApplication): AgentApplicatio
   };
 }
 
-export async function listApplicationsForAgent(): Promise<AgentApplicationSummary[]> {
+export async function listApplicationsForAgent(searchQuery = ""): Promise<AgentApplicationSummary[]> {
   const applications = await getRepository().list();
-  return applications.map(toAgentApplicationSummary);
+  const summaries = applications.map(toAgentApplicationSummary);
+  return filterAgentApplicationsBySearch(summaries, searchQuery);
 }
 
 export async function createApplicationFromUrlForAgent(rawUrl: string): Promise<CreateApplicationFromUrlResult> {

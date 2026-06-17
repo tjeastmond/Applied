@@ -1,4 +1,5 @@
 import { statusUpdateNoteContent } from "@/lib/applicationStatus";
+import { requireAppAccess } from "@/lib/server/appAuth";
 import { getNoteRepository, getRepository } from "@/lib/server/db";
 import {
   applicationNotFoundResponse,
@@ -15,6 +16,11 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request, context: ApplicationIdRouteContext) {
+  const authError = await requireAppAccess(request);
+  if (authError) {
+    return authError;
+  }
+
   const { id: rawId } = await context.params;
   const id = await requireApplicationId(rawId);
   if (!id) {
@@ -30,6 +36,11 @@ export async function PATCH(request: Request, context: ApplicationIdRouteContext
   const existing = await repository.getById(id);
   if (!existing) {
     return applicationNotFoundResponse();
+  }
+
+  const effectiveViaRecruiter = parsed.data.viaRecruiter ?? existing.viaRecruiter;
+  if (!effectiveViaRecruiter && (parsed.data.recruiterName != null || parsed.data.recruiterFirm != null)) {
+    return badRequestResponse("recruiter fields require viaRecruiter: true");
   }
 
   const sanitized = sanitizeApplicationInput(parsed.data);
@@ -55,7 +66,12 @@ export async function PATCH(request: Request, context: ApplicationIdRouteContext
   return NextResponse.json(updated);
 }
 
-export async function DELETE(_request: Request, context: ApplicationIdRouteContext) {
+export async function DELETE(request: Request, context: ApplicationIdRouteContext) {
+  const authError = await requireAppAccess(request);
+  if (authError) {
+    return authError;
+  }
+
   const { id: rawId } = await context.params;
   const id = await requireApplicationId(rawId);
   if (!id) {

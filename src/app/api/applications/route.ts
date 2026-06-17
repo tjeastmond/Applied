@@ -1,4 +1,5 @@
 import { getRepository } from "@/lib/server/db";
+import { requireAppAccess } from "@/lib/server/appAuth";
 import { badRequestResponse } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
@@ -8,12 +9,22 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authError = await requireAppAccess(request);
+  if (authError) {
+    return authError;
+  }
+
   const applications = await getRepository().list();
   return NextResponse.json(applications);
 }
 
 export async function POST(request: Request) {
+  const authError = await requireAppAccess(request);
+  if (authError) {
+    return authError;
+  }
+
   const parsed = await parseRequestBody(request, createJobApplicationSchema);
   if (!parsed.ok) {
     return badRequestResponse(parsed.error);

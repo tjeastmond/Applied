@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "agent:token": "node scripts/create-agent-token.mjs",
+    "app:token": "node scripts/create-app-token.mjs",
     "db:push-turso": "tsx scripts/db-transfer.ts push",
     "db:pull-turso": "tsx scripts/db-transfer.ts pull",
     "db:verify-turso": "tsx scripts/db-transfer.ts verify",

@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import yazl from "yazl";
@@ -33,12 +33,12 @@ export async function createSqlBackupZip(
   sql: string,
   options: CreateDatabaseBackupOptions = {},
 ): Promise<DatabaseBackupPayload> {
-  const tempDir = options.tempDir ?? mkdtempSync(join(tmpdir(), "applied-sql-backup-"));
+  const tempDir = options.tempDir ?? (await mkdtemp(join(tmpdir(), "applied-sql-backup-")));
   const ownsTempDir = options.tempDir === undefined;
   const tempSqlPath = join(tempDir, `${randomUUID()}.sql`);
 
   try {
-    writeFileSync(tempSqlPath, sql);
+    await writeFile(tempSqlPath, sql);
 
     const createdAt = options.createdAt ?? new Date();
     const filename = databaseBackupFilename(createdAt, options.databasePath ?? "turso.db");
@@ -54,7 +54,7 @@ export async function createSqlBackupZip(
     };
   } finally {
     if (ownsTempDir) {
-      rmSync(tempDir, { recursive: true, force: true });
+      await rm(tempDir, { recursive: true, force: true });
     }
   }
 }
@@ -81,7 +81,7 @@ export async function createDatabaseBackup(
   db: Database.Database,
   options: CreateDatabaseBackupOptions = {},
 ): Promise<DatabaseBackupPayload> {
-  const tempDir = options.tempDir ?? mkdtempSync(join(tmpdir(), "applied-db-backup-"));
+  const tempDir = options.tempDir ?? (await mkdtemp(join(tmpdir(), "applied-db-backup-")));
   const ownsTempDir = options.tempDir === undefined;
   const tempDbPath = join(tempDir, `${randomUUID()}.db`);
 
@@ -99,7 +99,7 @@ export async function createDatabaseBackup(
     };
   } finally {
     if (ownsTempDir) {
-      rmSync(tempDir, { recursive: true, force: true });
+      await rm(tempDir, { recursive: true, force: true });
     }
   }
 }

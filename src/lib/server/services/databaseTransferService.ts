@@ -55,7 +55,7 @@ export function resolveTursoTarget(
   }
 
   if (!tursoAuthToken) {
-    throw new Error("TURSO_AUTH_TOKEN is required (set in .env.local or pass --turso-token)");
+    throw new Error("TURSO_AUTH_TOKEN is required (set TURSO_AUTH_TOKEN in .env.local)");
   }
 
   return { tursoUrl, tursoAuthToken };

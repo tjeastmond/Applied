@@ -1,4 +1,4 @@
-import { collapseWhitespace, parseJsonLdScripts } from "@/lib/server/services/parseUtils";
+import { collapseWhitespace, escapeRegExp, parseJsonLdScripts } from "@/lib/server/services/parseUtils";
 import type { ParsedApplicationSalaryFields } from "@/types";
 
 type QuantitativeValue = {
@@ -89,7 +89,10 @@ function salaryRangeFromEmbeddedJson(html: string, jobId: string | null): string
   const decoded = decodeHtmlEntities(html);
 
   if (jobId) {
-    const scopedPattern = new RegExp(`"id"\\s*:\\s*"?${jobId}"?[^}]*"salaryRange"\\s*:\\s*"([^"]+)"`, "i");
+    const scopedPattern = new RegExp(
+      `"id"\\s*:\\s*"?${escapeRegExp(jobId)}"?[^}]*"salaryRange"\\s*:\\s*"([^"]+)"`,
+      "i",
+    );
     const scopedMatch = decoded.match(scopedPattern);
     if (scopedMatch?.[1]) {
       return collapseWhitespace(scopedMatch[1]);

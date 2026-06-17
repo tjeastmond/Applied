@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { deleteApplication, updateApplication } from "@/api";
 import { AddApplicationDialog } from "@/components/AddApplicationDialog";
+import { LoginDialog } from "@/components/LoginDialog";
 import { ApplicationCard } from "@/components/ApplicationCard";
 import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
 import { BackupMenu } from "@/components/BackupMenu";
@@ -42,6 +43,7 @@ import {
   modKShortcutLabel,
 } from "@/lib/keyboardShortcut";
 import { toastMessages } from "@/lib/toastMessages";
+import { setUnauthorizedHandler } from "@/lib/apiUnauthorized";
 import type { ApplicationNote, ApplicationStatus, JobApplication } from "@/types";
 import { CopyIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -64,6 +66,7 @@ export function AppPage({
   tursoSyncAvailable,
 }: AppPageProps) {
   const [formOpen, setFormOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const [applications, setApplications] = useState<JobApplication[]>(() => initialApplications);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -112,6 +115,11 @@ export function AppPage({
     hasRestoredApplicationPageSizePreference = true;
     setHasSyncedPageSize(true);
   }, [initialPageSizeFromPreference]);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => setLoginOpen(true));
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
@@ -466,6 +474,8 @@ export function AppPage({
       </header>
 
       <AddApplicationDialog open={formOpen} onOpenChange={setFormOpen} onApplicationCreated={handleApplicationChange} />
+
+      <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} onAuthenticated={() => setLoginOpen(false)} />
 
       <ApplicationDetailSheet
         application={selectedApplication}

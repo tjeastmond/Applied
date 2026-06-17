@@ -9,11 +9,22 @@ describe("applicationCardPropsEqual", () => {
       application: makeJobApplication({
         id: "a",
         title: "Engineer",
-        updatedAt: "2026-06-02T10:00:00.000Z",
         fullJd: "<p>x</p>",
       }),
     };
     expect(applicationCardPropsEqual(left, right)).toBe(true);
+  });
+
+  it("detects updatedAt changes", () => {
+    const left = { application: makeJobApplication({ id: "a", title: "Engineer" }) };
+    const right = {
+      application: makeJobApplication({
+        id: "a",
+        title: "Engineer",
+        updatedAt: "2026-06-02T10:00:00.000Z",
+      }),
+    };
+    expect(applicationCardPropsEqual(left, right)).toBe(false);
   });
 
   it("detects status and title changes", () => {

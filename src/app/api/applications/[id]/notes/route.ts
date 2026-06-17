@@ -1,4 +1,6 @@
 import { getNoteRepository } from "@/lib/server/db";
+import { requireAppAccess } from "@/lib/server/appAuth";
+import { touchApplicationUpdatedAt } from "@/lib/server/touchApplicationUpdatedAt";
 import {
   applicationNotFoundResponse,
   badRequestResponse,
@@ -12,7 +14,12 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET(_request: Request, context: ApplicationIdRouteContext) {
+export async function GET(request: Request, context: ApplicationIdRouteContext) {
+  const authError = await requireAppAccess(request);
+  if (authError) {
+    return authError;
+  }
+
   const { id: rawId } = await context.params;
   const applicationId = await requireApplicationId(rawId);
   if (!applicationId) {
@@ -24,6 +31,11 @@ export async function GET(_request: Request, context: ApplicationIdRouteContext)
 }
 
 export async function POST(request: Request, context: ApplicationIdRouteContext) {
+  const authError = await requireAppAccess(request);
+  if (authError) {
+    return authError;
+  }
+
   const { id: rawId } = await context.params;
   const applicationId = await requireApplicationId(rawId);
   if (!applicationId) {
@@ -36,11 +48,12 @@ export async function POST(request: Request, context: ApplicationIdRouteContext)
   }
 
   const note = await getNoteRepository().create(applicationId, parsed.data.content);
+  const applicationUpdatedAt = await touchApplicationUpdatedAt(applicationId);
   log.info("note created", {
     route: "/api/applications/[id]/notes",
     method: "POST",
     applicationId,
     noteId: note.id,
   });
-  return NextResponse.json(note, { status: 201 });
+  return NextResponse.json({ ...note, applicationUpdatedAt }, { status: 201 });
 }

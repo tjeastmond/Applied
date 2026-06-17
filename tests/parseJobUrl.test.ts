@@ -1,5 +1,23 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
+import type { LookupAddress, LookupAllOptions } from "node:dns";
+import { lookup } from "node:dns/promises";
 import { parseJobUrl } from "@/lib/server/services/parseJobUrl";
+
+vi.mock("node:dns/promises", () => ({
+  lookup: vi.fn(),
+}));
+
+const mockedLookup = vi.mocked(lookup);
+
+function mockDnsLookup(address: string): void {
+  mockedLookup.mockImplementation(((_hostname: string, options?: LookupAllOptions) => {
+    const record: LookupAddress = { address, family: 4 };
+    if (options?.all) {
+      return Promise.resolve([record]);
+    }
+    return Promise.resolve(record);
+  }) as typeof lookup);
+}
 
 const sampleHtml = `<!doctype html>
 <html>
@@ -19,9 +37,14 @@ const sampleHtml = `<!doctype html>
 
 afterEach(() => {
   vi.restoreAllMocks();
+  mockDnsLookup("93.184.216.34");
 });
 
 describe("parseJobUrl", () => {
+  beforeEach(() => {
+    mockDnsLookup("93.184.216.34");
+  });
+
   it("extracts metadata and full_jd from HTML", async () => {
     vi.stubGlobal(
       "fetch",
@@ -322,5 +345,32 @@ describe("parseJobUrl", () => {
     if (!result.ok) return;
     expect(result.title).toBe("Security Engineer");
     expect(result.company).toBe("Acme Corp");
+  });
+
+  it("blocks loopback IP literals without fetching", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await parseJobUrl("http://127.0.0.1/job");
+
+    expect(result).toEqual({
+      ok: false,
+      error: "URL resolves to a private or restricted address",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks hostnames resolving to link-local addresses", async () => {
+    mockDnsLookup("169.254.169.254");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await parseJobUrl("http://metadata.example/latest");
+
+    expect(result).toEqual({
+      ok: false,
+      error: "URL resolves to a private or restricted address",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

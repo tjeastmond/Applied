@@ -22,10 +22,17 @@ function isJobBoardSiteName(siteName: string | null): boolean {
 }
 
 function slugToDisplayName(slug: string): string {
-  const decoded = decodeURIComponent(slug).trim();
-  if (!decoded) return "";
+  let decoded = slug;
+  try {
+    decoded = decodeURIComponent(slug);
+  } catch {
+    decoded = slug;
+  }
 
-  return decoded
+  const trimmed = decoded.trim();
+  if (!trimmed) return "";
+
+  return trimmed
     .split(/[-_]+/)
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())

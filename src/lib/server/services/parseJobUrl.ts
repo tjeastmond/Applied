@@ -5,6 +5,12 @@ import { hostFromUrl } from "@/lib/server/logging/sanitize";
 import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
 import { parseParsedApplicationSalaryFields } from "@/lib/schemas/application";
 import { parseJobUrlResultSchema, type ParseJobUrlResult } from "@/lib/schemas/parseJob";
+import {
+  assertSafeFetchUrl,
+  MAX_FETCH_REDIRECTS,
+  resolveRedirectUrl,
+  UnsafeFetchUrlError,
+} from "@/lib/server/urlSafety";
 import { buildFullJd } from "./extractFullJd";
 import { extractJobCompany } from "./extractJobCompany";
 import { extractJobSalary } from "./extractJobSalary";
@@ -55,18 +61,47 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
     return { ok: false, error: "URL must use http or https" };
   }
 
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return { ok: false, error: "URL must use http or https" };
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url.toString(), {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": USER_AGENT,
-        Accept: "text/html,application/xhtml+xml",
-      },
-      redirect: "follow",
-    });
+    let currentUrl = url;
+    let response: Response | null = null;
+
+    for (let hop = 0; hop <= MAX_FETCH_REDIRECTS; hop += 1) {
+      await assertSafeFetchUrl(currentUrl);
+      const nextResponse = await fetch(currentUrl.toString(), {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": USER_AGENT,
+          Accept: "text/html,application/xhtml+xml",
+        },
+        redirect: "manual",
+      });
+
+      if (nextResponse.status >= 300 && nextResponse.status < 400) {
+        const location = nextResponse.headers.get("location");
+        if (!location) {
+          return { ok: false, error: `Redirect missing location header (${nextResponse.status})` };
+        }
+        if (hop === MAX_FETCH_REDIRECTS) {
+          return { ok: false, error: "Too many redirects" };
+        }
+        currentUrl = resolveRedirectUrl(currentUrl, location);
+        continue;
+      }
+
+      response = nextResponse;
+      break;
+    }
+
+    if (!response) {
+      return { ok: false, error: "Failed to fetch URL" };
+    }
 
     if (!response.ok) {
       return { ok: false, error: `Request failed with status ${response.status}` };
@@ -80,7 +115,7 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
     const html = await response.text();
     const { document } = parseHTML(html);
 
-    const paraformRole = isParaformHost(url.hostname) ? extractParaformRole(document) : null;
+    const paraformRole = isParaformHost(currentUrl.hostname) ? extractParaformRole(document) : null;
 
     const rawTitle =
       paraformRole?.title ??
@@ -90,20 +125,20 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
       null;
     const title = normalizeJobTitle(rawTitle);
 
-    const company = extractJobCompany(url, document, {
+    const company = extractJobCompany(currentUrl, document, {
       siteName: getMetaContent(document, "og:site_name"),
       applicationName: getMetaContent(document, "application-name"),
-      hostnameFallback: hostnameToCompany(url),
+      hostnameFallback: hostnameToCompany(currentUrl),
     });
 
     const metaDescription =
       getMetaContent(document, "og:description") ?? getMetaContent(document, "description") ?? null;
 
     const fullJd = buildFullJd(document, metaDescription);
-    const { salaryRange } = parseParsedApplicationSalaryFields(extractJobSalary(url, document, html));
+    const { salaryRange } = parseParsedApplicationSalaryFields(extractJobSalary(currentUrl, document, html));
 
     log.debug("job metadata extracted", {
-      host: url.hostname,
+      host: currentUrl.hostname,
       hasTitle: Boolean(title),
       hasCompany: Boolean(company),
       hasSalary: Boolean(salaryRange),
@@ -119,6 +154,10 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
     });
   } catch (error) {
     const host = hostFromUrl(urlString);
+    if (error instanceof UnsafeFetchUrlError) {
+      log.warn("job url parse blocked", { host, error: error.message });
+      return { ok: false, error: error.message };
+    }
     if (error instanceof Error && error.name === "AbortError") {
       log.warn("job url parse failed", { host, error: "Request timed out" });
       return { ok: false, error: "Request timed out" };

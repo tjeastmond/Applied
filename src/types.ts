@@ -48,3 +48,7 @@ export interface ApplicationNote {
   content: string;
   createdAt: string;
 }
+
+export type ApplicationNoteMutationResult = ApplicationNote & {
+  applicationUpdatedAt: string;
+};

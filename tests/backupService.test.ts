@@ -112,6 +112,42 @@ describe("backupService", () => {
     expect(result.imported.applications).toBe(1);
     expect(result.applications).toHaveLength(2);
   });
+
+  test("rejects malicious SQL containing ATTACH", () => {
+    const db = openDatabase(":memory:");
+    expect(() =>
+      importSql(
+        db,
+        `ATTACH DATABASE '/tmp/evil.db' AS evil; INSERT INTO applications (id, url, applied_at, status, created_at, updated_at) VALUES ('x', 'https://example.com', '2026-06-01', 'applied', '2026-06-01', '2026-06-01');`,
+        "replace",
+      ),
+    ).toThrow("forbidden");
+  });
+
+  test("rejects malicious SQL containing DROP TABLE outside backup format", () => {
+    const db = openDatabase(":memory:");
+    expect(() => importSql(db, "DROP TABLE applications;", "replace")).toThrow("unsupported");
+  });
+
+  test("upsert import preserves original created_at on conflict", async () => {
+    const db = openDatabase(":memory:");
+    const original = await seedSampleData(db);
+    const exported = exportJson(db);
+
+    const updatedExport = {
+      ...exported,
+      applications: exported.applications.map((application) =>
+        application.id === original.id
+          ? { ...application, company: "Acme Updated", createdAt: "2020-01-01T00:00:00.000Z" }
+          : application,
+      ),
+    };
+
+    const result = importJson(db, updatedExport, "upsert");
+    const updated = result.applications.find((application) => application.id === original.id);
+    expect(updated?.company).toBe("Acme Updated");
+    expect(updated?.createdAt).toBe(original.createdAt);
+  });
 });
 
 async function appRepoCreateSecond(db: ReturnType<typeof openDatabase>) {

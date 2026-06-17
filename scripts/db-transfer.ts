@@ -20,15 +20,14 @@ type ParsedArgs = {
   mode: ImportMode;
   sqlitePath?: string;
   tursoUrl?: string;
-  tursoAuthToken?: string;
   help: boolean;
 };
 
 function printHelp(): void {
   process.stdout.write(`Usage:
-  pnpm db:push-turso [--replace] [--sqlite-path PATH] [--turso-url URL] [--turso-token TOKEN]
-  pnpm db:pull-turso [--replace] [--sqlite-path PATH] [--turso-url URL] [--turso-token TOKEN]
-  pnpm db:verify-turso [--sqlite-path PATH] [--turso-url URL] [--turso-token TOKEN]
+  pnpm db:push-turso [--replace] [--sqlite-path PATH] [--turso-url URL]
+  pnpm db:pull-turso [--replace] [--sqlite-path PATH] [--turso-url URL]
+  pnpm db:verify-turso [--sqlite-path PATH] [--turso-url URL]
 
 Transfers data between local SQLite and Turso using JSON export/import.
 Default mode is upsert (merge by ID). Pass --replace to wipe the target first.
@@ -52,7 +51,6 @@ function parseArgs(argv: string[]): ParsedArgs {
   let mode: ImportMode = "upsert";
   let sqlitePath: string | undefined;
   let tursoUrl: string | undefined;
-  let tursoAuthToken: string | undefined;
   let help = false;
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -75,14 +73,9 @@ function parseArgs(argv: string[]): ParsedArgs {
       index += 1;
       continue;
     }
-    if (arg === "--turso-token") {
-      tursoAuthToken = argv[index + 1];
-      index += 1;
-      continue;
-    }
   }
 
-  return { command, mode, sqlitePath, tursoUrl, tursoAuthToken, help };
+  return { command, mode, sqlitePath, tursoUrl, help };
 }
 
 function printVerification(verification: TransferVerification): void {

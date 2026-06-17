@@ -210,7 +210,7 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
   async listByIds(ids: string[]): Promise<JobApplication[]> {
     await this.ready;
     if (ids.length === 0) {
-      return (await rows(this.client, LIST_APPLICATIONS_SQL)).map(tursoRowToApplication);
+      return [];
     }
 
     const uniqueIds = [...new Set(ids)];

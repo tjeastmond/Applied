@@ -72,4 +72,19 @@ describe("extractJobSalary", () => {
 
     expect(salary).toEqual({ salaryRange: null });
   });
+
+  it("handles regex metacharacters in job id path segments without hanging", () => {
+    const html = `<!doctype html><html><body>{"id":"(bad|.+)*end","salaryRange":"$100K"}</body></html>`;
+
+    const startedAt = Date.now();
+    const salary = extractJobSalary(
+      new URL("https://www.ycombinator.com/jobs/(bad|.+)*end"),
+      parseDocument(html),
+      html,
+    );
+    const elapsedMs = Date.now() - startedAt;
+
+    expect(elapsedMs).toBeLessThan(500);
+    expect(salary.salaryRange).toBe("$100K");
+  });
 });

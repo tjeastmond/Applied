@@ -1,8 +1,6 @@
-const Y_COMBINATOR_TITLE_SUFFIX = /\s*\|\s*Y Combinator.*$/i;
+import { collapseWhitespace } from "@/lib/collapseWhitespace";
 
-function collapseWhitespace(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
-}
+const Y_COMBINATOR_TITLE_SUFFIX = /\s*\|\s*Y Combinator.*$/i;
 
 export function normalizeJobTitle(title: string | null | undefined): string | null {
   if (title == null) return null;
