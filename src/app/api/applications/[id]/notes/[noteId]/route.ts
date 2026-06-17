@@ -1,4 +1,5 @@
 import { parseUuid } from "@/lib/schemas/common";
+import { requireAppAccess } from "@/lib/server/appAuth";
 import { getNoteRepository } from "@/lib/server/db";
 import {
   applicationNotFoundResponse,
@@ -15,6 +16,11 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request, context: ApplicationNoteRouteContext) {
+  const authError = await requireAppAccess(request);
+  if (authError) {
+    return authError;
+  }
+
   const { id: rawId, noteId: rawNoteId } = await context.params;
   const noteId = parseUuid(rawNoteId);
   if (!noteId) {
@@ -46,7 +52,12 @@ export async function PATCH(request: Request, context: ApplicationNoteRouteConte
   return NextResponse.json(note);
 }
 
-export async function DELETE(_request: Request, context: ApplicationNoteRouteContext) {
+export async function DELETE(request: Request, context: ApplicationNoteRouteContext) {
+  const authError = await requireAppAccess(request);
+  if (authError) {
+    return authError;
+  }
+
   const { id: rawId, noteId: rawNoteId } = await context.params;
   const noteId = parseUuid(rawNoteId);
   if (!noteId) {

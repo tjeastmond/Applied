@@ -1,4 +1,5 @@
 import type { ApplicationNote, CreateJobApplicationInput, JobApplication, ParseJobUrlResult } from "./types";
+import { notifyUnauthorized, UnauthorizedError } from "./lib/apiUnauthorized";
 
 async function readApiError(response: Response, fallback: string): Promise<string> {
   const body = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -7,12 +8,18 @@ async function readApiError(response: Response, fallback: string): Promise<strin
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers ?? {}),
     },
     ...init,
   });
+
+  if (response.status === 401) {
+    notifyUnauthorized();
+    throw new UnauthorizedError(await readApiError(response, "Unauthorized"));
+  }
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Request failed"));
@@ -23,6 +30,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+export function loginApp(accessToken: string): Promise<{ ok: true }> {
+  return request<{ ok: true }>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ accessToken }),
+  });
+}
+
+export function logoutApp(): Promise<{ ok: true }> {
+  return request<{ ok: true }>("/api/auth/logout", {
+    method: "POST",
+  });
 }
 
 export function listApplications(): Promise<JobApplication[]> {
@@ -107,8 +127,22 @@ function parseContentDispositionFilename(header: string | null): string | null {
   return match?.[1] ?? null;
 }
 
+async function fetchWithCredentials(path: string, init?: RequestInit): Promise<Response> {
+  const response = await fetch(path, {
+    credentials: "include",
+    ...init,
+  });
+
+  if (response.status === 401) {
+    notifyUnauthorized();
+    throw new UnauthorizedError(await readApiError(response, "Unauthorized"));
+  }
+
+  return response;
+}
+
 export async function exportBackup(format: "sql" | "json"): Promise<{ blob: Blob; filename: string }> {
-  const response = await fetch(`/api/backup/export?format=${format}`);
+  const response = await fetchWithCredentials(`/api/backup/export?format=${format}`);
   if (!response.ok) {
     throw new Error(await readApiError(response, "Export failed"));
   }
@@ -126,7 +160,7 @@ export async function importBackup(file: File, mode: ImportBackupMode): Promise<
   formData.set("file", file);
   formData.set("mode", mode);
 
-  const response = await fetch("/api/backup/import", {
+  const response = await fetchWithCredentials("/api/backup/import", {
     method: "POST",
     body: formData,
   });
@@ -155,7 +189,7 @@ export async function syncTurso(mode: ImportBackupMode = "upsert"): Promise<Turs
 }
 
 export async function downloadDatabaseBackup(): Promise<{ blob: Blob; filename: string }> {
-  const response = await fetch("/api/backup/database");
+  const response = await fetchWithCredentials("/api/backup/database");
   if (!response.ok) {
     throw new Error(await readApiError(response, "Database backup failed"));
   }

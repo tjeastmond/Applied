@@ -37,7 +37,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
 
   async listByIds(ids: string[]): Promise<JobApplication[]> {
     if (ids.length === 0) {
-      return this.list();
+      return [];
     }
 
     const uniqueIds = [...new Set(ids)];

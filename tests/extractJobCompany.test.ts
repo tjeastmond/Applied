@@ -72,4 +72,15 @@ describe("extractJobCompany", () => {
 
     expect(company).toBe("Ramp");
   });
+
+  it("falls back to raw slug when percent-encoding is invalid", () => {
+    const document = docFromHtml("<html></html>");
+    const company = extractJobCompany(new URL("https://www.ycombinator.com/companies/acme%ZZcorp/jobs/x"), document, {
+      siteName: null,
+      applicationName: null,
+      hostnameFallback: null,
+    });
+
+    expect(company).toBe("Acme%zzcorp");
+  });
 });

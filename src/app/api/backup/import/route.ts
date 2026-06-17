@@ -1,4 +1,5 @@
 import { importModeSchema } from "@/lib/schemas/backup";
+import { requireAppAccess } from "@/lib/server/appAuth";
 import { getDatabaseBackend, resetDatabaseBackend } from "@/lib/server/db";
 import { logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
@@ -20,6 +21,11 @@ function detectFormat(filename: string, content: string): "sql" | "json" | null 
 }
 
 export async function POST(request: Request) {
+  const authError = await requireAppAccess(request);
+  if (authError) {
+    return authError;
+  }
+
   let formData: FormData;
   try {
     formData = await request.formData();

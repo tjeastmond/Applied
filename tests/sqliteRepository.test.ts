@@ -113,4 +113,20 @@ describe("SqliteJobApplicationRepository", () => {
     const listed = await repository.listByIds([second.id, first.id, second.id]);
     expect(listed.map((item) => item.id)).toEqual([second.id, first.id]);
   });
+
+  test("listByIds returns empty array for empty ids", async () => {
+    const db = openDatabase(":memory:");
+    const repository = new SqliteJobApplicationRepository(db);
+
+    await repository.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/only",
+        title: "Only",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+      }),
+    );
+
+    expect(await repository.listByIds([])).toEqual([]);
+  });
 });

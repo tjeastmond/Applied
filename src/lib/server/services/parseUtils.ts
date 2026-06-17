@@ -1,5 +1,7 @@
-export function collapseWhitespace(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
+export { collapseWhitespace } from "@/lib/collapseWhitespace";
+
+export function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function parseJsonLdScripts(document: Document): unknown[] {
@@ -13,7 +15,9 @@ export function parseJsonLdScripts(document: Document): unknown[] {
     try {
       const data: unknown = JSON.parse(text);
       if (Array.isArray(data)) {
-        records.push(...data);
+        for (const item of data) {
+          records.push(item);
+        }
       } else {
         records.push(data);
       }

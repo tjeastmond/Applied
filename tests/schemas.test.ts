@@ -5,6 +5,7 @@ import {
   parseParsedApplicationSalaryFields,
   patchJobApplicationSchema,
 } from "@/lib/schemas/application";
+import { backupJsonSchema } from "@/lib/schemas/backup";
 import { createApplicationNoteSchema } from "@/lib/schemas/note";
 import { parseJobUrlRequestSchema, parseJobUrlResultSchema, parseJobUrlSuccessSchema } from "@/lib/schemas/parseJob";
 
@@ -239,6 +240,38 @@ describe("parseJobUrlResultSchema", () => {
     });
 
     expect(parsed.salaryRange).toHaveLength(100);
+  });
+});
+
+describe("backupJsonSchema", () => {
+  it("coerces missing salary fields to null", () => {
+    const parsed = backupJsonSchema.parse({
+      version: 1,
+      exportedAt: "2026-06-01T00:00:00.000Z",
+      applications: [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          url: "https://jobs.example.com/role",
+          linkedinUrl: null,
+          title: "Engineer",
+          company: "Acme",
+          appliedAt: "2026-06-01",
+          viaRecruiter: false,
+          recruiterName: null,
+          recruiterFirm: null,
+          contactEmail: null,
+          contactPhone: null,
+          fullJd: null,
+          status: "applied",
+          createdAt: "2026-06-01T00:00:00.000Z",
+          updatedAt: "2026-06-01T00:00:00.000Z",
+        },
+      ],
+      notes: [],
+    });
+
+    expect(parsed.applications[0]?.salaryRange).toBeNull();
+    expect(parsed.applications[0]?.desiredSalary).toBeNull();
   });
 });
 

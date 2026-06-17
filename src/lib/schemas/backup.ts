@@ -4,25 +4,31 @@ import { applicationStatusSchema } from "@/lib/schemas/common";
 
 export const BACKUP_JSON_VERSION = 1 as const;
 
-const backupApplicationSchema = z.strictObject({
-  id: z.string().uuid(),
-  url: z.string().min(1),
-  linkedinUrl: z.string().nullable(),
-  title: z.string().nullable(),
-  company: z.string().nullable(),
-  appliedAt: z.string().min(1),
-  viaRecruiter: z.boolean(),
-  recruiterName: z.string().nullable(),
-  recruiterFirm: z.string().nullable(),
-  contactEmail: z.string().nullable(),
-  contactPhone: z.string().nullable(),
-  salaryRange: applicationSalaryFieldSchemas.salaryRange.optional(),
-  desiredSalary: applicationSalaryFieldSchemas.desiredSalary.optional(),
-  fullJd: z.string().nullable(),
-  status: applicationStatusSchema,
-  createdAt: z.string().min(1),
-  updatedAt: z.string().min(1),
-});
+const backupApplicationSchema = z
+  .strictObject({
+    id: z.string().uuid(),
+    url: z.string().min(1),
+    linkedinUrl: z.string().nullable(),
+    title: z.string().nullable(),
+    company: z.string().nullable(),
+    appliedAt: z.string().min(1),
+    viaRecruiter: z.boolean(),
+    recruiterName: z.string().nullable(),
+    recruiterFirm: z.string().nullable(),
+    contactEmail: z.string().nullable(),
+    contactPhone: z.string().nullable(),
+    salaryRange: applicationSalaryFieldSchemas.salaryRange.optional(),
+    desiredSalary: applicationSalaryFieldSchemas.desiredSalary.optional(),
+    fullJd: z.string().nullable(),
+    status: applicationStatusSchema,
+    createdAt: z.string().min(1),
+    updatedAt: z.string().min(1),
+  })
+  .transform((application) => ({
+    ...application,
+    salaryRange: application.salaryRange ?? null,
+    desiredSalary: application.desiredSalary ?? null,
+  }));
 
 const backupNoteSchema = z.strictObject({
   id: z.string().uuid(),
