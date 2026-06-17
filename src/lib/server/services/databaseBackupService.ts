@@ -7,6 +7,7 @@ import yazl from "yazl";
 import { getDefaultDatabasePath } from "@/lib/server/databaseConfig";
 
 export const APP_ACCESS_CONFIG_TABLE = "app_access_config";
+export const AGENT_API_TOKENS_TABLE = "agent_api_tokens";
 
 export type DatabaseBackupPayload = {
   filename: string;
@@ -79,15 +80,18 @@ async function zipFile(filePath: string, entryName: string): Promise<Buffer> {
   });
 }
 
-export function stripAppAccessConfigFromDatabase(dbPath: string): void {
+function deleteTableRowsIfExists(db: Database.Database, tableName: string): void {
+  const table = db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(tableName);
+  if (table) {
+    db.exec(`DELETE FROM ${tableName};`);
+  }
+}
+
+export function stripSensitiveDataFromDatabase(dbPath: string): void {
   const db = new Database(dbPath);
   try {
-    const table = db
-      .prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`)
-      .get(APP_ACCESS_CONFIG_TABLE);
-    if (table) {
-      db.exec(`DELETE FROM ${APP_ACCESS_CONFIG_TABLE};`);
-    }
+    deleteTableRowsIfExists(db, APP_ACCESS_CONFIG_TABLE);
+    deleteTableRowsIfExists(db, AGENT_API_TOKENS_TABLE);
   } finally {
     db.close();
   }
@@ -103,7 +107,7 @@ export async function createDatabaseBackup(
 
   try {
     await db.backup(tempDbPath);
-    stripAppAccessConfigFromDatabase(tempDbPath);
+    stripSensitiveDataFromDatabase(tempDbPath);
 
     const createdAt = options.createdAt ?? new Date();
     const filename = databaseBackupFilename(createdAt, options.databasePath);

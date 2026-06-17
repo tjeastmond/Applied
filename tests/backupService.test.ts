@@ -8,7 +8,7 @@ import { openDatabase } from "@/lib/server/db/migrate";
 import { SqliteAppAccessConfigRepository } from "@/lib/server/db/sqliteAppAccessConfigRepository";
 import { SqliteApplicationNoteRepository } from "@/lib/server/db/sqliteApplicationNoteRepository";
 import { SqliteJobApplicationRepository } from "@/lib/server/db/sqliteRepository";
-import { stripAppAccessConfigFromDatabase } from "@/lib/server/services/databaseBackupService";
+import { stripSensitiveDataFromDatabase } from "@/lib/server/services/databaseBackupService";
 import { exportJson, exportSql, importJson, importSql } from "@/lib/server/services/backupService";
 
 async function seedSampleData(db: ReturnType<typeof openDatabase>) {
@@ -169,14 +169,14 @@ describe("backupService", () => {
     expect(exportedSql).not.toContain("app_access_config");
   });
 
-  test("stripAppAccessConfigFromDatabase removes stored token from a database file", () => {
+  test("stripSensitiveDataFromDatabase removes stored app access token from a database file", () => {
     const dbPath = join(tmpdir(), `applied-backup-strip-${randomUUID()}.db`);
     const db = openDatabase(dbPath);
     const repository = new SqliteAppAccessConfigRepository(db);
     repository.ensureToken();
     db.close();
 
-    stripAppAccessConfigFromDatabase(dbPath);
+    stripSensitiveDataFromDatabase(dbPath);
 
     const reopened = openDatabase(dbPath);
     expect(new SqliteAppAccessConfigRepository(reopened).getToken()).toBeNull();

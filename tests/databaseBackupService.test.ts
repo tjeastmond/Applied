@@ -3,7 +3,9 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, test } from "vitest";
 import { openDatabase } from "@/lib/server/db/migrate";
+import { SqliteAgentApiTokenRepository } from "@/lib/server/db/sqliteAgentApiTokenRepository";
 import { SqliteAppAccessConfigRepository } from "@/lib/server/db/sqliteAppAccessConfigRepository";
+import { hashAgentToken } from "@/lib/server/hashAgentToken";
 import {
   createDatabaseBackup,
   databaseBackupEntryFilename,
@@ -53,6 +55,25 @@ describe("databaseBackupService", () => {
     });
 
     expect(result.data.toString("utf8")).not.toContain(token);
+
+    db.close();
+    rmSync(tempRoot, { recursive: true, force: true });
+  });
+
+  test("createDatabaseBackup omits stored agent api tokens", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "applied-db-backup-agent-token-"));
+    const db = openDatabase(":memory:");
+    const repository = new SqliteAgentApiTokenRepository(db);
+    const created = repository.create("Backup Test");
+
+    const result = await createDatabaseBackup(db, {
+      tempDir: tempRoot,
+      createdAt: new Date("2026-06-11T12:30:00.000Z"),
+    });
+
+    const archive = result.data.toString("utf8");
+    expect(archive).not.toContain(created.token);
+    expect(archive).not.toContain(hashAgentToken(created.token));
 
     db.close();
     rmSync(tempRoot, { recursive: true, force: true });
