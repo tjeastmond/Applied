@@ -13,6 +13,14 @@ function tableExists(db: Database.Database, table: string): boolean {
   return row !== undefined;
 }
 
+function agentApiTokenColumnExists(db: Database.Database, column: string): boolean {
+  if (!tableExists(db, "agent_api_tokens")) {
+    return false;
+  }
+  const columns = db.prepare("PRAGMA table_info(agent_api_tokens)").all() as { name: string }[];
+  return columns.some((col) => col.name === column);
+}
+
 export function migrateLegacyApplicationNotes(db: Database.Database): void {
   if (!tableExists(db, "application_notes")) {
     return;
@@ -49,6 +57,10 @@ export function migrate(db: Database.Database): void {
   }
 
   migrateLegacyApplicationNotes(db);
+
+  if (!agentApiTokenColumnExists(db, "last_used_at")) {
+    db.exec(`ALTER TABLE agent_api_tokens ADD COLUMN last_used_at TEXT`);
+  }
 }
 
 export function openDatabase(path = ":memory:"): Database.Database {

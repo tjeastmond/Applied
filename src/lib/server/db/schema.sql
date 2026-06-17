@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS agent_api_tokens (
   token_hash TEXT NOT NULL,
   token_prefix TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  revoked_at TEXT
+  revoked_at TEXT,
+  last_used_at TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_agent_api_tokens_active ON agent_api_tokens (revoked_at, created_at DESC);

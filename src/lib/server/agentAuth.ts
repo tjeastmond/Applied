@@ -33,6 +33,7 @@ export async function requireAgentAuth(request: Request): Promise<Response | nul
 
   const repository = getAgentApiTokenRepository();
   if (repository && (await Promise.resolve(repository.isValidToken(token)))) {
+    void Promise.resolve(repository.touchLastUsed(token)).catch(() => {});
     return null;
   }
 

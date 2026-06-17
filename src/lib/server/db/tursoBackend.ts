@@ -147,6 +147,14 @@ async function columnExists(client: Client, column: string): Promise<boolean> {
   return result.some((row) => nullableString(row, "name") === column);
 }
 
+async function agentApiTokenColumnExists(client: Client, column: string): Promise<boolean> {
+  if (!(await tableExists(client, "agent_api_tokens"))) {
+    return false;
+  }
+  const result = await rows(client, "PRAGMA table_info(agent_api_tokens)");
+  return result.some((row) => nullableString(row, "name") === column);
+}
+
 async function migrateLegacyApplicationNotes(client: Client): Promise<void> {
   if (!(await tableExists(client, "application_notes"))) {
     return;
@@ -195,6 +203,10 @@ async function migrateTurso(client: Client): Promise<void> {
   }
 
   await migrateLegacyApplicationNotes(client);
+
+  if (!(await agentApiTokenColumnExists(client, "last_used_at"))) {
+    await client.execute(`ALTER TABLE agent_api_tokens ADD COLUMN last_used_at TEXT`);
+  }
 }
 
 class TursoJobApplicationRepository implements JobApplicationRepository {

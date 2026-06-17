@@ -58,9 +58,14 @@ export type AgentApiTokenSummary = {
   name: string;
   tokenPrefix: string;
   createdAt: string;
+  lastUsedAt: string | null;
 };
 
 export type CreateAgentApiTokenResult = {
   token: string;
+  record: AgentApiTokenSummary;
+};
+
+export type ImportAgentApiTokenResult = {
   record: AgentApiTokenSummary;
 };
