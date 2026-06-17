@@ -15,7 +15,7 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 - Add-application dialog: hide notes (manage in detail drawer); no section dividers; recruiter/contact fields optional by default; auto-parse on URL paste; on open, clipboard-only URL prefill, parse, then focus Save Application
 - Label the field "Company LinkedIn URL"; use "Contact Name" for the recruiter name field; optional salary fields labeled "Salary Range" (parsed from postings) and "Desired Salary" (user-entered only) in `ApplicationFormFields`; when `linkedinUrl` is set, show a LinkedIn link before Job Description on cards and sheet via `ApplicationMetadataLine`
 - Use Shadcn Alert Dialog for delete confirmations, not `window.confirm`; no edit/delete on application cards — delete only from the detail drawer
-- Application cards use color-coded `ApplicationStatusPicker` (tag-like dropdown, closes on select; Applied first, then alphabetical); job URLs via `JobDescriptionLink` with copy icon; drawer overlay blurs background; `APPLIED.` title button clears filters and resets to page 1 without scrolling; header has icon-only `BackupMenu` (database icon), Copy All URLs, and Add Application; card pagination supports 5/10/20/50 per page plus View all, persisted as `applied-dev-page-size`
+- Application cards use color-coded `ApplicationStatusPicker` (tag-like dropdown, closes on select; Applied first, then alphabetical); job URLs via `JobDescriptionLink` with copy icon; drawer overlay blurs background; `APPLIED.` title button clears filters and resets to page 1 without scrolling; header has icon-only `AdminDialog` (settings icon) for backup/export, Copy All URLs, and agent token management, plus Add Application; card pagination supports 5/10/20/50 per page plus View all, persisted as `applied-dev-page-size`
 - Light/dark theme toggle in header (Lucide Sun/Moon); persist choice in `localStorage` (`applied-dev-theme`); default light; dark-mode header toolbar outline buttons use `header-toolbar-outline` in `styles.css` for lighter borders and visible hover
 - Links: no default underline; left-to-right underline animates on hover/focus for `a[href]`; sheet header job title uses `link-plain` plus `ExternalLinkIcon` (no animated underline)
 
@@ -42,22 +42,22 @@ pnpm run start       # next start (production server)
 
 Local defaults live in `.env.local`; copy from `.env.example` when bootstrapping a fresh checkout.
 
-| Variable             | Default           | Purpose                                                                      |
-| -------------------- | ----------------- | ---------------------------------------------------------------------------- |
-| `DATABASE_PROVIDER`  | `sqlite`          | Database backend: `sqlite` for local file storage or `turso` for Turso Cloud |
-| `DATABASE_PATH`      | `data/applied.db` | SQLite file path when `DATABASE_PROVIDER=sqlite`                             |
-| `TURSO_DATABASE_URL` | —                 | Turso Cloud database URL when `DATABASE_PROVIDER=turso`                      |
-| `TURSO_AUTH_TOKEN`   | —                 | Turso Cloud auth token when `DATABASE_PROVIDER=turso`                        |
-| `AGENT_API_TOKEN`    | —                 | Bearer token for `/api/agent/*` routes                                       |
-| `APP_ACCESS_TOKEN`   | —                 | App access token for browser session login and `/api/*` routes (not agent)   |
-| `LOG_ENABLED`        | `true`            | Write logs to local file; set `false` on Vercel                              |
-| `LOG_LEVEL`          | `info`            | Minimum level: `debug`, `info`, `warn`, or `error`                           |
-| `LOG_DIR`            | `data/logs`       | Directory for rotated log files                                              |
-| `LOG_FILE`           | `applied.log`     | Base log filename                                                            |
-| `LOG_MAX_SIZE`       | `5m`              | Rotate when file exceeds this size                                           |
-| `LOG_MAX_FILES`      | `7`               | Number of rotated files to keep                                              |
-| `NODE_ENV`           | —                 | `production` for optimized build                                             |
-| `PORT`               | `3030`            | HTTP port for `pnpm dev` and `pnpm start`; read from `.env.local` by default |
+| Variable             | Default           | Purpose                                                                                           |
+| -------------------- | ----------------- | ------------------------------------------------------------------------------------------------- |
+| `DATABASE_PROVIDER`  | `sqlite`          | Database backend: `sqlite` for local file storage or `turso` for Turso Cloud                      |
+| `DATABASE_PATH`      | `data/applied.db` | SQLite file path when `DATABASE_PROVIDER=sqlite`                                                  |
+| `TURSO_DATABASE_URL` | —                 | Turso Cloud database URL when `DATABASE_PROVIDER=turso`                                           |
+| `TURSO_AUTH_TOKEN`   | —                 | Turso Cloud auth token when `DATABASE_PROVIDER=turso`                                             |
+| `AGENT_API_TOKEN`    | —                 | Optional bootstrap bearer for `/api/agent/*`; prefer named DB tokens via Admin → Agent API Tokens |
+| `APP_ACCESS_TOKEN`   | —                 | App access token for browser session login and `/api/*` routes (not agent)                        |
+| `LOG_ENABLED`        | `true`            | Write logs to local file; set `false` on Vercel                                                   |
+| `LOG_LEVEL`          | `info`            | Minimum level: `debug`, `info`, `warn`, or `error`                                                |
+| `LOG_DIR`            | `data/logs`       | Directory for rotated log files                                                                   |
+| `LOG_FILE`           | `applied.log`     | Base log filename                                                                                 |
+| `LOG_MAX_SIZE`       | `5m`              | Rotate when file exceeds this size                                                                |
+| `LOG_MAX_FILES`      | `7`               | Number of rotated files to keep                                                                   |
+| `NODE_ENV`           | —                 | `production` for optimized build                                                                  |
+| `PORT`               | `3030`            | HTTP port for `pnpm dev` and `pnpm start`; read from `.env.local` by default                      |
 
 ---
 
@@ -214,18 +214,23 @@ Legacy `applications.notes` values are migrated into `application_notes` on star
 
 All endpoints return JSON unless noted. Errors: `{ "error": "message" }` with 4xx status.
 
-| Method   | Path                                  | Body                                          | Response                             |
-| -------- | ------------------------------------- | --------------------------------------------- | ------------------------------------ |
-| `GET`    | `/api/applications`                   | —                                             | `JobApplication[]`                   |
-| `POST`   | `/api/applications/bulk`              | `{ "ids"?: string[] }` (omit or `[]` for all) | `{ applications: JobApplication[] }` |
-| `POST`   | `/api/applications`                   | `CreateJobApplicationInput`                   | `JobApplication` (201)               |
-| `PATCH`  | `/api/applications/:id`               | `Partial<CreateJobApplicationInput>`          | `JobApplication` or 404              |
-| `DELETE` | `/api/applications/:id`               | —                                             | 204 or 404                           |
-| `GET`    | `/api/applications/:id/notes`         | —                                             | `ApplicationNote[]`                  |
-| `POST`   | `/api/applications/:id/notes`         | `{ "content": string }`                       | `ApplicationNote` (201)              |
-| `PATCH`  | `/api/applications/:id/notes/:noteId` | `{ "content": string }`                       | `ApplicationNote` or 404             |
-| `DELETE` | `/api/applications/:id/notes/:noteId` | —                                             | 204 or 404                           |
-| `POST`   | `/api/jobs/parse`                     | `{ "url": string }`                           | `ParseJobUrlResult`                  |
+| Method   | Path                                  | Body                                          | Response                                             |
+| -------- | ------------------------------------- | --------------------------------------------- | ---------------------------------------------------- |
+| `GET`    | `/api/applications`                   | —                                             | `JobApplication[]`                                   |
+| `POST`   | `/api/applications/bulk`              | `{ "ids"?: string[] }` (omit or `[]` for all) | `{ applications: JobApplication[] }`                 |
+| `POST`   | `/api/applications`                   | `CreateJobApplicationInput`                   | `JobApplication` (201)                               |
+| `PATCH`  | `/api/applications/:id`               | `Partial<CreateJobApplicationInput>`          | `JobApplication` or 404                              |
+| `DELETE` | `/api/applications/:id`               | —                                             | 204 or 404                                           |
+| `GET`    | `/api/applications/:id/notes`         | —                                             | `ApplicationNote[]`                                  |
+| `POST`   | `/api/applications/:id/notes`         | `{ "content": string }`                       | `ApplicationNote` (201)                              |
+| `PATCH`  | `/api/applications/:id/notes/:noteId` | `{ "content": string }`                       | `ApplicationNote` or 404                             |
+| `DELETE` | `/api/applications/:id/notes/:noteId` | —                                             | 204 or 404                                           |
+| `POST`   | `/api/jobs/parse`                     | `{ "url": string }`                           | `ParseJobUrlResult`                                  |
+| `GET`    | `/api/admin/agent-tokens`             | —                                             | `{ tokens, envTokenConfigured, envTokenRegistered }` |
+| `POST`   | `/api/admin/agent-tokens`             | `{ "name": string }`                          | `CreateAgentApiTokenResult` (201)                    |
+| `POST`   | `/api/admin/agent-tokens/from-env`    | `{ "name": string }`                          | `{ record: AgentApiTokenSummary }` (201)             |
+| `PATCH`  | `/api/admin/agent-tokens/:id`         | `{ "name": string }`                          | `AgentApiTokenSummary` or 404                        |
+| `DELETE` | `/api/admin/agent-tokens/:id`         | —                                             | 204 or 404                                           |
 
 **Create validation** (`src/lib/schemas/application.ts` via Zod): `url`, `title`, `company`, `appliedAt` required; optional fields (`salaryRange`, `desiredSalary`, recruiter/contact, etc.) sanitized on persist.
 
@@ -462,7 +467,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 ## Learned Workspace Facts
 
-- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (header/tab title `APPLIED.`; clickable logo `resetToHome` clears filters and page; `ThemeToggle`, icon-only `BackupMenu`, Copy All URLs; server-hydrated initial data via `loadInitialPageData()` in `page.tsx` — applications, notes, and `salaryRange`/`desiredSalary`; `force-dynamic`; page size from cookie for SSR, synced from `localStorage`; `ApplicationFilters` for company/status/search via `filterApplications` (search includes salary fields); card pagination via `ApplicationCardPagination`/`applicationPagination`; list footer with `hello@swoo.io` and MIT License link to GitHub; notes seeded in `useApplicationNotesCache` from server hydration; clipboard-only URL prefill on new-application open with parse filling `salaryRange` when found)
+- Applied.dev is a single-page job application tracker; main client UI lives in `src/components/AppPage.tsx` (header/tab title `APPLIED.`; clickable logo `resetToHome` clears filters and page; `ThemeToggle`, icon-only `AdminDialog` for backup/export, Copy All URLs, and agent token management; server-hydrated initial data via `loadInitialPageData()` in `page.tsx` — applications, notes, and `salaryRange`/`desiredSalary`; `force-dynamic`; page size from cookie for SSR, synced from `localStorage`; `ApplicationFilters` for company/status/search via `filterApplications` (search includes salary fields); card pagination via `ApplicationCardPagination`/`applicationPagination`; list footer with `hello@swoo.io` and MIT License link to GitHub; notes seeded in `useApplicationNotesCache` from server hydration; clipboard-only URL prefill on new-application open with parse filling `salaryRange` when found)
 - Stack: Next.js App Router, Node.js, pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI, self-hosted Roboto Mono
 - `pnpm dev` runs `scripts/dev-clean.sh` (wipes `.next`, reads `PORT` from `.env.local`, then starts Turbopack on port 3030 by default)
 - Required application form fields: job posting URL, title, company, apply date; all other fields are optional
@@ -472,7 +477,8 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 - Job URL parse uses `extractJobCompany` and `extractParaformRole`: Y Combinator, Ashby, and Paraform are job boards, not employers; Paraform title/company from JSON-LD, Next data, and og:title patterns; `normalizeJobTitle()` strips `| Y Combinator` and anything after it, and collapses extra whitespace on parse/save
 - Application statuses: `applied`, `to_apply`, `interviewing`, `waiting`, `rejected`, `offer`, `passed` — managed via `ApplicationStatusPicker` on cards and in the detail drawer; status changes auto-create a note `Status Update: {label}` via PATCH; agent API creates use `to_apply` (label "To Apply")
 - `ApplicationDetailSheet` is 60vw, slides from the right with blurred backdrop; detail form `Separator`s are full-width siblings between `DetailSection` blocks with `px-6` (not `-mx` bleed inside `overflow-y-auto`); note create/patch/delete bumps parent `updatedAt` via `touchApplicationUpdatedAt` so cards re-sort; theme via `ThemeProvider` + blocking `themeInitScript()` before paint (near-black dark tokens in `styles.css`); Sonner follows active theme
-- Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1`; provider-selected database backup via `GET /api/backup/database` (local SQLite returns a zipped `.db`; Turso returns a zipped SQL backup); `BackupMenu` "Create Backup" downloads `.zip`; when running local SQLite with Turso env configured, `BackupMenu` also offers "Turso Sync" via `POST /api/backup/sync-turso` (CLI: `pnpm db:push-turso`, `pnpm db:pull-turso`, `pnpm db:verify-turso`)
+- Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1`; provider-selected database backup via `GET /api/backup/database` (local SQLite returns a zipped `.db`; Turso returns a zipped SQL backup); `AdminDialog` "Create Backup" downloads `.zip`; when running local SQLite with Turso env configured, `AdminDialog` also offers "Turso Sync" via `POST /api/backup/sync-turso` (CLI: `pnpm db:push-turso`, `pnpm db:pull-turso`, `pnpm db:verify-turso`); backups intentionally exclude agent API tokens and app access tokens
+- Agent API tokens: create/list/revoke/rename in `AdminDialog`; raw token shown once at creation; `lastUsedAt` updated on successful DB-token auth; optional `AGENT_API_TOKEN` env bootstrap can be registered in DB via Admin; `pnpm agent:token` prints env-bootstrap only
 - Local logging: pino → `data/logs/` with size rotation; active symlink `current.log`; levels debug/info/warn/error; `pnpm logs:tail` runs `ensure-log-file.ts` then tails (creates log dir if missing); disabled in Vitest by default unless `LOG_ENABLED=true`; use `LOG_ENABLED=false` on Vercel
 - Optional salary fields: `salaryRange` (posting pay range, parsed on job URL fetch) and `desiredSalary` (user target, form-only); both optional on create/patch, searchable, included in backup/export JSON and SQL
-- Deployable to Vercel with Turso Cloud (`DATABASE_PROVIDER=turso`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`); app access via `APP_ACCESS_TOKEN` with session login for browser and Bearer auth for scripts (`pnpm app:token`); agent API uses separate `AGENT_API_TOKEN` (`pnpm agent:token`); Electron is a viable desktop path with local SQLite (no hosted DB required); external-agent workflow via token-protected `/api/agent` (GET discovery is public; GET/POST `/api/agent/applications` for list/create only; list accepts optional `?search=` on title, company, status, status label, URL, and applied date via `filterAgentApplicationsBySearch` in `applicationSearch.ts`); agent create-from-URL persists parsed `salaryRange` when the parser finds it; agent docs in `LEARNING_PROMPT.md`
+- Deployable to Vercel with Turso Cloud (`DATABASE_PROVIDER=turso`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`); app access via `APP_ACCESS_TOKEN` with session login for browser and Bearer auth for scripts (`pnpm app:token`); agent API accepts DB-managed tokens (preferred) or optional env bootstrap `AGENT_API_TOKEN` (`pnpm agent:token` prints env-only); Electron is a viable desktop path with local SQLite (no hosted DB required); external-agent workflow via token-protected `/api/agent` (GET discovery is public; GET/POST `/api/agent/applications` for list/create only; list accepts optional `?search=` on title, company, status, status label, URL, and applied date via `filterAgentApplicationsBySearch` in `applicationSearch.ts`); agent create-from-URL persists parsed `salaryRange` when the parser finds it; agent docs in `LEARNING_PROMPT.md`

@@ -2,13 +2,6 @@
 
 ## Planned Features
 
-### Agent API Token Management
-
-- Store agent API tokens in the database as hashed values instead of relying on a single `AGENT_API_TOKEN` environment variable.
-- Add CLI support for creating, listing, and revoking named agent tokens.
-- Keep generated token values visible only at creation time.
-- Preserve the current limited agent permissions: discover, list applications, and create applications from job URLs only.
-
 ### User Accounts And Email Login
 
 - Add users with email addresses and password-based login.
@@ -29,3 +22,5 @@
 - Minimal agent HTTP API with bearer-token authentication.
 - Agent-created applications use the `to_apply` status.
 - Existing browser workflow remains unchanged.
+- DB-hashed agent API tokens with Admin UI create/list/revoke/rename, one-time reveal, env registration, and `last_used_at` tracking.
+- `pnpm agent:token` remains an env-bootstrap generator; token management lives in Admin.

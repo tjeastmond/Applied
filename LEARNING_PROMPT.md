@@ -12,12 +12,11 @@ The discovery endpoint is public. Protected application endpoints require bearer
 Authorization: Bearer <AGENT_API_TOKEN>
 
 Authentication setup:
-- Required token: AGENT_API_TOKEN (agent API only; separate from APP_ACCESS_TOKEN used by the browser app and other /api routes)
-- Generate a token locally: pnpm agent:token
-- Add the output to .env.local (for example AGENT_API_TOKEN=your-token-here), then restart the dev server
-- On deployed hosts, set AGENT_API_TOKEN in the server environment
+- Preferred: sign in to the app → Admin → Agent API Tokens → create a named token → copy it immediately → use Authorization: Bearer <token>
+- Optional bootstrap: pnpm agent:token prints AGENT_API_TOKEN=... for .env.local; restart the dev server; register it in Admin to manage/revoke from the UI
+- Deployed hosts: DB tokens persist on Turso; AGENT_API_TOKEN env still works additively on Vercel
 - Do not use APP_ACCESS_TOKEN for agent endpoints
-- If AGENT_API_TOKEN is missing on the server, protected endpoints return 503
+- If no agent token is configured (no env token and no active DB tokens), protected endpoints return 503
 
 Available actions:
 1. List applications:
