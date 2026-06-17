@@ -34,6 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { MAX_ACTIVE_AGENT_API_TOKENS } from "@/lib/agentTokenLimits";
 import { errorMessage } from "@/lib/errorMessage";
 import { FILTER_CONTROL_HEIGHT_CLASS } from "@/lib/filterControls";
 import { toastMessages } from "@/lib/toastMessages";
@@ -102,6 +103,7 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
   const [renaming, setRenaming] = useState(false);
 
   const backupBusy = exporting || syncingTurso;
+  const atTokenLimit = tokens.length >= MAX_ACTIVE_AGENT_API_TOKENS;
 
   const loadTokens = useCallback(async () => {
     setTokensLoading(true);
@@ -394,7 +396,9 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
               <div className="space-y-1">
                 <h2 className="text-sm font-medium">Agent API Tokens</h2>
                 <p className="text-muted-foreground text-xs">
-                  Create named bearer tokens for external agent tools. Tokens are shown once at creation.
+                  Named bearer tokens for external agent tools (e.g. Cursor, Codex). Shown once at creation.
+                  Up to {MAX_ACTIVE_AGENT_API_TOKENS} active agent tokens — your app login token is separate and
+                  does not count toward this limit.
                 </p>
               </div>
 
@@ -414,11 +418,16 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
                       type="button"
                       variant="save"
                       size="sm"
-                      disabled={importingEnvToken}
+                      disabled={importingEnvToken || atTokenLimit}
                       onClick={() => void handleImportEnvToken()}
                     >
                       {importingEnvToken ? "Registering…" : "Register in Database"}
                     </Button>
+                  ) : null}
+                  {!envTokenRegistered && atTokenLimit ? (
+                    <p className="text-muted-foreground text-xs">
+                      Revoke a database token before registering the environment token.
+                    </p>
                   ) : null}
                 </div>
               ) : null}
@@ -446,13 +455,20 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
                     type="button"
                     variant="save"
                     className={FILTER_CONTROL_HEIGHT_CLASS}
-                    disabled={creatingToken || tokenName.trim().length === 0}
+                    disabled={creatingToken || tokenName.trim().length === 0 || atTokenLimit}
                     onClick={() => void handleCreateToken()}
                   >
                     {creatingToken ? "Creating…" : "Create Token"}
                   </Button>
                 </div>
               </div>
+
+              {atTokenLimit ? (
+                <p className="text-muted-foreground text-xs">
+                  {MAX_ACTIVE_AGENT_API_TOKENS} active agent tokens reached. Revoke one to create another for
+                  agentic use.
+                </p>
+              ) : null}
 
               {revealedToken ? (
                 <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-3">

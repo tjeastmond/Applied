@@ -132,6 +132,39 @@ describe("admin agent token routes", () => {
     expect(second.status).toBe(409);
   });
 
+  test("POST returns 409 when active token limit is reached", async () => {
+    const repository = getAgentApiTokenRepository();
+    expect(repository).not.toBeNull();
+    await Promise.resolve(repository!.create("First"));
+    await Promise.resolve(repository!.create("Second"));
+
+    const response = await createAgentTokenRoute(
+      authorizedAppRequest("/api/admin/agent-tokens", {
+        method: "POST",
+        body: JSON.stringify({ name: "Third" }),
+      }),
+    );
+
+    expect(response.status).toBe(409);
+  });
+
+  test("POST /from-env returns 409 when active token limit is reached", async () => {
+    process.env.AGENT_API_TOKEN = "env-bootstrap-token";
+    const repository = getAgentApiTokenRepository();
+    expect(repository).not.toBeNull();
+    await Promise.resolve(repository!.create("First"));
+    await Promise.resolve(repository!.create("Second"));
+
+    const response = await importAgentTokenFromEnvRoute(
+      authorizedAppRequest("/api/admin/agent-tokens/from-env", {
+        method: "POST",
+        body: JSON.stringify({ name: "Environment" }),
+      }),
+    );
+
+    expect(response.status).toBe(409);
+  });
+
   test("PATCH renames an active token", async () => {
     const repository = getAgentApiTokenRepository();
     expect(repository).not.toBeNull();

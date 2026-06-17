@@ -38,11 +38,11 @@ describe("agent API routes", () => {
   });
 
   test("GET /api/agent returns capabilities and limitations", async () => {
-    const response = getAgentInfo();
+    const response = await getAgentInfo();
 
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
-      authentication: { discoveryIsPublic: boolean; requiredFor: string[] };
+      authentication: { discoveryIsPublic: boolean; requiredFor: string[]; tokenSource: string };
       applicationSummaryFields: string[];
       statuses: string[];
       capabilities: { method: string; path: string; response: unknown }[];
@@ -52,6 +52,7 @@ describe("agent API routes", () => {
     expect(body.authentication).toMatchObject({
       discoveryIsPublic: true,
       requiredFor: ["/api/agent/applications"],
+      tokenSource: "env",
     });
     expect(body.applicationSummaryFields).toEqual([
       "id",
@@ -90,6 +91,27 @@ describe("agent API routes", () => {
     expect(body.limitations).toContain(
       "No access to recruiter, contact, salary, or job-description fields in responses",
     );
+  });
+
+  test("GET /api/agent reports database tokenSource when only DB tokens are configured", async () => {
+    delete process.env.AGENT_API_TOKEN;
+    const repository = getAgentApiTokenRepository();
+    expect(repository).not.toBeNull();
+    await Promise.resolve(repository!.create("DB Only"));
+
+    const response = await getAgentInfo();
+    const body = (await response.json()) as { authentication: { tokenSource: string } };
+    expect(body.authentication.tokenSource).toBe("database");
+  });
+
+  test("GET /api/agent reports both tokenSource when env and DB tokens are configured", async () => {
+    const repository = getAgentApiTokenRepository();
+    expect(repository).not.toBeNull();
+    await Promise.resolve(repository!.create("DB Token"));
+
+    const response = await getAgentInfo();
+    const body = (await response.json()) as { authentication: { tokenSource: string } };
+    expect(body.authentication.tokenSource).toBe("both");
   });
 
   test("GET /api/agent/applications rejects missing and invalid bearer tokens", async () => {

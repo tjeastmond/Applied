@@ -2,6 +2,7 @@ import { importAgentTokenFromEnvSchema } from "@/lib/schemas/agentToken";
 import { badRequestResponse, jsonError, logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
 import { requireAppAccess } from "@/lib/server/appAuth";
 import { isAgentEnvTokenConfigured } from "@/lib/server/agentEnvToken";
+import { agentTokenLimitResponse } from "@/lib/server/agentTokenLimit";
 import { getAgentApiTokenRepository } from "@/lib/server/db";
 import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
@@ -34,6 +35,11 @@ export async function POST(request: Request) {
     const alreadyRegistered = await Promise.resolve(repository.hasActiveTokenWithHash(envToken));
     if (alreadyRegistered) {
       return jsonError("Environment token is already registered", 409);
+    }
+
+    const limitError = await agentTokenLimitResponse(repository);
+    if (limitError) {
+      return limitError;
     }
 
     const imported = await Promise.resolve(repository.importFromRawToken(parsed.data.name, envToken));

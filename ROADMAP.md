@@ -2,6 +2,14 @@
 
 ## Planned Features
 
+### App Access Token Management In Admin
+
+- Add an Admin section for the browser app access token (`app_access_config` / `APP_ACCESS_TOKEN`).
+- Show whether the token comes from the environment or the database (same hydration pattern as today).
+- Support viewing the token prefix or metadata and rotating/regenerating with a one-time reveal.
+- Keep agent API tokens separate — app login does not count toward the agent token limit.
+- Document rotation in `AGENTS.md` and `.env.example`; exclude app access tokens from backups (existing policy).
+
 ### User Accounts And Email Login
 
 - Add users with email addresses and password-based login.

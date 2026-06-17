@@ -1,11 +1,19 @@
+import { resolveAgentTokenSource } from "@/lib/agentTokenLimits";
 import { APPLICATION_STATUSES } from "@/lib/applicationStatus";
+import { isAgentEnvTokenConfigured } from "@/lib/server/agentEnvToken";
+import { getAgentApiTokenRepository } from "@/lib/server/db";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
 const APPLICATION_SUMMARY_FIELDS = ["id", "url", "status", "title", "company", "appliedAt", "updatedAt"] as const;
 
-export function GET() {
+export async function GET() {
+  const repository = getAgentApiTokenRepository();
+  const envConfigured = isAgentEnvTokenConfigured();
+  const dbHasActiveTokens = repository ? await Promise.resolve(repository.hasActiveTokens()) : false;
+  const tokenSource = resolveAgentTokenSource(envConfigured, dbHasActiveTokens);
+
   return NextResponse.json({
     service: "applied.dev agent API",
     version: 1,
@@ -14,6 +22,7 @@ export function GET() {
       header: "Authorization: Bearer <token>",
       tokenEnvVar: "AGENT_API_TOKEN",
       tokenManagement: "Create named tokens in the Admin panel or set AGENT_API_TOKEN for a bootstrap token.",
+      tokenSource,
       discoveryIsPublic: true,
       requiredFor: ["/api/agent/applications"],
     },
