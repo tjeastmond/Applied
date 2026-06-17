@@ -52,3 +52,15 @@ export interface ApplicationNote {
 export type ApplicationNoteMutationResult = ApplicationNote & {
   applicationUpdatedAt: string;
 };
+
+export type AgentApiTokenSummary = {
+  id: string;
+  name: string;
+  tokenPrefix: string;
+  createdAt: string;
+};
+
+export type CreateAgentApiTokenResult = {
+  token: string;
+  record: AgentApiTokenSummary;
+};

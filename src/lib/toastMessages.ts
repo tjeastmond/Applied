@@ -35,4 +35,11 @@ export const toastMessages = {
   loginTokenRequired: "Enter your access token.",
   loginFailed: "Sign in failed.",
   logoutFailed: "Sign out failed.",
+  agentTokenCreated: "Agent token created.",
+  agentTokenCreateFailed: "Failed to create agent token.",
+  agentTokenRevoked: "Agent token revoked.",
+  agentTokenRevokeFailed: "Failed to revoke agent token.",
+  agentTokensLoadFailed: "Failed to load agent tokens.",
+  agentTokenCopied: "Agent token copied.",
+  agentTokenCopyFailed: "Failed to copy agent token.",
 } as const;

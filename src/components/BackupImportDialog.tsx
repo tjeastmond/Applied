@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { downloadDatabaseBackup, exportBackup, importBackup, syncTurso, type ImportBackupMode } from "@/api";
+import { importBackup, type ImportBackupMode } from "@/api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,70 +21,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { errorMessage } from "@/lib/errorMessage";
 import { toastMessages } from "@/lib/toastMessages";
 import { cn } from "@/lib/utils";
 import type { JobApplication } from "@/types";
-import { DatabaseIcon, CloudUploadIcon, DownloadIcon, UploadIcon } from "lucide-react";
 import { toast } from "sonner";
 
-type BackupMenuProps = {
+type BackupImportDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onImported: (applications: JobApplication[]) => void;
-  tursoSyncAvailable?: boolean;
 };
 
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-export function BackupMenu({ onImported, tursoSyncAvailable = false }: BackupMenuProps) {
-  const [exporting, setExporting] = useState(false);
-  const [syncingTurso, setSyncingTurso] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
+export function BackupImportDialog({ open, onOpenChange, onImported }: BackupImportDialogProps) {
   const [importMode, setImportMode] = useState<ImportBackupMode>("upsert");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [confirmReplaceOpen, setConfirmReplaceOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  async function handleDownloadDatabaseBackup() {
-    setExporting(true);
-    try {
-      const { blob, filename } = await downloadDatabaseBackup();
-      downloadBlob(blob, filename);
-      toast.success(toastMessages.backupExported);
-    } catch (error) {
-      toast.error(errorMessage(error, toastMessages.backupExportFailed));
-    } finally {
-      setExporting(false);
-    }
-  }
-
-  async function handleExport(format: "sql" | "json") {
-    setExporting(true);
-    try {
-      const { blob, filename } = await exportBackup(format);
-      downloadBlob(blob, filename);
-      toast.success(toastMessages.backupExported);
-    } catch (error) {
-      toast.error(errorMessage(error, toastMessages.backupExportFailed));
-    } finally {
-      setExporting(false);
-    }
-  }
 
   function resetImportState() {
     setSelectedFile(null);
@@ -94,9 +49,9 @@ export function BackupMenu({ onImported, tursoSyncAvailable = false }: BackupMen
     }
   }
 
-  function handleImportOpenChange(open: boolean) {
-    setImportOpen(open);
-    if (!open && !isImporting) {
+  function handleOpenChange(nextOpen: boolean) {
+    onOpenChange(nextOpen);
+    if (!nextOpen && !isImporting) {
       resetImportState();
     }
   }
@@ -118,7 +73,7 @@ export function BackupMenu({ onImported, tursoSyncAvailable = false }: BackupMen
       const result = await importBackup(selectedFile, importMode);
       onImported(result.applications);
       setConfirmReplaceOpen(false);
-      setImportOpen(false);
+      onOpenChange(false);
       resetImportState();
       toast.success(
         `${toastMessages.backupImported} ${result.imported.applications} application(s), ${result.imported.notes} note(s).`,
@@ -130,81 +85,9 @@ export function BackupMenu({ onImported, tursoSyncAvailable = false }: BackupMen
     }
   }
 
-  async function handleTursoSync() {
-    setSyncingTurso(true);
-    try {
-      const result = await syncTurso("upsert");
-      const detail = `${result.imported.applications} application(s), ${result.imported.notes} note(s).`;
-      if (result.matches) {
-        toast.success(`${toastMessages.tursoSyncSuccess} ${detail}`);
-        return;
-      }
-
-      toast.success(`${toastMessages.tursoSyncPartial} ${detail}`);
-    } catch (error) {
-      toast.error(errorMessage(error, toastMessages.tursoSyncFailed));
-    } finally {
-      setSyncingTurso(false);
-    }
-  }
-
-  const backupBusy = exporting || syncingTurso;
-
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="header-toolbar-outline"
-              disabled={backupBusy}
-              aria-label="Backup"
-              title="Backup"
-            >
-              <DatabaseIcon />
-            </Button>
-          }
-        />
-        <DropdownMenuContent align="end" className="min-w-44">
-          <DropdownMenuItem disabled={backupBusy} onClick={() => void handleExport("sql")}>
-            <DownloadIcon />
-            Export SQL
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled={backupBusy} onClick={() => void handleExport("json")}>
-            <DownloadIcon />
-            Export JSON
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem disabled={backupBusy} onClick={() => void handleDownloadDatabaseBackup()}>
-            <DownloadIcon />
-            Create Backup
-          </DropdownMenuItem>
-          {tursoSyncAvailable ? (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem disabled={backupBusy} onClick={() => void handleTursoSync()}>
-                <CloudUploadIcon />
-                {syncingTurso ? "Turso Sync…" : "Turso Sync"}
-              </DropdownMenuItem>
-            </>
-          ) : null}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => {
-              resetImportState();
-              setImportOpen(true);
-            }}
-          >
-            <UploadIcon />
-            Import Backup…
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <Dialog open={importOpen} onOpenChange={handleImportOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Import Backup</DialogTitle>
@@ -279,7 +162,7 @@ export function BackupMenu({ onImported, tursoSyncAvailable = false }: BackupMen
             <Button
               type="button"
               variant="cancelOutline"
-              onClick={() => handleImportOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={isImporting}
             >
               Cancel

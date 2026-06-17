@@ -13,7 +13,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const authError = requireAgentAuth(request);
+  const authError = await requireAgentAuth(request);
   if (authError) {
     log.warn("agent auth rejected", { route: "/api/agent/applications", method: "GET" });
     return authError;
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authError = requireAgentAuth(request);
+  const authError = await requireAgentAuth(request);
   if (authError) {
     log.warn("agent auth rejected", { route: "/api/agent/applications", method: "POST" });
     return authError;

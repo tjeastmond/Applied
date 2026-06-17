@@ -3,15 +3,7 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const APPLICATION_SUMMARY_FIELDS = [
-  "id",
-  "url",
-  "status",
-  "title",
-  "company",
-  "appliedAt",
-  "updatedAt",
-] as const;
+const APPLICATION_SUMMARY_FIELDS = ["id", "url", "status", "title", "company", "appliedAt", "updatedAt"] as const;
 
 export function GET() {
   return NextResponse.json({
@@ -21,6 +13,7 @@ export function GET() {
       type: "bearer",
       header: "Authorization: Bearer <token>",
       tokenEnvVar: "AGENT_API_TOKEN",
+      tokenManagement: "Create named tokens in the Admin panel or set AGENT_API_TOKEN for a bootstrap token.",
       discoveryIsPublic: true,
       requiredFor: ["/api/agent/applications"],
     },
@@ -61,7 +54,7 @@ export function GET() {
       codes: {
         "400": "Invalid request body or unparsable job URL",
         "401": "Missing or invalid bearer token",
-        "503": "AGENT_API_TOKEN is not configured",
+        "503": "No agent API token is configured",
       },
     },
     limitations: [

@@ -5,7 +5,7 @@ import { deleteApplication, updateApplication } from "@/api";
 import { AddApplicationDialog } from "@/components/AddApplicationDialog";
 import { ApplicationCard } from "@/components/ApplicationCard";
 import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
-import { BackupMenu } from "@/components/BackupMenu";
+import { AdminDialog } from "@/components/AdminDialog";
 import { ApplicationCardPagination } from "@/components/ApplicationCardPagination";
 import { ApplicationFilters } from "@/components/ApplicationFilters";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -43,7 +43,7 @@ import {
 } from "@/lib/keyboardShortcut";
 import { toastMessages } from "@/lib/toastMessages";
 import type { ApplicationNote, ApplicationStatus, JobApplication } from "@/types";
-import { CopyIcon, LogOutIcon, PlusIcon } from "lucide-react";
+import { LogOutIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
 type AuthenticatedAppProps = {
@@ -341,17 +341,6 @@ export function AuthenticatedApp({
     [isDeleting],
   );
 
-  const copyAllUrls = useCallback(async () => {
-    const urls = applications.map((application) => application.url.trim()).filter(Boolean);
-    if (urls.length === 0) return;
-
-    try {
-      await navigator.clipboard.writeText(urls.join("\n"));
-      toast.success(toastMessages.allJobUrlsCopied);
-    } catch {
-      toast.error(toastMessages.allJobUrlsCopyFailed);
-    }
-  }, [applications]);
 
   const confirmDelete = useCallback(async () => {
     if (!pendingDeleteId) return;
@@ -461,17 +450,11 @@ export function AuthenticatedApp({
           >
             <LogOutIcon />
           </Button>
-          <BackupMenu onImported={handleBackupImported} tursoSyncAvailable={tursoSyncAvailable} />
-          <Button
-            type="button"
-            variant="outline"
-            className="header-toolbar-outline"
-            disabled={applications.length === 0}
-            onClick={() => void copyAllUrls()}
-          >
-            <CopyIcon data-icon="inline-start" />
-            Copy All URLs
-          </Button>
+          <AdminDialog
+            applications={applications}
+            onImported={handleBackupImported}
+            tursoSyncAvailable={tursoSyncAvailable}
+          />
           <Button type="button" onClick={openAddForm} title={modKShortcutDescription()}>
             <PlusIcon data-icon="inline-start" />
             Add Application

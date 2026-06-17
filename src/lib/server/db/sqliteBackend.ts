@@ -9,6 +9,7 @@ import { exportJson, exportSql, importJson, importSql } from "../services/backup
 import { hydrateAppAccessTokenFromDatabase } from "../appAccessToken";
 import { openDatabase } from "./migrate";
 import { SqliteAppAccessConfigRepository } from "./sqliteAppAccessConfigRepository";
+import { SqliteAgentApiTokenRepository } from "./sqliteAgentApiTokenRepository";
 import { SqliteApplicationNoteRepository } from "./sqliteApplicationNoteRepository";
 import { SqliteJobApplicationRepository } from "./sqliteRepository";
 
@@ -24,6 +25,7 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
   readonly applications;
   readonly notes;
   readonly appAccessConfig;
+  readonly agentApiTokens;
 
   private readonly db: Database.Database;
   private readonly path: string;
@@ -36,6 +38,7 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
 
     this.db = db ?? openDatabase(this.path);
     this.appAccessConfig = new SqliteAppAccessConfigRepository(this.db);
+    this.agentApiTokens = new SqliteAgentApiTokenRepository(this.db);
     hydrateAppAccessTokenFromDatabase(this.appAccessConfig.getToken());
     this.applications = new SqliteJobApplicationRepository(this.db);
     this.notes = new SqliteApplicationNoteRepository(this.db);

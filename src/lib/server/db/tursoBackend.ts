@@ -43,6 +43,7 @@ import {
   UPDATE_NOTE_FOR_APPLICATION_SQL,
 } from "./applicationNoteRepositoryShared";
 import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
+import { TursoAgentApiTokenRepository } from "./tursoAgentApiTokenRepository";
 
 type NamedArgs = Record<string, InValue>;
 
@@ -332,6 +333,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
   readonly provider = "turso";
   readonly applications: JobApplicationRepository;
   readonly notes: ApplicationNoteRepository;
+  readonly agentApiTokens;
 
   private readonly client: Client;
   private readonly ready: Promise<void>;
@@ -344,6 +346,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     this.ready = migrateTurso(this.client);
     this.applications = new TursoJobApplicationRepository(this.client, this.ready);
     this.notes = new TursoApplicationNoteRepository(this.client, this.ready);
+    this.agentApiTokens = new TursoAgentApiTokenRepository(this.client, this.ready);
   }
 
   async exportJson(): Promise<BackupJson> {

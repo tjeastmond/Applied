@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
-import { getRepository, useTestDatabase } from "@/lib/server/db";
+import { getAgentApiTokenRepository, getRepository, useTestDatabase } from "@/lib/server/db";
 import { openDatabase } from "@/lib/server/db/migrate";
 import { GET as getAgentInfo } from "@/app/api/agent/route";
 import * as agentApplicationsRoute from "@/app/api/agent/applications/route";
@@ -102,6 +102,27 @@ describe("agent API routes", () => {
       }),
     );
     expect(invalidResponse.status).toBe(401);
+  });
+
+  test("GET /api/agent/applications accepts database-backed bearer tokens", async () => {
+    delete process.env.AGENT_API_TOKEN;
+    const repository = getAgentApiTokenRepository();
+    const created = await Promise.resolve(repository!.create("Route Test"));
+
+    const response = await agentApplicationsRoute.GET(
+      new Request("http://localhost/api/agent/applications", {
+        headers: { Authorization: `Bearer ${created.token}` },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  test("GET /api/agent/applications returns 503 when no agent tokens are configured", async () => {
+    delete process.env.AGENT_API_TOKEN;
+
+    const response = await agentApplicationsRoute.GET(new Request("http://localhost/api/agent/applications"));
+    expect(response.status).toBe(503);
   });
 
   test("GET /api/agent/applications returns application URLs and statuses only after auth", async () => {

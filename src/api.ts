@@ -1,6 +1,8 @@
 import type {
   ApplicationNote,
   ApplicationNoteMutationResult,
+  AgentApiTokenSummary,
+  CreateAgentApiTokenResult,
   CreateJobApplicationInput,
   JobApplication,
   ParseJobUrlResult,
@@ -210,4 +212,26 @@ export async function downloadDatabaseBackup(): Promise<{ blob: Blob; filename: 
   const filename = parseContentDispositionFilename(response.headers.get("Content-Disposition")) ?? "applied-backup.zip";
 
   return { blob, filename };
+}
+
+export type ListAgentTokensResult = {
+  tokens: AgentApiTokenSummary[];
+  envTokenConfigured: boolean;
+};
+
+export function listAgentTokens(): Promise<ListAgentTokensResult> {
+  return request<ListAgentTokensResult>("/api/admin/agent-tokens");
+}
+
+export function createAgentToken(name: string): Promise<CreateAgentApiTokenResult> {
+  return request<CreateAgentApiTokenResult>("/api/admin/agent-tokens", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function revokeAgentToken(id: string): Promise<void> {
+  return request<void>(`/api/admin/agent-tokens/${id}`, {
+    method: "DELETE",
+  });
 }
