@@ -2,10 +2,11 @@ import { createClient, type Client, type InStatement, type InValue, type Row } f
 import { applicationStatusSchema } from "@/lib/schemas/common";
 import type { BackupJson, ImportMode } from "@/lib/schemas/backup";
 import type { ApplicationNote, JobApplication, ParsedCreateJobApplicationInput } from "@/types";
+import type { ApplicationStatus } from "@/lib/applicationStatus";
 import type { DatabaseBackend } from "../databaseBackend";
 import type { TursoDatabaseConfig } from "../databaseConfig";
 import type { ApplicationNoteRepository } from "../repositories/applicationNoteRepository";
-import type { JobApplicationRepository } from "../repositories/jobApplicationRepository";
+import type { BulkArchiveResult, JobApplicationRepository } from "../repositories/jobApplicationRepository";
 import { createSqlBackupZip } from "../services/databaseBackupService";
 import {
   applicationToRow,
@@ -21,10 +22,12 @@ import {
 import {
   buildApplicationInsertRow,
   buildApplicationUpdateRow,
+  buildBulkArchiveByStatusesSql,
   DELETE_APPLICATION_SQL,
   GET_APPLICATION_BY_ID_SQL,
   INSERT_APPLICATION_SQL,
   LIST_APPLICATIONS_SQL,
+  nowIso,
   rowToApplication,
   type ApplicationRow,
   UPDATE_APPLICATION_SQL,
@@ -105,6 +108,7 @@ function rowToApplicationRow(row: Row): ApplicationRow {
     desired_salary: nullableString(row, "desired_salary"),
     full_jd: nullableString(row, "full_jd"),
     status: applicationStatus(row),
+    archived: requiredNumber(row, "archived"),
     created_at: requiredString(row, "created_at"),
     updated_at: requiredString(row, "updated_at"),
   };
@@ -202,6 +206,10 @@ async function migrateTurso(client: Client): Promise<void> {
     }
   }
 
+  if (!(await columnExists(client, "archived"))) {
+    await client.execute(`ALTER TABLE applications ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`);
+  }
+
   await migrateLegacyApplicationNotes(client);
 
   if (!(await agentApiTokenColumnExists(client, "last_used_at"))) {
@@ -276,6 +284,25 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
     });
 
     return rowToApplication(updated);
+  }
+
+  async bulkArchiveByStatuses(statuses: readonly ApplicationStatus[]): Promise<BulkArchiveResult> {
+    await this.ready;
+    if (statuses.length === 0) {
+      return { archivedCount: 0, applications: await this.list() };
+    }
+
+    const timestamp = nowIso();
+    const sql = buildBulkArchiveByStatusesSql(statuses);
+    const result = await this.client.execute({
+      sql,
+      args: [timestamp, ...statuses],
+    });
+
+    return {
+      archivedCount: result.rowsAffected,
+      applications: await this.list(),
+    };
   }
 
   async delete(id: string): Promise<boolean> {

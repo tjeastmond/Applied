@@ -159,6 +159,14 @@ describe("patchJobApplicationSchema", () => {
     expect(parsed.salaryRange).toBe("$150K - $250K");
     expect(parsed.desiredSalary).toBe("$175K");
   });
+
+  it("accepts archived boolean patches", () => {
+    const parsed = patchJobApplicationSchema.parse({
+      archived: true,
+    });
+
+    expect(parsed.archived).toBe(true);
+  });
 });
 
 describe("parseJobUrlRequestSchema", () => {

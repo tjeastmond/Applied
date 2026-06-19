@@ -79,6 +79,33 @@ describe("agent application interface", () => {
     expect(applications[0]?.title).toBe("Product Designer");
   });
 
+  test("excludes archived applications from agent list", async () => {
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/active",
+        title: "Active",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "applied",
+      }),
+    );
+    const archived = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/archived",
+        title: "Archived",
+        company: "Beta",
+        appliedAt: "2026-06-02",
+        status: "rejected",
+      }),
+    );
+    await getRepository().update(archived.id, { archived: true });
+
+    const applications = await listApplicationsForAgent();
+
+    expect(applications).toHaveLength(1);
+    expect(applications[0]?.title).toBe("Active");
+  });
+
   test("creates an application from a parsed job URL with to_apply status", async () => {
     mockedParseJobUrl.mockResolvedValue({
       ok: true,

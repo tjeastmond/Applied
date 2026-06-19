@@ -17,6 +17,7 @@ export type ApplicationRow = {
   desired_salary: string | null;
   full_jd: string | null;
   status: JobApplication["status"];
+  archived: number;
   created_at: string;
   updated_at: string;
 };
@@ -24,24 +25,24 @@ export type ApplicationRow = {
 export const LIST_APPLICATIONS_SQL = `SELECT
   id, url, linkedin_url, title, company, applied_at,
   via_recruiter, recruiter_name, recruiter_firm,
-  contact_email, contact_phone, salary_range, desired_salary, full_jd, status, created_at, updated_at
+  contact_email, contact_phone, salary_range, desired_salary, full_jd, status, archived, created_at, updated_at
 FROM applications ORDER BY updated_at DESC, created_at DESC`;
 
 export const GET_APPLICATION_BY_ID_SQL = `SELECT
   id, url, linkedin_url, title, company, applied_at,
   via_recruiter, recruiter_name, recruiter_firm,
-  contact_email, contact_phone, salary_range, desired_salary, full_jd, status, created_at, updated_at
+  contact_email, contact_phone, salary_range, desired_salary, full_jd, status, archived, created_at, updated_at
 FROM applications WHERE id = ?`;
 
 export const INSERT_APPLICATION_SQL = `INSERT INTO applications (
   id, url, linkedin_url, title, company, applied_at,
   via_recruiter, recruiter_name, recruiter_firm,
-  contact_email, contact_phone, salary_range, desired_salary, full_jd, status,
+  contact_email, contact_phone, salary_range, desired_salary, full_jd, status, archived,
   created_at, updated_at
 ) VALUES (
   @id, @url, @linkedin_url, @title, @company, @applied_at,
   @via_recruiter, @recruiter_name, @recruiter_firm,
-  @contact_email, @contact_phone, @salary_range, @desired_salary, @full_jd, @status,
+  @contact_email, @contact_phone, @salary_range, @desired_salary, @full_jd, @status, @archived,
   @created_at, @updated_at
 )`;
 
@@ -60,6 +61,7 @@ export const UPDATE_APPLICATION_SQL = `UPDATE applications SET
   desired_salary = @desired_salary,
   full_jd = @full_jd,
   status = @status,
+  archived = @archived,
   updated_at = @updated_at
 WHERE id = @id`;
 
@@ -96,6 +98,7 @@ export function rowToApplication(row: ApplicationRow): JobApplication {
     desiredSalary: row.desired_salary,
     fullJd: row.full_jd,
     status: row.status,
+    archived: row.archived === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -124,6 +127,7 @@ export function buildApplicationInsertRow(
     desired_salary: trimOrNull(input.desiredSalary),
     full_jd: trimOrNull(input.fullJd),
     status: input.status ?? "applied",
+    archived: input.archived ? 1 : 0,
     created_at: timestamp,
     updated_at: timestamp,
   };
@@ -160,6 +164,12 @@ export function buildApplicationUpdateRow(
     desired_salary: input.desiredSalary !== undefined ? trimOrNull(input.desiredSalary) : existing.desired_salary,
     full_jd: input.fullJd !== undefined ? trimOrNull(input.fullJd) : existing.full_jd,
     status: input.status ?? existing.status,
+    archived: input.archived !== undefined ? (input.archived ? 1 : 0) : existing.archived,
     updated_at: timestamp,
   };
+}
+
+export function buildBulkArchiveByStatusesSql(statuses: readonly string[]): string {
+  const placeholders = statuses.map(() => "?").join(", ");
+  return `UPDATE applications SET archived = 1, updated_at = ? WHERE archived = 0 AND status IN (${placeholders})`;
 }

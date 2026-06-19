@@ -23,7 +23,7 @@ function toAgentApplicationSummary(application: JobApplication): AgentApplicatio
 }
 
 export async function listApplicationsForAgent(searchQuery = ""): Promise<AgentApplicationSummary[]> {
-  const applications = await getRepository().list();
+  const applications = (await getRepository().list()).filter((application) => !application.archived);
   const summaries = applications.map(toAgentApplicationSummary);
   return filterAgentApplicationsBySearch(summaries, searchQuery);
 }

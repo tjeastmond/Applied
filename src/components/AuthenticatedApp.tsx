@@ -26,6 +26,16 @@ import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
 import { removeApplication, sortApplications, upsertApplication } from "@/lib/applicationsList";
 import { filterApplications, hasActiveApplicationFilters } from "@/lib/applicationFilters";
 import {
+  applicationMatchesViewMode,
+  archiveViewToggleLabel,
+  nextViewMode,
+  partitionApplicationsByView,
+  persistApplicationViewMode,
+  readStoredApplicationViewMode,
+  statusFiltersForViewMode,
+  type ApplicationViewMode,
+} from "@/lib/applicationArchive";
+import {
   paginateItems,
   persistApplicationPageSize,
   readStoredApplicationPageSize,
@@ -43,7 +53,7 @@ import {
 } from "@/lib/keyboardShortcut";
 import { toastMessages } from "@/lib/toastMessages";
 import type { ApplicationNote, ApplicationStatus, JobApplication } from "@/types";
-import { LogOutIcon, PlusIcon } from "lucide-react";
+import { LogOutIcon, ArchiveIcon, ArchiveRestoreIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
 type AuthenticatedAppProps = {
@@ -56,6 +66,7 @@ type AuthenticatedAppProps = {
 };
 
 let hasRestoredApplicationPageSizePreference = false;
+let hasRestoredApplicationViewModePreference = false;
 
 export function AuthenticatedApp({
   initialApplications,
@@ -76,6 +87,7 @@ export function AuthenticatedApp({
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(() => new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<ApplicationStatus>>(() => new Set());
+  const [viewMode, setViewMode] = useState<ApplicationViewMode>("active");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<ApplicationPageSize>(initialPageSize);
@@ -114,6 +126,20 @@ export function AuthenticatedApp({
     hasRestoredApplicationPageSizePreference = true;
     setHasSyncedPageSize(true);
   }, [initialPageSizeFromPreference]);
+
+  useLayoutEffect(() => {
+    if (hasRestoredApplicationViewModePreference) {
+      return;
+    }
+
+    const storedViewMode = readStoredApplicationViewMode();
+    if (storedViewMode === "archived") {
+      setViewMode("archived");
+      setSelectedStatuses(statusFiltersForViewMode("archived"));
+    }
+
+    hasRestoredApplicationViewModePreference = true;
+  }, []);
 
   useEffect(() => {
     setApplications(initialApplications);
@@ -172,15 +198,16 @@ export function AuthenticatedApp({
     if (!selectedId) return false;
     return isLoading(selectedId) || notesByApplicationId[selectedId] === undefined;
   }, [selectedId, notesByApplicationId, isLoading]);
-  const companyNames = useMemo(() => uniqueCompanyNames(applications), [applications]);
+  const viewApplications = useMemo(() => partitionApplicationsByView(applications, viewMode), [applications, viewMode]);
+  const companyNames = useMemo(() => uniqueCompanyNames(viewApplications), [viewApplications]);
   const filteredApplications = useMemo(
     () =>
-      filterApplications(applications, {
+      filterApplications(viewApplications, {
         selectedCompanies,
         selectedStatuses,
         searchQuery,
       }),
-    [applications, selectedCompanies, selectedStatuses, searchQuery],
+    [viewApplications, selectedCompanies, selectedStatuses, searchQuery],
   );
   const paginatedApplications = useMemo(
     () => paginateItems(filteredApplications, currentPage, pageSize),
@@ -203,7 +230,15 @@ export function AuthenticatedApp({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCompanies, selectedStatuses, searchQuery]);
+  }, [selectedCompanies, selectedStatuses, searchQuery, viewMode]);
+
+  useEffect(() => {
+    if (!selectedApplication || !detailOpen) return;
+
+    if (!applicationMatchesViewMode(selectedApplication, viewMode)) {
+      setDetailOpen(false);
+    }
+  }, [detailOpen, selectedApplication, viewMode]);
 
   useEffect(() => {
     if (paginatedApplications.page !== currentPage) {
@@ -373,6 +408,10 @@ export function AuthenticatedApp({
     [clearNotesCacheAll],
   );
 
+  const handleApplicationsUpdated = useCallback((nextApplications: JobApplication[]) => {
+    setApplications(sortApplications(nextApplications));
+  }, []);
+
   const handleNotesChange = useCallback(
     (nextNotes: ApplicationNote[]) => {
       const id = selectedIdRef.current;
@@ -385,12 +424,27 @@ export function AuthenticatedApp({
     setSelectedCompanies(new Set());
     setSelectedStatuses(new Set());
     setSearchQuery("");
+    setViewMode((current) => {
+      if (current !== "archived") return current;
+      persistApplicationViewMode("active");
+      return "active";
+    });
   }, []);
 
   const resetToHome = useCallback(() => {
     clearFilters();
     setCurrentPage(1);
   }, [clearFilters]);
+
+  const handleViewModeToggle = useCallback(() => {
+    setViewMode((current) => {
+      const next = nextViewMode(current);
+      persistApplicationViewMode(next);
+      setSelectedStatuses(statusFiltersForViewMode(next));
+      setCurrentPage(1);
+      return next;
+    });
+  }, []);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -443,6 +497,17 @@ export function AuthenticatedApp({
             variant="outline"
             size="icon"
             className="header-toolbar-outline"
+            onClick={handleViewModeToggle}
+            aria-label={archiveViewToggleLabel(viewMode)}
+            title={archiveViewToggleLabel(viewMode)}
+          >
+            {viewMode === "active" ? <ArchiveIcon /> : <ArchiveRestoreIcon />}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="header-toolbar-outline"
             onClick={onLogout}
             aria-label="Log out"
             title="Log Out"
@@ -452,6 +517,7 @@ export function AuthenticatedApp({
           <AdminDialog
             applications={applications}
             onImported={handleBackupImported}
+            onApplicationsUpdated={handleApplicationsUpdated}
             tursoSyncAvailable={tursoSyncAvailable}
           />
           <Button type="button" onClick={openAddForm} title={modKShortcutDescription()}>
@@ -531,6 +597,15 @@ export function AuthenticatedApp({
                   <kbd className="bg-muted text-muted-foreground pointer-events-none hidden rounded px-1.5 py-0.5 font-sans text-[0.65rem] font-medium tracking-wide sm:inline">
                     {modKShortcutLabel()}
                   </kbd>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : viewMode === "archived" && viewApplications.length === 0 ? (
+            <Card className="shadow-sm shadow-black/5">
+              <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+                <p className="text-muted-foreground text-sm">No archived applications.</p>
+                <Button type="button" variant="outline" size="sm" onClick={handleViewModeToggle}>
+                  Back to active applications
                 </Button>
               </CardContent>
             </Card>

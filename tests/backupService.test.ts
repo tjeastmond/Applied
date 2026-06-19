@@ -155,6 +155,29 @@ describe("backupService", () => {
     expect(updated?.createdAt).toBe(original.createdAt);
   });
 
+  test("exports and imports archived flag", async () => {
+    const db = openDatabase(":memory:");
+    const appRepo = new SqliteJobApplicationRepository(db);
+    const application = await appRepo.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/archived",
+        title: "Archived",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "rejected",
+        archived: true,
+      }),
+    );
+
+    const exported = exportJson(db);
+    expect(exported.applications[0]?.archived).toBe(true);
+
+    const freshDb = openDatabase(":memory:");
+    const result = importJson(freshDb, exported, "replace");
+    expect(result.applications[0]?.id).toBe(application.id);
+    expect(result.applications[0]?.archived).toBe(true);
+  });
+
   test("exports omit app access tokens", async () => {
     const db = openDatabase(":memory:");
     await seedSampleData(db);

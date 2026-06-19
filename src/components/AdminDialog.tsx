@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   createAgentToken,
+  bulkArchiveApplications,
   downloadDatabaseBackup,
   exportBackup,
   importAgentTokenFromEnv,
@@ -35,12 +36,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { MAX_ACTIVE_AGENT_API_TOKENS } from "@/lib/agentTokenLimits";
+import {
+  bulkArchiveConfirmDescription,
+  bulkArchiveConfirmTitle,
+  countArchivableApplications,
+} from "@/lib/applicationArchive";
 import { errorMessage } from "@/lib/errorMessage";
 import { FILTER_CONTROL_HEIGHT_CLASS } from "@/lib/filterControls";
 import { toastMessages } from "@/lib/toastMessages";
 import { cn } from "@/lib/utils";
 import type { AgentApiTokenSummary, JobApplication } from "@/types";
 import {
+  ArchiveIcon,
   CloudUploadIcon,
   CopyIcon,
   DownloadIcon,
@@ -54,6 +61,7 @@ import { toast } from "sonner";
 type AdminDialogProps = {
   applications: JobApplication[];
   onImported: (applications: JobApplication[]) => void;
+  onApplicationsUpdated: (applications: JobApplication[]) => void;
   tursoSyncAvailable?: boolean;
 };
 
@@ -82,11 +90,20 @@ function formatTokenMetadata(token: AgentApiTokenSummary): string {
   return `${token.tokenPrefix}… · ${created}`;
 }
 
-export function AdminDialog({ applications, onImported, tursoSyncAvailable = false }: AdminDialogProps) {
+export function AdminDialog({
+  applications,
+  onImported,
+  onApplicationsUpdated,
+  tursoSyncAvailable = false,
+}: AdminDialogProps) {
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [syncingTurso, setSyncingTurso] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [pendingBulkArchive, setPendingBulkArchive] = useState(false);
+  const [isBulkArchiving, setIsBulkArchiving] = useState(false);
+
+  const archivableCount = countArchivableApplications(applications);
 
   const [tokens, setTokens] = useState<AgentApiTokenSummary[]>([]);
   const [envTokenConfigured, setEnvTokenConfigured] = useState(false);
@@ -262,6 +279,24 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
     }
   }
 
+  async function handleConfirmBulkArchive() {
+    setIsBulkArchiving(true);
+    try {
+      const result = await bulkArchiveApplications();
+      onApplicationsUpdated(result.applications);
+      if (result.archivedCount === 0) {
+        toast.info(toastMessages.bulkArchiveNothing);
+      } else {
+        toast.success(toastMessages.bulkArchiveSuccess(result.archivedCount));
+      }
+      setPendingBulkArchive(false);
+    } catch (error) {
+      toast.error(errorMessage(error, toastMessages.bulkArchiveFailed));
+    } finally {
+      setIsBulkArchiving(false);
+    }
+  }
+
   async function handleConfirmRevoke() {
     if (!revokeTarget) return;
 
@@ -300,7 +335,9 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
           <div className="p-4">
             <DialogHeader className="p-0">
               <DialogTitle>Admin</DialogTitle>
-              <DialogDescription>Export backups, copy job URLs, and manage agent API tokens.</DialogDescription>
+              <DialogDescription>
+                Export backups, copy job URLs, manage archives, and manage agent API tokens.
+              </DialogDescription>
             </DialogHeader>
           </div>
 
@@ -371,6 +408,29 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
           <div className="space-y-3 p-4">
             <section className="space-y-3">
               <div className="space-y-1">
+                <h2 className="text-sm font-medium">Archive</h2>
+                <p className="text-muted-foreground text-xs">
+                  Move rejected and passed applications out of the active list.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn("header-toolbar-outline w-fit", FILTER_CONTROL_HEIGHT_CLASS)}
+                disabled={archivableCount === 0}
+                onClick={() => setPendingBulkArchive(true)}
+              >
+                <ArchiveIcon data-icon="inline-start" />
+                Archive
+              </Button>
+            </section>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3 p-4">
+            <section className="space-y-3">
+              <div className="space-y-1">
                 <h2 className="text-sm font-medium">Copy All URLs</h2>
                 <p className="text-muted-foreground text-xs">
                   Copy the job posting URLs for every application you&apos;ve applied to.
@@ -396,9 +456,9 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
               <div className="space-y-1">
                 <h2 className="text-sm font-medium">Agent API Tokens</h2>
                 <p className="text-muted-foreground text-xs">
-                  Named bearer tokens for external agent tools (e.g. Cursor, Codex). Shown once at creation.
-                  Up to {MAX_ACTIVE_AGENT_API_TOKENS} active agent tokens — your app login token is separate and
-                  does not count toward this limit.
+                  Named bearer tokens for external agent tools (e.g. Cursor, Codex). Shown once at creation. Up to{" "}
+                  {MAX_ACTIVE_AGENT_API_TOKENS} active agent tokens — your app login token is separate and does not
+                  count toward this limit.
                 </p>
               </div>
 
@@ -465,8 +525,8 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
 
               {atTokenLimit ? (
                 <p className="text-muted-foreground text-xs">
-                  {MAX_ACTIVE_AGENT_API_TOKENS} active agent tokens reached. Revoke one to create another for
-                  agentic use.
+                  {MAX_ACTIVE_AGENT_API_TOKENS} active agent tokens reached. Revoke one to create another for agentic
+                  use.
                 </p>
               ) : null}
 
@@ -577,6 +637,30 @@ export function AdminDialog({ applications, onImported, tursoSyncAvailable = fal
       </Dialog>
 
       <BackupImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={onImported} />
+
+      <AlertDialog
+        open={pendingBulkArchive}
+        onOpenChange={(nextOpen) => !nextOpen && !isBulkArchiving && setPendingBulkArchive(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{bulkArchiveConfirmTitle()}</AlertDialogTitle>
+            <AlertDialogDescription>{bulkArchiveConfirmDescription(archivableCount)}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkArchiving} variant="cancelOutline">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isBulkArchiving}
+              variant="save"
+              onClick={() => void handleConfirmBulkArchive()}
+            >
+              {isBulkArchiving ? "Archiving…" : "Archive"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={revokeTarget !== null} onOpenChange={(nextOpen) => !nextOpen && setRevokeTarget(null)}>
         <AlertDialogContent>

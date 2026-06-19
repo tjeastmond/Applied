@@ -56,6 +56,10 @@ export function migrate(db: Database.Database): void {
     }
   }
 
+  if (!columnExists(db, "archived")) {
+    db.exec(`ALTER TABLE applications ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`);
+  }
+
   migrateLegacyApplicationNotes(db);
 
   if (!agentApiTokenColumnExists(db, "last_used_at")) {

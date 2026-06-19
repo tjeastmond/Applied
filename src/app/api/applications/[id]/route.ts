@@ -61,9 +61,7 @@ export async function PATCH(request: Request, context: ApplicationIdRouteContext
     id: updated.id,
     company: updated.company,
     status: updated.status,
-    ...(statusChanging
-      ? { statusChanged: true, previousStatus: existing.status }
-      : { statusChanged: false }),
+    ...(statusChanging ? { statusChanged: true, previousStatus: existing.status } : { statusChanged: false }),
   });
 
   return NextResponse.json(updated);

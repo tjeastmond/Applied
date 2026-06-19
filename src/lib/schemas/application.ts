@@ -107,6 +107,7 @@ const optionalApplicationFieldsSchema = {
   ...applicationSalaryFieldSchemas,
   fullJd: optionalFullJdSchema,
   status: applicationStatusSchema.optional(),
+  archived: z.boolean().optional(),
 } as const;
 
 const jobApplicationSchema = requiredApplicationFieldsSchema.extend(optionalApplicationFieldsSchema);
@@ -123,7 +124,12 @@ export const bulkFetchApplicationsSchema = z.object({
   ids: z.array(uuidSchema).optional(),
 });
 
+export const bulkArchiveApplicationsSchema = z.object({
+  statuses: z.array(applicationStatusSchema).optional(),
+});
+
 export type BulkFetchApplicationsInput = z.infer<typeof bulkFetchApplicationsSchema>;
+export type BulkArchiveApplicationsInput = z.infer<typeof bulkArchiveApplicationsSchema>;
 
 export type ApplicationSalaryInput = z.input<typeof applicationSalaryFieldsSchema>;
 export type ParsedApplicationSalaryInput = z.infer<typeof applicationSalaryFieldsSchema>;

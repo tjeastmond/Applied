@@ -5,6 +5,7 @@ import { getRepository, getNoteRepository, useTestDatabase } from "@/lib/server/
 import { GET as getNotes, POST as postNote } from "@/app/api/applications/[id]/notes/route";
 import { DELETE as deleteNote, PATCH as patchNote } from "@/app/api/applications/[id]/notes/[noteId]/route";
 import { PATCH as patchApplication } from "@/app/api/applications/[id]/route";
+import { POST as bulkArchiveApplicationsRoute } from "@/app/api/applications/bulk-archive/route";
 import { POST as bulkFetchApplicationsRoute } from "@/app/api/applications/bulk/route";
 import { authorizedAppRequest, restoreAppAccessToken, withTestAppAccessToken } from "./testAppAuth";
 
@@ -259,5 +260,81 @@ describe("application API routes", () => {
     expect(response.status).toBe(400);
     const body = (await response.json()) as { error: string };
     expect(body.error).toBe("recruiter fields require viaRecruiter: true");
+  });
+
+  test("PATCH toggles archived field", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/archive",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+        status: "rejected",
+      }),
+    );
+
+    const response = await patchApplication(
+      authorizedAppRequest("/api/applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: true }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { archived: boolean };
+    expect(body.archived).toBe(true);
+  });
+
+  test("bulk archive archives rejected and passed applications", async () => {
+    const rejected = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/rejected",
+        title: "Rejected",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "rejected",
+      }),
+    );
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/applied",
+        title: "Active",
+        company: "Beta",
+        appliedAt: "2026-06-02",
+        status: "applied",
+      }),
+    );
+
+    const response = await bulkArchiveApplicationsRoute(
+      authorizedAppRequest("/api/applications/bulk-archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      archivedCount: number;
+      applications: { id: string; archived: boolean }[];
+    };
+    expect(body.archivedCount).toBe(1);
+    expect(body.applications.find((item) => item.id === rejected.id)?.archived).toBe(true);
+  });
+
+  test("bulk archive rejects non-archivable statuses", async () => {
+    const response = await bulkArchiveApplicationsRoute(
+      authorizedAppRequest("/api/applications/bulk-archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ statuses: ["applied"] }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("Only rejected and passed statuses can be bulk archived");
   });
 });

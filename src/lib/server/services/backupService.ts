@@ -19,10 +19,10 @@ export type ApplicationBackupRow = ApplicationRow & {
 
 export const UPSERT_APPLICATION_SQL = `INSERT INTO applications (
   id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm,
-  contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, created_at, updated_at
+  contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, archived, created_at, updated_at
 ) VALUES (
   @id, @url, @linkedin_url, @title, @company, @applied_at, @via_recruiter, @recruiter_name, @recruiter_firm,
-  @contact_email, @contact_phone, @salary_range, @desired_salary, @notes, @full_jd, @status, @created_at, @updated_at
+  @contact_email, @contact_phone, @salary_range, @desired_salary, @notes, @full_jd, @status, @archived, @created_at, @updated_at
 ) ON CONFLICT(id) DO UPDATE SET
   url = excluded.url,
   linkedin_url = excluded.linkedin_url,
@@ -39,6 +39,7 @@ export const UPSERT_APPLICATION_SQL = `INSERT INTO applications (
   notes = excluded.notes,
   full_jd = excluded.full_jd,
   status = excluded.status,
+  archived = excluded.archived,
   updated_at = excluded.updated_at`;
 
 export const UPSERT_NOTE_SQL = `INSERT INTO application_notes (id, application_id, content, created_at)
@@ -64,6 +65,7 @@ export function rowToBackupApplication(row: ApplicationBackupRow): JobApplicatio
     desiredSalary: row.desired_salary,
     fullJd: row.full_jd,
     status: row.status,
+    archived: row.archived === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -96,6 +98,7 @@ export function applicationToRow(application: BackupJson["applications"][number]
     notes: null,
     full_jd: application.fullJd,
     status: application.status,
+    archived: application.archived ? 1 : 0,
     created_at: application.createdAt,
     updated_at: application.updatedAt,
   };
@@ -168,6 +171,7 @@ function applicationToSqlRow(application: JobApplication): ApplicationBackupRow 
     desiredSalary: application.desiredSalary,
     fullJd: application.fullJd,
     status: application.status,
+    archived: application.archived,
     createdAt: application.createdAt,
     updatedAt: application.updatedAt,
   });
@@ -191,7 +195,7 @@ export function exportSqlFromRecords(applications: JobApplication[], notes: Appl
 
   for (const row of applications.map(applicationToSqlRow)) {
     lines.push(
-      `INSERT INTO applications (id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm, contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, created_at, updated_at) VALUES (${[
+      `INSERT INTO applications (id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm, contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, archived, created_at, updated_at) VALUES (${[
         sqlQuote(row.id),
         sqlQuote(row.url),
         sqlQuote(row.linkedin_url),
@@ -208,6 +212,7 @@ export function exportSqlFromRecords(applications: JobApplication[], notes: Appl
         sqlQuote(row.notes),
         sqlQuote(row.full_jd),
         sqlQuote(row.status),
+        String(row.archived),
         sqlQuote(row.created_at),
         sqlQuote(row.updated_at),
       ].join(", ")});`,

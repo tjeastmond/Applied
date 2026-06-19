@@ -1,13 +1,16 @@
 import type Database from "better-sqlite3";
+import type { ApplicationStatus } from "@/lib/applicationStatus";
 import type { JobApplication, ParsedCreateJobApplicationInput } from "@/types";
-import type { JobApplicationRepository } from "../repositories/jobApplicationRepository";
+import type { BulkArchiveResult, JobApplicationRepository } from "../repositories/jobApplicationRepository";
 import {
   buildApplicationInsertRow,
   buildApplicationUpdateRow,
+  buildBulkArchiveByStatusesSql,
   DELETE_APPLICATION_SQL,
   GET_APPLICATION_BY_ID_SQL,
   INSERT_APPLICATION_SQL,
   LIST_APPLICATIONS_SQL,
+  nowIso,
   rowToApplication,
   type ApplicationRow,
   UPDATE_APPLICATION_SQL,
@@ -95,10 +98,26 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
       desired_salary: updated.desired_salary,
       full_jd: updated.full_jd,
       status: updated.status,
+      archived: updated.archived,
       updated_at: updated.updated_at,
     });
 
     return rowToApplication(updated);
+  }
+
+  async bulkArchiveByStatuses(statuses: readonly ApplicationStatus[]): Promise<BulkArchiveResult> {
+    if (statuses.length === 0) {
+      return { archivedCount: 0, applications: await this.list() };
+    }
+
+    const timestamp = nowIso();
+    const sql = buildBulkArchiveByStatusesSql(statuses);
+    const result = this.db.prepare(sql).run(timestamp, ...statuses);
+
+    return {
+      archivedCount: result.changes,
+      applications: await this.list(),
+    };
   }
 
   async delete(id: string): Promise<boolean> {

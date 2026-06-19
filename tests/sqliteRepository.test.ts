@@ -129,4 +129,75 @@ describe("SqliteJobApplicationRepository", () => {
 
     expect(await repository.listByIds([])).toEqual([]);
   });
+
+  test("defaults archived to false and supports archive toggles", async () => {
+    const db = openDatabase(":memory:");
+    const repository = new SqliteJobApplicationRepository(db);
+
+    const created = await repository.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/role",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "rejected",
+      }),
+    );
+
+    expect(created.archived).toBe(false);
+
+    const archived = await repository.update(created.id, { archived: true });
+    expect(archived?.archived).toBe(true);
+  });
+
+  test("bulkArchiveByStatuses archives only matching non-archived applications", async () => {
+    const db = openDatabase(":memory:");
+    const repository = new SqliteJobApplicationRepository(db);
+
+    const rejected = await repository.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/rejected",
+        title: "Rejected",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "rejected",
+      }),
+    );
+    const passed = await repository.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/passed",
+        title: "Passed",
+        company: "Beta",
+        appliedAt: "2026-06-02",
+        status: "passed",
+      }),
+    );
+    const active = await repository.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/active",
+        title: "Active",
+        company: "Gamma",
+        appliedAt: "2026-06-03",
+        status: "applied",
+      }),
+    );
+    await repository.update(rejected.id, { archived: true });
+    const freshRejected = await repository.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/rejected-2",
+        title: "Rejected 2",
+        company: "Delta",
+        appliedAt: "2026-06-04",
+        status: "rejected",
+      }),
+    );
+
+    const result = await repository.bulkArchiveByStatuses(["rejected", "passed"]);
+
+    expect(result.archivedCount).toBe(2);
+    expect(result.applications.find((item) => item.id === freshRejected.id)?.archived).toBe(true);
+    expect(result.applications.find((item) => item.id === passed.id)?.archived).toBe(true);
+    expect(result.applications.find((item) => item.id === rejected.id)?.archived).toBe(true);
+    expect(result.applications.find((item) => item.id === active.id)?.archived).toBe(false);
+  });
 });

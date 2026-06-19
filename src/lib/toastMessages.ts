@@ -46,4 +46,11 @@ export const toastMessages = {
   agentTokenImportFailed: "Failed to register environment token.",
   agentTokenRenamed: "Agent token renamed.",
   agentTokenRenameFailed: "Failed to rename agent token.",
+  applicationArchived: "Application archived.",
+  applicationArchiveFailed: "Failed to archive application",
+  applicationUnarchived: "Application unarchived.",
+  applicationUnarchiveFailed: "Failed to unarchive application",
+  bulkArchiveSuccess: (count: number) => (count === 1 ? "Archived 1 application." : `Archived ${count} applications.`),
+  bulkArchiveNothing: "Nothing to archive.",
+  bulkArchiveFailed: "Failed to archive applications",
 } as const;

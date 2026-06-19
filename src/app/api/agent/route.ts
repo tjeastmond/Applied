@@ -72,6 +72,8 @@ export async function GET() {
       "No delete endpoint",
       "No notes endpoint",
       "No backup/import endpoint",
+      "Archived applications are excluded from list responses",
+      "No archive or unarchive endpoint",
       "No access to recruiter, contact, salary, or job-description fields in responses",
     ],
   });

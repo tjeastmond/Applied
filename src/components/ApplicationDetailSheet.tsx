@@ -85,6 +85,7 @@ export function ApplicationDetailSheet({
   const [jdOpen, setJdOpen] = useState(false);
   const [unsavedCloseDialogOpen, setUnsavedCloseDialogOpen] = useState(false);
   const [isSavingBeforeClose, setIsSavingBeforeClose] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(DEFAULT_NOTE_SORT_ORDER);
 
   const applicationId = application?.id ?? null;
@@ -317,6 +318,27 @@ export function ApplicationDetailSheet({
       toast.error(errorMessage(error, toastMessages.noteDeleteFailed));
     } finally {
       setIsDeletingNote(false);
+    }
+  }
+
+  async function toggleArchive() {
+    if (!applicationId || !applicationRef.current) return;
+
+    const nextArchived = !applicationRef.current.archived;
+    setIsArchiving(true);
+    try {
+      const updated = await updateApplication(applicationId, { archived: nextArchived });
+      onApplicationChange(updated);
+      toast.success(nextArchived ? toastMessages.applicationArchived : toastMessages.applicationUnarchived);
+    } catch (error) {
+      toast.error(
+        errorMessage(
+          error,
+          nextArchived ? toastMessages.applicationArchiveFailed : toastMessages.applicationUnarchiveFailed,
+        ),
+      );
+    } finally {
+      setIsArchiving(false);
     }
   }
 
@@ -625,16 +647,28 @@ export function ApplicationDetailSheet({
           </div>
 
           <SheetFooter className="border-border border-t px-6 py-4 sm:flex-row sm:justify-between">
-            <Button
-              type="button"
-              variant="destructiveSolid"
-              disabled={!applicationId}
-              onClick={() => {
-                if (applicationId) onRequestDelete(applicationId);
-              }}
-            >
-              Delete
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="destructiveSolid"
+                disabled={!applicationId}
+                onClick={() => {
+                  if (applicationId) onRequestDelete(applicationId);
+                }}
+              >
+                Delete
+              </Button>
+              {application ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!applicationId || isArchiving}
+                  onClick={() => void toggleArchive()}
+                >
+                  {isArchiving ? "Saving…" : application.archived ? "Unarchive" : "Archive"}
+                </Button>
+              ) : null}
+            </div>
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={requestClose}>
                 Close

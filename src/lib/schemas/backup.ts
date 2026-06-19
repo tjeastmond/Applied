@@ -21,6 +21,7 @@ const backupApplicationSchema = z
     desiredSalary: applicationSalaryFieldSchemas.desiredSalary.optional(),
     fullJd: z.string().nullable(),
     status: applicationStatusSchema,
+    archived: z.boolean().optional(),
     createdAt: z.string().min(1),
     updatedAt: z.string().min(1),
   })
@@ -28,6 +29,7 @@ const backupApplicationSchema = z
     ...application,
     salaryRange: application.salaryRange ?? null,
     desiredSalary: application.desiredSalary ?? null,
+    archived: application.archived ?? false,
   }));
 
 const backupNoteSchema = z.strictObject({

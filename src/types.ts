@@ -27,6 +27,7 @@ export interface JobApplication extends ApplicationSalaryFields {
   contactPhone: string | null;
   fullJd: string | null;
   status: ApplicationStatus;
+  archived: boolean;
   createdAt: string;
   updatedAt: string;
 }

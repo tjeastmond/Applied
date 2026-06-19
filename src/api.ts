@@ -85,6 +85,15 @@ export function updateApplication(id: string, input: Partial<CreateJobApplicatio
   });
 }
 
+export function bulkArchiveApplications(
+  statuses?: CreateJobApplicationInput["status"][],
+): Promise<{ archivedCount: number; applications: JobApplication[] }> {
+  return request<{ archivedCount: number; applications: JobApplication[] }>("/api/applications/bulk-archive", {
+    method: "POST",
+    body: JSON.stringify(statuses && statuses.length > 0 ? { statuses } : {}),
+  });
+}
+
 export function deleteApplication(id: string): Promise<void> {
   return request<void>(`/api/applications/${id}`, {
     method: "DELETE",
