@@ -1,0 +1,222 @@
+#!/usr/bin/env bash
+# applied — start/stop the Applied.dev local server from your personal bin.
+#
+# Install:
+#   ln -sf "$HOME/Projects/applied.dev/scripts/applied" "$HOME/bin/applied"
+#
+# Override the project path:
+#   export APPLIED_DEV_DIR=/path/to/applied.dev
+
+set -euo pipefail
+
+APPLIED_DEV_DIR="${APPLIED_DEV_DIR:-$HOME/Projects/applied.dev}"
+DEFAULT_PORT=3030
+STATE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/applied"
+PID_FILE="${STATE_DIR}/server.pid"
+DEV_LOG="${APPLIED_DEV_DIR}/data/logs/dev-server.log"
+
+usage() {
+  cat <<'EOF'
+Usage: applied <command>
+
+Commands:
+  start     Start the dev server in the background (default)
+  stop      Stop the dev server
+  restart   Stop then start
+  status    Show whether the server is running
+  logs      Tail the dev server log (Ctrl+C to exit)
+
+Environment:
+  APPLIED_DEV_DIR   Project root (default: ~/Projects/applied.dev)
+EOF
+}
+
+read_port() {
+  local env_file="${APPLIED_DEV_DIR}/.env.local"
+  local env_port=""
+
+  if [[ -f "$env_file" ]]; then
+    env_port="$(grep -E '^PORT=' "$env_file" | tail -n 1 | cut -d= -f2- | tr -d '[:space:]"'"'"'')"
+  fi
+
+  if [[ -n "$env_port" ]]; then
+    printf '%s\n' "$env_port"
+  else
+    printf '%s\n' "$DEFAULT_PORT"
+  fi
+}
+
+port_pids() {
+  local port="$1"
+  lsof -ti "tcp:${port}" -sTCP:LISTEN 2>/dev/null || true
+}
+
+is_running() {
+  local port="$1"
+  [[ -n "$(port_pids "$port")" ]]
+}
+
+require_project() {
+  if [[ ! -f "${APPLIED_DEV_DIR}/package.json" ]]; then
+    echo "applied: project not found at ${APPLIED_DEV_DIR}" >&2
+    echo "applied: set APPLIED_DEV_DIR to your applied.dev checkout" >&2
+    exit 1
+  fi
+}
+
+cmd_start() {
+  require_project
+
+  local port
+  port="$(read_port)"
+
+  if is_running "$port"; then
+    echo "applied: already running at http://localhost:${port}"
+    exit 0
+  fi
+
+  if ! command -v pnpm >/dev/null 2>&1; then
+    echo "applied: pnpm not found in PATH" >&2
+    exit 1
+  fi
+
+  mkdir -p "$(dirname "$DEV_LOG")" "$STATE_DIR"
+
+  (
+    cd "$APPLIED_DEV_DIR"
+    nohup pnpm dev >>"$DEV_LOG" 2>&1 &
+    printf '%s\n' "$!" >"$PID_FILE"
+  )
+
+  local attempt=1
+  local max_attempts=30
+  while [[ "$attempt" -le "$max_attempts" ]]; do
+    if is_running "$port"; then
+      echo "applied: started at http://localhost:${port}"
+      echo "applied: log ${DEV_LOG}"
+      exit 0
+    fi
+    sleep 1
+    attempt=$((attempt + 1))
+  done
+
+  echo "applied: server did not become ready on port ${port}" >&2
+  echo "applied: check ${DEV_LOG}" >&2
+  exit 1
+}
+
+stop_port() {
+  local port="$1"
+  local pids signal
+
+  pids="$(port_pids "$port")"
+  if [[ -z "$pids" ]]; then
+    return 0
+  fi
+
+  while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    kill -TERM "$pid" 2>/dev/null || true
+  done <<<"$pids"
+
+  sleep 2
+
+  pids="$(port_pids "$port")"
+  if [[ -z "$pids" ]]; then
+    return 0
+  fi
+
+  while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    kill -KILL "$pid" 2>/dev/null || true
+  done <<<"$pids"
+}
+
+cmd_stop() {
+  require_project
+
+  local port
+  port="$(read_port)"
+
+  if [[ -f "$PID_FILE" ]]; then
+    local launcher_pid
+    launcher_pid="$(tr -d '[:space:]' <"$PID_FILE")"
+    if [[ -n "$launcher_pid" ]] && kill -0 "$launcher_pid" 2>/dev/null; then
+      kill -TERM "$launcher_pid" 2>/dev/null || true
+    fi
+    rm -f "$PID_FILE"
+  fi
+
+  if ! is_running "$port"; then
+    echo "applied: not running on port ${port}"
+    exit 0
+  fi
+
+  stop_port "$port"
+
+  if is_running "$port"; then
+    echo "applied: failed to stop server on port ${port}" >&2
+    exit 1
+  fi
+
+  echo "applied: stopped"
+}
+
+cmd_status() {
+  require_project
+
+  local port
+  port="$(read_port)"
+
+  if is_running "$port"; then
+    echo "applied: running at http://localhost:${port}"
+    exit 0
+  fi
+
+  echo "applied: not running on port ${port}"
+  exit 1
+}
+
+cmd_logs() {
+  require_project
+  mkdir -p "$(dirname "$DEV_LOG")"
+  touch "$DEV_LOG"
+  exec tail -f "$DEV_LOG"
+}
+
+cmd_restart() {
+  cmd_stop
+  cmd_start
+}
+
+main() {
+  local command="${1:-start}"
+
+  case "$command" in
+    start)
+      cmd_start
+      ;;
+    stop)
+      cmd_stop
+      ;;
+    restart)
+      cmd_restart
+      ;;
+    status)
+      cmd_status
+      ;;
+    logs)
+      cmd_logs
+      ;;
+    -h | --help | help)
+      usage
+      ;;
+    *)
+      echo "applied: unknown command '${command}'" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"
