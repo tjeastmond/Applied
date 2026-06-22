@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import { isProbablyHttpUrl } from "@/lib/applicationForm";
 import { splitTextWithUrls } from "@/lib/linkifyText";
+import { cn } from "@/lib/utils";
 
 export type MarkdownBlock =
   | { type: "paragraph"; text: string }
@@ -238,19 +239,24 @@ export function renderBasicMarkdown(content: string): ReactNode {
 
   return blocks.map((block, index) => {
     const key = `block-${index}`;
+    const hasPriorHeading = blocks.slice(0, index).some((priorBlock) => priorBlock.type === "heading");
+
+    let blockContent: ReactNode;
 
     switch (block.type) {
       case "paragraph":
-        return (
-          <p key={key} className="max-w-full min-w-0 overflow-hidden break-words whitespace-pre-wrap">
+        blockContent = (
+          <p className="max-w-full min-w-0 overflow-hidden break-words whitespace-pre-wrap">
             {renderInlineNodes(parseInlineMarkdown(block.text), key)}
           </p>
         );
+        break;
       case "heading":
-        return <Fragment key={key}>{renderHeading(block.level, block.text, key)}</Fragment>;
+        blockContent = renderHeading(block.level, block.text, key);
+        break;
       case "unordered-list":
-        return (
-          <ul key={key} className="list-disc space-y-1 pl-5">
+        blockContent = (
+          <ul className="list-disc space-y-1 pl-5">
             {block.items.map((item, itemIndex) => (
               <li key={`${key}-${itemIndex}`} className="break-words">
                 {renderInlineNodes(parseInlineMarkdown(item), `${key}-${itemIndex}`)}
@@ -258,9 +264,10 @@ export function renderBasicMarkdown(content: string): ReactNode {
             ))}
           </ul>
         );
+        break;
       case "ordered-list":
-        return (
-          <ol key={key} className="list-decimal space-y-1 pl-5">
+        blockContent = (
+          <ol className="list-decimal space-y-1 pl-5">
             {block.items.map((item, itemIndex) => (
               <li key={`${key}-${itemIndex}`} className="break-words">
                 {renderInlineNodes(parseInlineMarkdown(item), `${key}-${itemIndex}`)}
@@ -268,10 +275,17 @@ export function renderBasicMarkdown(content: string): ReactNode {
             ))}
           </ol>
         );
+        break;
       default: {
         const _exhaustive: never = block;
-        return _exhaustive;
+        blockContent = _exhaustive;
       }
     }
+
+    return (
+      <div key={key} className={cn(block.type === "heading" && hasPriorHeading && "pt-4")}>
+        {blockContent}
+      </div>
+    );
   });
 }
