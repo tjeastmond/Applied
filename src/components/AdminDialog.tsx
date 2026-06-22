@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createAgentToken,
   bulkArchiveApplications,
@@ -108,7 +108,7 @@ export function AdminDialog({
   const [tokens, setTokens] = useState<AgentApiTokenSummary[]>([]);
   const [envTokenConfigured, setEnvTokenConfigured] = useState(false);
   const [envTokenRegistered, setEnvTokenRegistered] = useState(false);
-  const [tokensLoading, setTokensLoading] = useState(false);
+  const [tokensLoading, setTokensLoading] = useState(true);
   const [tokenName, setTokenName] = useState("");
   const [creatingToken, setCreatingToken] = useState(false);
   const [importingEnvToken, setImportingEnvToken] = useState(false);
@@ -121,20 +121,31 @@ export function AdminDialog({
 
   const backupBusy = exporting || syncingTurso;
   const atTokenLimit = tokens.length >= MAX_ACTIVE_AGENT_API_TOKENS;
+  const hasLoadedTokensRef = useRef(false);
 
-  const loadTokens = useCallback(async () => {
-    setTokensLoading(true);
+  const loadTokens = useCallback(async ({ showLoading = !hasLoadedTokensRef.current } = {}) => {
+    if (showLoading) {
+      setTokensLoading(true);
+    }
+
     try {
       const result = await listAgentTokens();
       setTokens(result.tokens);
       setEnvTokenConfigured(result.envTokenConfigured);
       setEnvTokenRegistered(result.envTokenRegistered);
+      hasLoadedTokensRef.current = true;
     } catch (error) {
       toast.error(errorMessage(error, toastMessages.agentTokensLoadFailed));
     } finally {
-      setTokensLoading(false);
+      if (showLoading) {
+        setTokensLoading(false);
+      }
     }
   }, []);
+
+  useEffect(() => {
+    void loadTokens();
+  }, [loadTokens]);
 
   useEffect(() => {
     if (!open) {
@@ -145,7 +156,7 @@ export function AdminDialog({
       return;
     }
 
-    void loadTokens();
+    void loadTokens({ showLoading: false });
   }, [loadTokens, open]);
 
   async function handleExport(format: "sql" | "json") {
@@ -331,8 +342,8 @@ export function AdminDialog({
             </Button>
           }
         />
-        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-4xl">
-          <div className="p-4">
+        <DialogContent className="flex h-[min(88vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+          <div className="shrink-0 p-4">
             <DialogHeader className="p-0">
               <DialogTitle>Admin</DialogTitle>
               <DialogDescription>
@@ -343,6 +354,7 @@ export function AdminDialog({
 
           <Separator />
 
+          <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-3 p-4">
             <section className="space-y-3">
               <h2 className="text-sm font-medium">Backup &amp; Export</h2>
@@ -462,35 +474,46 @@ export function AdminDialog({
                 </p>
               </div>
 
-              {envTokenConfigured ? (
-                <div className="space-y-2 rounded-lg border px-3 py-2 text-xs">
-                  <p className="text-muted-foreground">
-                    An environment token is also active
-                    {envTokenRegistered
-                      ? " and registered in the database."
-                      : ". Register it here to manage and revoke it from the UI."}
-                    {!envTokenRegistered
-                      ? " Remove AGENT_API_TOKEN from the environment when you no longer need both."
-                      : null}
-                  </p>
-                  {!envTokenRegistered ? (
-                    <Button
-                      type="button"
-                      variant="save"
-                      size="sm"
-                      disabled={importingEnvToken || atTokenLimit}
-                      onClick={() => void handleImportEnvToken()}
-                    >
-                      {importingEnvToken ? "Registering…" : "Register in Database"}
-                    </Button>
-                  ) : null}
-                  {!envTokenRegistered && atTokenLimit ? (
-                    <p className="text-muted-foreground text-xs">
-                      Revoke a database token before registering the environment token.
-                    </p>
-                  ) : null}
+              {(tokensLoading || envTokenConfigured) && (
+                <div
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-xs",
+                    tokensLoading ? "min-h-[6.5rem] border-transparent" : "space-y-2",
+                  )}
+                >
+                  {tokensLoading ? (
+                    <span className="sr-only">Loading environment token status…</span>
+                  ) : (
+                    <>
+                      <p className="text-muted-foreground">
+                        An environment token is also active
+                        {envTokenRegistered
+                          ? " and registered in the database."
+                          : ". Register it here to manage and revoke it from the UI."}
+                        {!envTokenRegistered
+                          ? " Remove AGENT_API_TOKEN from the environment when you no longer need both."
+                          : null}
+                      </p>
+                      {!envTokenRegistered ? (
+                        <Button
+                          type="button"
+                          variant="save"
+                          size="sm"
+                          disabled={importingEnvToken || atTokenLimit}
+                          onClick={() => void handleImportEnvToken()}
+                        >
+                          {importingEnvToken ? "Registering…" : "Register in Database"}
+                        </Button>
+                      ) : null}
+                      {!envTokenRegistered && atTokenLimit ? (
+                        <p className="text-muted-foreground text-xs">
+                          Revoke a database token before registering the environment token.
+                        </p>
+                      ) : null}
+                    </>
+                  )}
                 </div>
-              ) : null}
+              )}
 
               <div className="flex gap-2">
                 <div className="min-w-0 flex-1 space-y-2">
@@ -543,7 +566,7 @@ export function AdminDialog({
                 </div>
               ) : null}
 
-              <div className="space-y-2">
+              <div className="min-h-[3.25rem] space-y-2">
                 {tokensLoading ? (
                   <p className="text-muted-foreground text-sm">Loading tokens…</p>
                 ) : tokens.length === 0 ? (
@@ -632,6 +655,7 @@ export function AdminDialog({
                 )}
               </div>
             </section>
+          </div>
           </div>
         </DialogContent>
       </Dialog>
