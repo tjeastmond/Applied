@@ -355,307 +355,309 @@ export function AdminDialog({
           <Separator />
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="space-y-3 p-4">
-            <section className="space-y-3">
-              <h2 className="text-sm font-medium">Backup &amp; Export</h2>
-              <div className="flex flex-nowrap gap-2 overflow-x-auto pb-0.5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={cn("header-toolbar-outline shrink-0", FILTER_CONTROL_HEIGHT_CLASS)}
-                  disabled={backupBusy}
-                  onClick={() => void handleExport("sql")}
-                >
-                  <DownloadIcon data-icon="inline-start" />
-                  Export SQL
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={cn("header-toolbar-outline shrink-0", FILTER_CONTROL_HEIGHT_CLASS)}
-                  disabled={backupBusy}
-                  onClick={() => void handleExport("json")}
-                >
-                  <DownloadIcon data-icon="inline-start" />
-                  Export JSON
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={cn("header-toolbar-outline shrink-0", FILTER_CONTROL_HEIGHT_CLASS)}
-                  disabled={backupBusy}
-                  onClick={() => void handleDownloadDatabaseBackup()}
-                >
-                  <DownloadIcon data-icon="inline-start" />
-                  Create Backup
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={cn("header-toolbar-outline shrink-0", FILTER_CONTROL_HEIGHT_CLASS)}
-                  disabled={backupBusy}
-                  onClick={() => setImportOpen(true)}
-                >
-                  <UploadIcon data-icon="inline-start" />
-                  Import Backup
-                </Button>
-                {tursoSyncAvailable ? (
+            <div className="space-y-3 p-4">
+              <section className="space-y-3">
+                <h2 className="text-sm font-medium">Backup &amp; Export</h2>
+                <div className="flex flex-nowrap gap-2 overflow-x-auto pb-0.5">
                   <Button
                     type="button"
                     variant="outline"
                     className={cn("header-toolbar-outline shrink-0", FILTER_CONTROL_HEIGHT_CLASS)}
                     disabled={backupBusy}
-                    onClick={() => void handleTursoSync()}
+                    onClick={() => void handleExport("sql")}
                   >
-                    <CloudUploadIcon data-icon="inline-start" />
-                    {syncingTurso ? "Turso Sync…" : "Turso Sync"}
+                    <DownloadIcon data-icon="inline-start" />
+                    Export SQL
                   </Button>
-                ) : null}
-              </div>
-            </section>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-3 p-4">
-            <section className="space-y-3">
-              <div className="space-y-1">
-                <h2 className="text-sm font-medium">Archive</h2>
-                <p className="text-muted-foreground text-xs">
-                  Move rejected and passed applications out of the active list.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className={cn("header-toolbar-outline w-fit", FILTER_CONTROL_HEIGHT_CLASS)}
-                disabled={archivableCount === 0}
-                onClick={() => setPendingBulkArchive(true)}
-              >
-                <ArchiveIcon data-icon="inline-start" />
-                Archive
-              </Button>
-            </section>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-3 p-4">
-            <section className="space-y-3">
-              <div className="space-y-1">
-                <h2 className="text-sm font-medium">Copy All URLs</h2>
-                <p className="text-muted-foreground text-xs">
-                  Copy the job posting URLs for every application you&apos;ve applied to.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className={cn("header-toolbar-outline w-fit", FILTER_CONTROL_HEIGHT_CLASS)}
-                disabled={applications.length === 0}
-                onClick={() => void handleCopyAllUrls()}
-              >
-                <CopyIcon data-icon="inline-start" />
-                Copy All URLs
-              </Button>
-            </section>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-3 p-4">
-            <section className="space-y-3">
-              <div className="space-y-1">
-                <h2 className="text-sm font-medium">Agent API Tokens</h2>
-                <p className="text-muted-foreground text-xs">
-                  Named bearer tokens for external agent tools (e.g. Cursor, Codex). Shown once at creation. Up to{" "}
-                  {MAX_ACTIVE_AGENT_API_TOKENS} active agent tokens — your app login token is separate and does not
-                  count toward this limit.
-                </p>
-              </div>
-
-              {(tokensLoading || envTokenConfigured) && (
-                <div
-                  className={cn(
-                    "rounded-lg border px-3 py-2 text-xs",
-                    tokensLoading ? "min-h-[6.5rem] border-transparent" : "space-y-2",
-                  )}
-                >
-                  {tokensLoading ? (
-                    <span className="sr-only">Loading environment token status…</span>
-                  ) : (
-                    <>
-                      <p className="text-muted-foreground">
-                        An environment token is also active
-                        {envTokenRegistered
-                          ? " and registered in the database."
-                          : ". Register it here to manage and revoke it from the UI."}
-                        {!envTokenRegistered
-                          ? " Remove AGENT_API_TOKEN from the environment when you no longer need both."
-                          : null}
-                      </p>
-                      {!envTokenRegistered ? (
-                        <Button
-                          type="button"
-                          variant="save"
-                          size="sm"
-                          disabled={importingEnvToken || atTokenLimit}
-                          onClick={() => void handleImportEnvToken()}
-                        >
-                          {importingEnvToken ? "Registering…" : "Register in Database"}
-                        </Button>
-                      ) : null}
-                      {!envTokenRegistered && atTokenLimit ? (
-                        <p className="text-muted-foreground text-xs">
-                          Revoke a database token before registering the environment token.
-                        </p>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <div className="min-w-0 flex-1 space-y-2">
-                  <Label htmlFor="agent-token-name">Token Name</Label>
-                  <Input
-                    id="agent-token-name"
-                    value={tokenName}
-                    onChange={(event) => setTokenName(event.target.value)}
-                    placeholder="e.g. Cursor Agent"
-                    className={FILTER_CONTROL_HEIGHT_CLASS}
-                    disabled={creatingToken}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        void handleCreateToken();
-                      }
-                    }}
-                  />
-                </div>
-                <div className="flex shrink-0 items-end">
                   <Button
                     type="button"
-                    variant="save"
-                    className={FILTER_CONTROL_HEIGHT_CLASS}
-                    disabled={creatingToken || tokenName.trim().length === 0 || atTokenLimit}
-                    onClick={() => void handleCreateToken()}
+                    variant="outline"
+                    className={cn("header-toolbar-outline shrink-0", FILTER_CONTROL_HEIGHT_CLASS)}
+                    disabled={backupBusy}
+                    onClick={() => void handleExport("json")}
                   >
-                    {creatingToken ? "Creating…" : "Create Token"}
+                    <DownloadIcon data-icon="inline-start" />
+                    Export JSON
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn("header-toolbar-outline shrink-0", FILTER_CONTROL_HEIGHT_CLASS)}
+                    disabled={backupBusy}
+                    onClick={() => void handleDownloadDatabaseBackup()}
+                  >
+                    <DownloadIcon data-icon="inline-start" />
+                    Create Backup
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn("header-toolbar-outline shrink-0", FILTER_CONTROL_HEIGHT_CLASS)}
+                    disabled={backupBusy}
+                    onClick={() => setImportOpen(true)}
+                  >
+                    <UploadIcon data-icon="inline-start" />
+                    Import Backup
+                  </Button>
+                  {tursoSyncAvailable ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn("header-toolbar-outline shrink-0", FILTER_CONTROL_HEIGHT_CLASS)}
+                      disabled={backupBusy}
+                      onClick={() => void handleTursoSync()}
+                    >
+                      <CloudUploadIcon data-icon="inline-start" />
+                      {syncingTurso ? "Turso Sync…" : "Turso Sync"}
+                    </Button>
+                  ) : null}
                 </div>
-              </div>
+              </section>
+            </div>
 
-              {atTokenLimit ? (
-                <p className="text-muted-foreground text-xs">
-                  {MAX_ACTIVE_AGENT_API_TOKENS} active agent tokens reached. Revoke one to create another for agentic
-                  use.
-                </p>
-              ) : null}
+            <Separator />
 
-              {revealedToken ? (
-                <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-3">
-                  <p className="text-xs font-medium">Copy this token now. It won&apos;t be shown again.</p>
-                  <div className="flex items-center gap-2">
-                    <code className="bg-muted min-w-0 flex-1 truncate rounded px-2 py-1 text-xs">{revealedToken}</code>
-                    <Button type="button" variant="outline" size="sm" onClick={() => void handleCopyRevealedToken()}>
-                      <CopyIcon data-icon="inline-start" />
-                      Copy Token
+            <div className="space-y-3 p-4">
+              <section className="space-y-3">
+                <div className="space-y-1">
+                  <h2 className="text-sm font-medium">Archive</h2>
+                  <p className="text-muted-foreground text-xs">
+                    Move rejected and passed applications out of the active list.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn("header-toolbar-outline w-fit", FILTER_CONTROL_HEIGHT_CLASS)}
+                  disabled={archivableCount === 0}
+                  onClick={() => setPendingBulkArchive(true)}
+                >
+                  <ArchiveIcon data-icon="inline-start" />
+                  Archive
+                </Button>
+              </section>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3 p-4">
+              <section className="space-y-3">
+                <div className="space-y-1">
+                  <h2 className="text-sm font-medium">Copy All URLs</h2>
+                  <p className="text-muted-foreground text-xs">
+                    Copy the job posting URLs for every application you&apos;ve applied to.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn("header-toolbar-outline w-fit", FILTER_CONTROL_HEIGHT_CLASS)}
+                  disabled={applications.length === 0}
+                  onClick={() => void handleCopyAllUrls()}
+                >
+                  <CopyIcon data-icon="inline-start" />
+                  Copy All URLs
+                </Button>
+              </section>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3 p-4">
+              <section className="space-y-3">
+                <div className="space-y-1">
+                  <h2 className="text-sm font-medium">Agent API Tokens</h2>
+                  <p className="text-muted-foreground text-xs">
+                    Named bearer tokens for external agent tools (e.g. Cursor, Codex). Shown once at creation. Up to{" "}
+                    {MAX_ACTIVE_AGENT_API_TOKENS} active agent tokens — your app login token is separate and does not
+                    count toward this limit.
+                  </p>
+                </div>
+
+                {(tokensLoading || envTokenConfigured) && (
+                  <div
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-xs",
+                      tokensLoading ? "min-h-[6.5rem] border-transparent" : "space-y-2",
+                    )}
+                  >
+                    {tokensLoading ? (
+                      <span className="sr-only">Loading environment token status…</span>
+                    ) : (
+                      <>
+                        <p className="text-muted-foreground">
+                          An environment token is also active
+                          {envTokenRegistered
+                            ? " and registered in the database."
+                            : ". Register it here to manage and revoke it from the UI."}
+                          {!envTokenRegistered
+                            ? " Remove AGENT_API_TOKEN from the environment when you no longer need both."
+                            : null}
+                        </p>
+                        {!envTokenRegistered ? (
+                          <Button
+                            type="button"
+                            variant="save"
+                            size="sm"
+                            disabled={importingEnvToken || atTokenLimit}
+                            onClick={() => void handleImportEnvToken()}
+                          >
+                            {importingEnvToken ? "Registering…" : "Register in Database"}
+                          </Button>
+                        ) : null}
+                        {!envTokenRegistered && atTokenLimit ? (
+                          <p className="text-muted-foreground text-xs">
+                            Revoke a database token before registering the environment token.
+                          </p>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Label htmlFor="agent-token-name">Token Name</Label>
+                    <Input
+                      id="agent-token-name"
+                      value={tokenName}
+                      onChange={(event) => setTokenName(event.target.value)}
+                      placeholder="e.g. Cursor Agent"
+                      className={FILTER_CONTROL_HEIGHT_CLASS}
+                      disabled={creatingToken}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void handleCreateToken();
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="flex shrink-0 items-end">
+                    <Button
+                      type="button"
+                      variant="save"
+                      className={FILTER_CONTROL_HEIGHT_CLASS}
+                      disabled={creatingToken || tokenName.trim().length === 0 || atTokenLimit}
+                      onClick={() => void handleCreateToken()}
+                    >
+                      {creatingToken ? "Creating…" : "Create Token"}
                     </Button>
                   </div>
                 </div>
-              ) : null}
 
-              <div className="min-h-[3.25rem] space-y-2">
-                {tokensLoading ? (
-                  <p className="text-muted-foreground text-sm">Loading tokens…</p>
-                ) : tokens.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">
-                    No agent tokens yet. Create one for external agent tools.
+                {atTokenLimit ? (
+                  <p className="text-muted-foreground text-xs">
+                    {MAX_ACTIVE_AGENT_API_TOKENS} active agent tokens reached. Revoke one to create another for agentic
+                    use.
                   </p>
-                ) : (
-                  <ul className="divide-border divide-y rounded-lg border">
-                    {tokens.map((token) => (
-                      <li key={token.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
-                        <div className="min-w-0 flex-1">
-                          {renameTargetId === token.id ? (
-                            <div className="flex items-center gap-2">
-                              <Input
-                                value={renameValue}
-                                onChange={(event) => setRenameValue(event.target.value)}
-                                className={FILTER_CONTROL_HEIGHT_CLASS}
-                                disabled={renaming}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") {
-                                    event.preventDefault();
-                                    void handleSaveRename(token.id);
-                                  }
-                                  if (event.key === "Escape") {
-                                    event.preventDefault();
-                                    cancelRename();
-                                  }
-                                }}
-                                autoFocus
-                              />
-                              <Button
-                                type="button"
-                                variant="save"
-                                size="sm"
-                                disabled={renaming || renameValue.trim().length === 0}
-                                onClick={() => void handleSaveRename(token.id)}
-                              >
-                                {renaming ? "Saving…" : "Save"}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="cancelOutline"
-                                size="sm"
-                                disabled={renaming}
-                                onClick={cancelRename}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          ) : (
+                ) : null}
+
+                {revealedToken ? (
+                  <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-3">
+                    <p className="text-xs font-medium">Copy this token now. It won&apos;t be shown again.</p>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted min-w-0 flex-1 truncate rounded px-2 py-1 text-xs">
+                        {revealedToken}
+                      </code>
+                      <Button type="button" variant="outline" size="sm" onClick={() => void handleCopyRevealedToken()}>
+                        <CopyIcon data-icon="inline-start" />
+                        Copy Token
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="min-h-[3.25rem] space-y-2">
+                  {tokensLoading ? (
+                    <p className="text-muted-foreground text-sm">Loading tokens…</p>
+                  ) : tokens.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                      No agent tokens yet. Create one for external agent tools.
+                    </p>
+                  ) : (
+                    <ul className="divide-border divide-y rounded-lg border">
+                      {tokens.map((token) => (
+                        <li key={token.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                          <div className="min-w-0 flex-1">
+                            {renameTargetId === token.id ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={renameValue}
+                                  onChange={(event) => setRenameValue(event.target.value)}
+                                  className={FILTER_CONTROL_HEIGHT_CLASS}
+                                  disabled={renaming}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                      event.preventDefault();
+                                      void handleSaveRename(token.id);
+                                    }
+                                    if (event.key === "Escape") {
+                                      event.preventDefault();
+                                      cancelRename();
+                                    }
+                                  }}
+                                  autoFocus
+                                />
+                                <Button
+                                  type="button"
+                                  variant="save"
+                                  size="sm"
+                                  disabled={renaming || renameValue.trim().length === 0}
+                                  onClick={() => void handleSaveRename(token.id)}
+                                >
+                                  {renaming ? "Saving…" : "Save"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="cancelOutline"
+                                  size="sm"
+                                  disabled={renaming}
+                                  onClick={cancelRename}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="truncate font-medium">{token.name}</p>
+                                <p className="text-muted-foreground text-xs">{formatTokenMetadata(token)}</p>
+                              </>
+                            )}
+                          </div>
+                          {renameTargetId === token.id ? null : (
                             <>
-                              <p className="truncate font-medium">{token.name}</p>
-                              <p className="text-muted-foreground text-xs">{formatTokenMetadata(token)}</p>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground shrink-0"
+                                aria-label={`Rename ${token.name}`}
+                                title="Rename token"
+                                onClick={() => startRename(token)}
+                              >
+                                <PencilIcon />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground hover:text-destructive shrink-0"
+                                aria-label={`Revoke ${token.name}`}
+                                title="Revoke token"
+                                onClick={() => setRevokeTarget(token)}
+                              >
+                                <Trash2Icon />
+                              </Button>
                             </>
                           )}
-                        </div>
-                        {renameTargetId === token.id ? null : (
-                          <>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground shrink-0"
-                              aria-label={`Rename ${token.name}`}
-                              title="Rename token"
-                              onClick={() => startRename(token)}
-                            >
-                              <PencilIcon />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground hover:text-destructive shrink-0"
-                              aria-label={`Revoke ${token.name}`}
-                              title="Revoke token"
-                              onClick={() => setRevokeTarget(token)}
-                            >
-                              <Trash2Icon />
-                            </Button>
-                          </>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </section>
-          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </section>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

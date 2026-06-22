@@ -77,9 +77,7 @@ function parseInlineSegment(segment: string): InlineMarkdownNode[] {
   return nodes.length > 0 ? nodes : [{ type: "text", value: segment }];
 }
 
-function linkifySegmentToNode(
-  segment: ReturnType<typeof splitTextWithUrls>[number],
-): InlineMarkdownNode {
+function linkifySegmentToNode(segment: ReturnType<typeof splitTextWithUrls>[number]): InlineMarkdownNode {
   if (segment.type === "link") {
     return { type: "link", href: segment.href, label: segment.label };
   }
