@@ -86,7 +86,7 @@ export function rowToApplication(row: ApplicationRow): JobApplication {
     id: row.id,
     url: row.url,
     linkedinUrl: row.linkedin_url,
-    title: normalizeJobTitle(row.title),
+    title: row.title,
     company: row.company,
     appliedAt: row.applied_at,
     viaRecruiter: row.via_recruiter === 1,

@@ -2,7 +2,6 @@ import { parseHTML } from "linkedom";
 import { errorMessage } from "@/lib/errorMessage";
 import { log } from "@/lib/server/logging/logger";
 import { hostFromUrl } from "@/lib/server/logging/sanitize";
-import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
 import { parseParsedApplicationSalaryFields } from "@/lib/schemas/application";
 import { parseJobUrlResultSchema, type ParseJobUrlResult } from "@/lib/schemas/parseJob";
 import {
@@ -123,7 +122,7 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
       document.querySelector("title")?.textContent?.trim() ??
       document.querySelector("h1")?.textContent?.trim() ??
       null;
-    const title = normalizeJobTitle(rawTitle);
+    const title = rawTitle;
 
     const company = extractJobCompany(currentUrl, document, {
       siteName: getMetaContent(document, "og:site_name"),

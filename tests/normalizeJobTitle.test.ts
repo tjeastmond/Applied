@@ -6,6 +6,10 @@ describe("normalizeJobTitle", () => {
     expect(normalizeJobTitle("Founding Engineer | Y Combinator")).toBe("Founding Engineer");
   });
 
+  it("removes the Simplify suffix", () => {
+    expect(normalizeJobTitle("Software Engineer at Acme | Simplify")).toBe("Software Engineer at Acme");
+  });
+
   it("removes the Work at a Startup suffix", () => {
     expect(normalizeJobTitle("Software Engineer  at MindFort | Y Combinator's Work at a Startup")).toBe(
       "Software Engineer at MindFort",

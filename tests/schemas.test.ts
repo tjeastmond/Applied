@@ -23,6 +23,17 @@ describe("createJobApplicationSchema", () => {
     expect(parsed.contactEmail).toBe("jane@acme.com");
   });
 
+  it("strips the Simplify suffix from titles on save", () => {
+    const parsed = createJobApplicationSchema.parse({
+      url: "https://jobs.example.com/role",
+      title: "Software Engineer at Acme | Simplify",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+    });
+
+    expect(parsed.title).toBe("Software Engineer at Acme");
+  });
+
   it("rejects unknown fields", () => {
     const result = createJobApplicationSchema.safeParse({
       url: "https://jobs.example.com/role",
