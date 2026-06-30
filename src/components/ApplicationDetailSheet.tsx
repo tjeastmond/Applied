@@ -71,7 +71,10 @@ export function ApplicationDetailSheet({
   onOpenChange: (open: boolean) => void;
   onCloseComplete?: () => void;
   onApplicationChange: (application: JobApplication) => void;
-  onStatusChange: (id: string, status: ApplicationStatus) => void | Promise<void>;
+  onStatusChange: (
+    id: string,
+    status: ApplicationStatus,
+  ) => JobApplication | null | void | Promise<JobApplication | null | void>;
   onRequestDelete: (id: string) => void;
 }) {
   const [form, setForm] = useState<FormState | null>(() => (application ? applicationToForm(application) : null));
@@ -96,6 +99,22 @@ export function ApplicationDetailSheet({
   formRef.current = form;
   const syncedUpdatedAtRef = useRef<string | null>(null);
   const syncedApplicationIdRef = useRef<string | null>(null);
+  const manualSaveBaselineRef = useRef<JobApplication | null>(null);
+
+  const updateManualSaveBaseline = useCallback((baseline: JobApplication | null) => {
+    manualSaveBaselineRef.current = baseline;
+  }, []);
+
+  const resolveManualSaveBaseline = useCallback((): JobApplication | null => {
+    return manualSaveBaselineRef.current ?? applicationRef.current;
+  }, []);
+
+  const isFormManuallyDirty = useCallback((): boolean => {
+    const currentForm = formRef.current;
+    const baseline = resolveManualSaveBaseline();
+    if (!currentForm || !baseline || currentForm.id !== baseline.id) return false;
+    return isManualSaveFormDirty(currentForm, baseline);
+  }, [resolveManualSaveBaseline]);
 
   const { updateField, isParsing, isSaving, requiredValidation, valid, parse, save, setShowValidation } =
     useApplicationFormActions({
@@ -112,6 +131,7 @@ export function ApplicationDetailSheet({
         if (applicationRef.current?.id !== updated.id) return;
         onApplicationChange(updated);
         setForm(applicationToForm(updated));
+        updateManualSaveBaseline(updated);
         syncedUpdatedAtRef.current = updated.updatedAt;
       },
     });
@@ -123,6 +143,7 @@ export function ApplicationDetailSheet({
   useEffect(() => {
     if (!open || !applicationId || !application || application.id !== applicationId) {
       syncedApplicationIdRef.current = null;
+      updateManualSaveBaseline(null);
       return;
     }
 
@@ -130,6 +151,7 @@ export function ApplicationDetailSheet({
 
     syncedApplicationIdRef.current = applicationId;
     setForm(applicationToForm(application));
+    updateManualSaveBaseline(application);
     syncedUpdatedAtRef.current = application.updatedAt;
     setShowValidation(false);
     setNewNote("");
@@ -142,7 +164,7 @@ export function ApplicationDetailSheet({
     setIsSavingNote(false);
     setUnsavedCloseDialogOpen(false);
     setIsSavingBeforeClose(false);
-  }, [application, applicationId, open, setShowValidation]);
+  }, [application, applicationId, open, setShowValidation, updateManualSaveBaseline]);
 
   useEffect(() => {
     if (!open || !applicationId || !application || application.id !== applicationId) return;
@@ -152,21 +174,39 @@ export function ApplicationDetailSheet({
     if (currentForm && currentForm.id === applicationId) {
       if (isFormPristine(currentForm, application)) {
         setForm(applicationToForm(application));
+        updateManualSaveBaseline(application);
       } else if (isStatusOnlyFormChange(currentForm, application) && currentForm.status === application.status) {
         setForm(applicationToForm(application));
+        updateManualSaveBaseline(application);
       }
     }
     syncedUpdatedAtRef.current = application.updatedAt;
-  }, [application, applicationId, applicationUpdatedAt, open]);
+  }, [application, applicationId, applicationUpdatedAt, open, updateManualSaveBaseline]);
 
-  const syncFormFromSavedApplication = useCallback((saved: JobApplication) => {
-    if (applicationRef.current?.id !== saved.id) return;
-    const currentForm = formRef.current;
-    if (!currentForm || currentForm.id !== saved.id) return;
-    if (isManualSaveFormDirty(currentForm, saved)) return;
-    setForm(applicationToForm(saved));
-    syncedUpdatedAtRef.current = saved.updatedAt;
-  }, []);
+  const syncFormFromSavedApplication = useCallback(
+    (saved: JobApplication) => {
+      if (applicationRef.current?.id !== saved.id) return;
+      const currentForm = formRef.current;
+      if (!currentForm || currentForm.id !== saved.id) return;
+
+      if (isManualSaveFormDirty(currentForm, saved)) {
+        const baseline = manualSaveBaselineRef.current;
+        if (baseline?.id === saved.id) {
+          updateManualSaveBaseline({
+            ...baseline,
+            status: saved.status,
+            updatedAt: saved.updatedAt,
+          });
+        }
+        return;
+      }
+
+      setForm(applicationToForm(saved));
+      updateManualSaveBaseline(saved);
+      syncedUpdatedAtRef.current = saved.updatedAt;
+    },
+    [updateManualSaveBaseline],
+  );
 
   useEffect(() => {
     if (!open || !applicationId || !application || application.id !== applicationId) return;
@@ -175,11 +215,17 @@ export function ApplicationDetailSheet({
     if (!currentForm || currentForm.id !== applicationId) return;
     if (isManualSaveFormDirty(currentForm, application)) return;
 
+    if (isFormPristine(currentForm, application)) {
+      updateManualSaveBaseline(application);
+      return;
+    }
+
     if (isStatusOnlyFormChange(currentForm, application) && currentForm.status === application.status) {
       setForm(applicationToForm(application));
+      updateManualSaveBaseline(application);
       syncedUpdatedAtRef.current = application.updatedAt;
     }
-  }, [application, applicationId, open]);
+  }, [application, applicationId, open, updateManualSaveBaseline]);
 
   const pendingNote = useMemo(() => notes.find((note) => note.id === pendingNoteId) ?? null, [notes, pendingNoteId]);
   const sortedNotes = useMemo(() => sortNotes(notes, noteSortOrder), [notes, noteSortOrder]);
@@ -329,6 +375,7 @@ export function ApplicationDetailSheet({
     try {
       const updated = await updateApplication(applicationId, { archived: nextArchived });
       onApplicationChange(updated);
+      syncFormFromSavedApplication(updated);
       toast.success(nextArchived ? toastMessages.applicationArchived : toastMessages.applicationUnarchived);
     } catch (error) {
       toast.error(
@@ -346,20 +393,21 @@ export function ApplicationDetailSheet({
     (status: ApplicationStatus) => {
       if (!applicationId || !application || application.status === status) return;
       updateField("status", status);
-      void Promise.resolve(onStatusChange(applicationId, status)).then(() => {
-        const saved = applicationRef.current;
-        if (!saved || saved.id !== applicationId || saved.status !== status) return;
-        syncFormFromSavedApplication(saved);
+      void Promise.resolve(onStatusChange(applicationId, status)).then((saved) => {
+        if (saved?.id === applicationId) {
+          syncFormFromSavedApplication(saved);
+          return;
+        }
+        const current = applicationRef.current;
+        if (current?.id === applicationId) {
+          updateField("status", current.status);
+        }
       });
     },
     [applicationId, application, onStatusChange, syncFormFromSavedApplication, updateField],
   );
 
   const formMatchesApplication = form?.id === applicationId;
-  const isFormDirty = useMemo(() => {
-    if (!form || !application || !formMatchesApplication) return false;
-    return isManualSaveFormDirty(form, application);
-  }, [form, application, formMatchesApplication]);
 
   const closeSheet = useCallback(() => {
     setUnsavedCloseDialogOpen(false);
@@ -367,12 +415,12 @@ export function ApplicationDetailSheet({
   }, [onOpenChange]);
 
   const requestClose = useCallback(() => {
-    if (isFormDirty) {
+    if (isFormManuallyDirty()) {
       setUnsavedCloseDialogOpen(true);
       return;
     }
     closeSheet();
-  }, [closeSheet, isFormDirty]);
+  }, [closeSheet, isFormManuallyDirty]);
 
   const handleSheetOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -416,7 +464,7 @@ export function ApplicationDetailSheet({
       if (!isModKeyChord(event, "s")) return;
       event.preventDefault();
       if (isSaving) return;
-      if (!isFormDirty) {
+      if (!isFormManuallyDirty()) {
         toast.info(toastMessages.noChanges);
         return;
       }
@@ -425,7 +473,7 @@ export function ApplicationDetailSheet({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, isFormDirty, isSaving, save]);
+  }, [open, isFormManuallyDirty, isSaving, save]);
   const headerTitle =
     (formMatchesApplication ? form.title.trim() : "") || application?.title || application?.company || "Application";
   const postingUrl = (formMatchesApplication ? form.url.trim() : "") || application?.url.trim() || "";

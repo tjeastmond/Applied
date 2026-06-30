@@ -326,7 +326,7 @@ export function AuthenticatedApp({
   }, []);
 
   const updateApplicationStatus = useCallback(
-    async (id: string, status: ApplicationStatus) => {
+    async (id: string, status: ApplicationStatus): Promise<JobApplication | null> => {
       let previousApplication: JobApplication | undefined;
 
       setApplications((prev) => {
@@ -336,7 +336,7 @@ export function AuthenticatedApp({
         return upsertApplication(prev, { ...application, status });
       });
 
-      if (!previousApplication) return;
+      if (!previousApplication) return null;
 
       const snapshot = previousApplication;
 
@@ -348,6 +348,7 @@ export function AuthenticatedApp({
           return upsertApplication(prev, updated);
         });
         void refetchNotes(id);
+        return updated;
       } catch (error) {
         setApplications((prev) => {
           const current = prev.find((item) => item.id === id);
@@ -355,15 +356,14 @@ export function AuthenticatedApp({
           return upsertApplication(prev, snapshot);
         });
         toast.error(errorMessage(error, toastMessages.statusUpdateFailed));
+        return null;
       }
     },
     [refetchNotes],
   );
 
   const handleStatusChange = useCallback(
-    (id: string, status: ApplicationStatus) => {
-      void updateApplicationStatus(id, status);
-    },
+    (id: string, status: ApplicationStatus) => updateApplicationStatus(id, status),
     [updateApplicationStatus],
   );
 
