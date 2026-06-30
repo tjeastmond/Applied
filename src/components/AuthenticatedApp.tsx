@@ -32,6 +32,8 @@ import {
   partitionApplicationsByView,
   persistApplicationViewMode,
   readStoredApplicationViewMode,
+  readStoredIncludeArchived,
+  persistIncludeArchived,
   statusFiltersForViewMode,
   type ApplicationViewMode,
 } from "@/lib/applicationArchive";
@@ -67,6 +69,7 @@ type AuthenticatedAppProps = {
 
 let hasRestoredApplicationPageSizePreference = false;
 let hasRestoredApplicationViewModePreference = false;
+let hasRestoredIncludeArchivedPreference = false;
 
 export function AuthenticatedApp({
   initialApplications,
@@ -88,6 +91,7 @@ export function AuthenticatedApp({
   const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(() => new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<ApplicationStatus>>(() => new Set());
   const [viewMode, setViewMode] = useState<ApplicationViewMode>("active");
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<ApplicationPageSize>(initialPageSize);
@@ -139,6 +143,15 @@ export function AuthenticatedApp({
     }
 
     hasRestoredApplicationViewModePreference = true;
+  }, []);
+
+  useLayoutEffect(() => {
+    if (hasRestoredIncludeArchivedPreference) {
+      return;
+    }
+
+    setIncludeArchived(readStoredIncludeArchived());
+    hasRestoredIncludeArchivedPreference = true;
   }, []);
 
   useEffect(() => {
@@ -198,7 +211,10 @@ export function AuthenticatedApp({
     if (!selectedId) return false;
     return isLoading(selectedId) || notesByApplicationId[selectedId] === undefined;
   }, [selectedId, notesByApplicationId, isLoading]);
-  const viewApplications = useMemo(() => partitionApplicationsByView(applications, viewMode), [applications, viewMode]);
+  const viewApplications = useMemo(
+    () => partitionApplicationsByView(applications, viewMode, includeArchived),
+    [applications, viewMode, includeArchived],
+  );
   const companyNames = useMemo(() => uniqueCompanyNames(viewApplications), [viewApplications]);
   const filteredApplications = useMemo(
     () =>
@@ -224,21 +240,23 @@ export function AuthenticatedApp({
         selectedCompanies,
         selectedStatuses,
         searchQuery,
+        viewMode,
+        includeArchived,
       }),
-    [selectedCompanies, selectedStatuses, searchQuery],
+    [selectedCompanies, selectedStatuses, searchQuery, viewMode, includeArchived],
   );
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCompanies, selectedStatuses, searchQuery, viewMode]);
+  }, [selectedCompanies, selectedStatuses, searchQuery, viewMode, includeArchived]);
 
   useEffect(() => {
     if (!selectedApplication || !detailOpen) return;
 
-    if (!applicationMatchesViewMode(selectedApplication, viewMode)) {
+    if (!applicationMatchesViewMode(selectedApplication, viewMode, includeArchived)) {
       setDetailOpen(false);
     }
-  }, [detailOpen, selectedApplication, viewMode]);
+  }, [detailOpen, includeArchived, selectedApplication, viewMode]);
 
   useEffect(() => {
     if (paginatedApplications.page !== currentPage) {
@@ -363,7 +381,9 @@ export function AuthenticatedApp({
   );
 
   const handleStatusChange = useCallback(
-    (id: string, status: ApplicationStatus) => updateApplicationStatus(id, status),
+    (id: string, status: ApplicationStatus) => {
+      void updateApplicationStatus(id, status);
+    },
     [updateApplicationStatus],
   );
 
@@ -424,6 +444,8 @@ export function AuthenticatedApp({
     setSelectedCompanies(new Set());
     setSelectedStatuses(new Set());
     setSearchQuery("");
+    setIncludeArchived(false);
+    persistIncludeArchived(false);
     setViewMode((current) => {
       if (current !== "archived") return current;
       persistApplicationViewMode("active");
@@ -436,14 +458,24 @@ export function AuthenticatedApp({
     setCurrentPage(1);
   }, [clearFilters]);
 
-  const handleViewModeToggle = useCallback(() => {
+  const handleViewModeChange = useCallback((next: ApplicationViewMode) => {
     setViewMode((current) => {
-      const next = nextViewMode(current);
+      if (current === next) return current;
       persistApplicationViewMode(next);
       setSelectedStatuses(statusFiltersForViewMode(next));
       setCurrentPage(1);
       return next;
     });
+  }, []);
+
+  const handleViewModeToggle = useCallback(() => {
+    handleViewModeChange(nextViewMode(viewMode));
+  }, [handleViewModeChange, viewMode]);
+
+  const handleIncludeArchivedChange = useCallback((next: boolean) => {
+    setIncludeArchived(next);
+    persistIncludeArchived(next);
+    setCurrentPage(1);
   }, []);
 
   const handlePageChange = useCallback((page: number) => {
@@ -577,6 +609,9 @@ export function AuthenticatedApp({
               onSelectedStatusesChange={setSelectedStatuses}
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
+              includeArchived={includeArchived}
+              onIncludeArchivedChange={handleIncludeArchivedChange}
+              includeArchivedDisabled={viewMode === "archived"}
               onClearFilters={clearFilters}
               hasActiveFilters={hasActiveFilters}
               searchInputRef={searchInputRef}
@@ -605,7 +640,7 @@ export function AuthenticatedApp({
               <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
                 <p className="text-muted-foreground text-sm">No archived applications.</p>
                 <Button type="button" variant="outline" size="sm" onClick={handleViewModeToggle}>
-                  Back to active applications
+                  Back To Active Applications
                 </Button>
               </CardContent>
             </Card>

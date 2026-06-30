@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   applicationMatchesViewMode,
   archiveViewToggleLabel,
@@ -6,6 +6,8 @@ import {
   countArchivableApplications,
   nextViewMode,
   partitionApplicationsByView,
+  persistIncludeArchived,
+  readStoredIncludeArchived,
   statusFiltersForViewMode,
 } from "@/lib/applicationArchive";
 import { makeJobApplication } from "./fixtures/jobApplication";
@@ -18,6 +20,15 @@ describe("partitionApplicationsByView", () => {
     ];
 
     expect(partitionApplicationsByView(applications, "active").map((item) => item.id)).toEqual(["a"]);
+  });
+
+  it("returns open and archived applications when includeArchived is enabled", () => {
+    const applications = [
+      makeJobApplication({ id: "a", archived: false }),
+      makeJobApplication({ id: "b", archived: true }),
+    ];
+
+    expect(partitionApplicationsByView(applications, "active", true).map((item) => item.id)).toEqual(["a", "b"]);
   });
 
   it("returns only archived applications in archived view", () => {
@@ -39,6 +50,8 @@ describe("applicationMatchesViewMode", () => {
     expect(applicationMatchesViewMode(active, "archived")).toBe(false);
     expect(applicationMatchesViewMode(active, "active")).toBe(true);
     expect(applicationMatchesViewMode(archived, "active")).toBe(false);
+    expect(applicationMatchesViewMode(archived, "active", true)).toBe(true);
+    expect(applicationMatchesViewMode(active, "active", true)).toBe(true);
   });
 });
 
@@ -61,12 +74,39 @@ describe("archive view helpers", () => {
     expect(nextViewMode("archived")).toBe("active");
     expect(statusFiltersForViewMode("archived")).toEqual(new Set(["rejected", "passed"]));
     expect(statusFiltersForViewMode("active").size).toBe(0);
-    expect(archiveViewToggleLabel("active")).toBe("View archived applications");
-    expect(archiveViewToggleLabel("archived")).toBe("Back to active applications");
+    expect(archiveViewToggleLabel("active")).toBe("View Archived Applications");
+    expect(archiveViewToggleLabel("archived")).toBe("Back To Active Applications");
   });
 
   it("formats bulk archive confirmation copy", () => {
     expect(bulkArchiveConfirmDescription(1)).toContain("1 rejected or passed application");
     expect(bulkArchiveConfirmDescription(3)).toContain("3 rejected and passed applications");
+  });
+});
+
+describe("include archived preference", () => {
+  it("persists include archived preference in localStorage", () => {
+    vi.stubGlobal("window", {
+      localStorage: {
+        store: {} as Record<string, string>,
+        getItem(key: string) {
+          return this.store[key] ?? null;
+        },
+        setItem(key: string, value: string) {
+          this.store[key] = value;
+        },
+        clear() {
+          this.store = {};
+        },
+      },
+    });
+
+    expect(readStoredIncludeArchived()).toBe(false);
+
+    persistIncludeArchived(true);
+    expect(readStoredIncludeArchived()).toBe(true);
+
+    persistIncludeArchived(false);
+    expect(readStoredIncludeArchived()).toBe(false);
   });
 });

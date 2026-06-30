@@ -18,6 +18,22 @@ describe("applicationFilters", () => {
         searchQuery: "",
       }),
     ).toBe(true);
+    expect(
+      hasActiveApplicationFilters({
+        selectedCompanies: new Set(),
+        selectedStatuses: new Set(),
+        searchQuery: "",
+        viewMode: "archived",
+      }),
+    ).toBe(true);
+    expect(
+      hasActiveApplicationFilters({
+        selectedCompanies: new Set(),
+        selectedStatuses: new Set(),
+        searchQuery: "",
+        includeArchived: true,
+      }),
+    ).toBe(true);
   });
 
   it("applies company, status, and search filters together", () => {

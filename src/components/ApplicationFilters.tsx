@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, type RefObject } from "react";
+import { ArchivedViewToggle } from "@/components/ArchivedViewToggle";
 import { CompanyFilter } from "@/components/CompanyFilter";
 import { StatusFilter } from "@/components/StatusFilter";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,9 @@ export const ApplicationFilters = memo(function ApplicationFilters({
   onSelectedStatusesChange,
   searchQuery,
   onSearchQueryChange,
+  includeArchived,
+  onIncludeArchivedChange,
+  includeArchivedDisabled = false,
   onClearFilters,
   hasActiveFilters,
   searchInputRef,
@@ -30,6 +34,9 @@ export const ApplicationFilters = memo(function ApplicationFilters({
   onSelectedStatusesChange: (next: Set<ApplicationStatus>) => void;
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
+  includeArchived: boolean;
+  onIncludeArchivedChange: (includeArchived: boolean) => void;
+  includeArchivedDisabled?: boolean;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
   searchInputRef?: RefObject<HTMLInputElement | null>;
@@ -57,6 +64,11 @@ export const ApplicationFilters = memo(function ApplicationFilters({
           disabled={companies.length === 0}
         />
         <StatusFilter selectedStatuses={selectedStatuses} onSelectedStatusesChange={onSelectedStatusesChange} />
+        <ArchivedViewToggle
+          includeArchived={includeArchived}
+          onIncludeArchivedChange={onIncludeArchivedChange}
+          disabled={includeArchivedDisabled}
+        />
         <span
           className={cn("inline-flex shrink-0", !hasActiveFilters && "cursor-not-allowed")}
           title={hasActiveFilters ? "Clear filters" : "No active filters"}
