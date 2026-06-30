@@ -4,7 +4,7 @@ import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { getRepository, useTestDatabase } from "@/lib/server/db";
 import { openDatabase } from "@/lib/server/db/migrate";
 import * as databaseTransferService from "@/lib/server/services/databaseTransferService";
-import { authorizedAppRequest, restoreAppAccessToken, withTestAppAccessToken } from "./testAppAuth";
+import { authorizedAppRequest, emptyRouteContext, restoreAppAccessToken, withTestAppAccessToken } from "./testAppAuth";
 
 const originalAppAccessToken = process.env.APP_ACCESS_TOKEN;
 
@@ -28,6 +28,7 @@ describe("POST /api/backup/sync-turso", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "upsert" }),
       }),
+      emptyRouteContext,
     );
 
     expect(response.status).toBe(403);
@@ -60,6 +61,7 @@ describe("POST /api/backup/sync-turso", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "replace" }),
       }),
+      emptyRouteContext,
     );
 
     expect(response.status).toBe(200);
@@ -87,6 +89,7 @@ describe("POST /api/backup/sync-turso", () => {
       authorizedAppRequest("/api/backup/sync-turso", {
         method: "POST",
       }),
+      emptyRouteContext,
     );
 
     expect(response.status).toBe(200);

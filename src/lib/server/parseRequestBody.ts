@@ -1,5 +1,6 @@
 import type { ZodType } from "zod";
 import { formatZodError } from "@/lib/formatZodError";
+import { badRequestResponse } from "@/lib/server/applicationRouteHelpers";
 
 export async function parseRequestBody<T>(
   request: Request,
@@ -18,4 +19,11 @@ export async function parseRequestBody<T>(
   }
 
   return { ok: true, data: result.data };
+}
+
+export function parsedBodyOrResponse<T>(parsed: { ok: true; data: T } | { ok: false; error: string }): T | Response {
+  if (!parsed.ok) {
+    return badRequestResponse(parsed.error);
+  }
+  return parsed.data;
 }

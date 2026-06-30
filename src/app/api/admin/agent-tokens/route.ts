@@ -1,25 +1,20 @@
 import { createAgentApiTokenSchema } from "@/lib/schemas/agentToken";
-import { badRequestResponse, jsonError, logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
-import { requireAppAccess } from "@/lib/server/appAuth";
+import { logAndRespondFromUnknown, requireAgentTokenRepository } from "@/lib/server/applicationRouteHelpers";
+import { withAppAccess } from "@/lib/server/appAuth";
 import { isAgentEnvTokenConfigured } from "@/lib/server/agentEnvToken";
 import { agentTokenLimitResponse } from "@/lib/server/agentTokenLimit";
-import { getAgentApiTokenRepository } from "@/lib/server/db";
 import { log } from "@/lib/server/logging/logger";
-import { parseRequestBody } from "@/lib/server/parseRequestBody";
+import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
+export const GET = withAppAccess(async () => {
+  const repositoryOrResponse = requireAgentTokenRepository();
+  if (repositoryOrResponse instanceof Response) {
+    return repositoryOrResponse;
   }
-
-  const repository = getAgentApiTokenRepository();
-  if (!repository) {
-    return jsonError("Agent token management is unavailable", 503);
-  }
+  const repository = repositoryOrResponse;
 
   try {
     const tokens = await Promise.resolve(repository.listActive());
@@ -39,23 +34,20 @@ export async function GET(request: Request) {
       method: "GET",
     });
   }
-}
+});
 
-export async function POST(request: Request) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
-  }
-
+export const POST = withAppAccess(async (request: Request) => {
   const parsed = await parseRequestBody(request, createAgentApiTokenSchema);
-  if (!parsed.ok) {
-    return badRequestResponse(parsed.error);
+  const data = parsedBodyOrResponse(parsed);
+  if (data instanceof Response) {
+    return data;
   }
 
-  const repository = getAgentApiTokenRepository();
-  if (!repository) {
-    return jsonError("Agent token management is unavailable", 503);
+  const repositoryOrResponse = requireAgentTokenRepository();
+  if (repositoryOrResponse instanceof Response) {
+    return repositoryOrResponse;
   }
+  const repository = repositoryOrResponse;
 
   try {
     const limitError = await agentTokenLimitResponse(repository);
@@ -63,7 +55,7 @@ export async function POST(request: Request) {
       return limitError;
     }
 
-    const created = await Promise.resolve(repository.create(parsed.data.name));
+    const created = await Promise.resolve(repository.create(data.name));
     log.info("agent token created", {
       route: "/api/admin/agent-tokens",
       method: "POST",
@@ -77,4 +69,4 @@ export async function POST(request: Request) {
       method: "POST",
     });
   }
-}
+});

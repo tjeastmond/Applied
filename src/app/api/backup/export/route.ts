@@ -1,5 +1,5 @@
 import { backupFormatSchema } from "@/lib/schemas/backup";
-import { requireAppAccess } from "@/lib/server/appAuth";
+import { withAppAccess } from "@/lib/server/appAuth";
 import { getDatabaseBackend } from "@/lib/server/db";
 import { logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
@@ -8,12 +8,7 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
-  }
-
+export const GET = withAppAccess(async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const parsed = backupFormatSchema.safeParse(searchParams.get("format"));
   if (!parsed.success) {
@@ -60,4 +55,4 @@ export async function GET(request: Request) {
       method: "GET",
     });
   }
-}
+});

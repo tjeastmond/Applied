@@ -1,26 +1,21 @@
 import { parseJobUrl } from "@/lib/server/services/parseJobUrl";
-import { requireAppAccess } from "@/lib/server/appAuth";
-import { badRequestResponse } from "@/lib/server/applicationRouteHelpers";
+import { withAppAccess } from "@/lib/server/appAuth";
 import { log } from "@/lib/server/logging/logger";
 import { hostFromUrl } from "@/lib/server/logging/sanitize";
-import { parseRequestBody } from "@/lib/server/parseRequestBody";
+import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { parseJobUrlRequestSchema, parseJobUrlResultSchema } from "@/lib/schemas/parseJob";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
-  }
-
+export const POST = withAppAccess(async (request: Request) => {
   const parsed = await parseRequestBody(request, parseJobUrlRequestSchema);
-  if (!parsed.ok) {
-    return badRequestResponse(parsed.error);
+  const data = parsedBodyOrResponse(parsed);
+  if (data instanceof Response) {
+    return data;
   }
 
-  const url = parsed.data.url;
+  const url = data.url;
   const result = parseJobUrlResultSchema.parse(await parseJobUrl(url));
   const host = hostFromUrl(url);
 
@@ -35,4 +30,4 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(result);
-}
+});

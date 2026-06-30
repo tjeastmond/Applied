@@ -1,5 +1,5 @@
 import { importModeSchema } from "@/lib/schemas/backup";
-import { requireAppAccess } from "@/lib/server/appAuth";
+import { withAppAccess } from "@/lib/server/appAuth";
 import { getDatabaseBackend, resetDatabaseBackend } from "@/lib/server/db";
 import { logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
@@ -20,12 +20,7 @@ function detectFormat(filename: string, content: string): "sql" | "json" | null 
   return null;
 }
 
-export async function POST(request: Request) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
-  }
-
+export const POST = withAppAccess(async (request: Request) => {
   let formData: FormData;
   try {
     formData = await request.formData();
@@ -95,4 +90,4 @@ export async function POST(request: Request) {
       method: "POST",
     });
   }
-}
+});

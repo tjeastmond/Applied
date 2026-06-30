@@ -1,4 +1,4 @@
-import { createClient, type Client, type InStatement, type InValue, type Row } from "@tursodatabase/serverless/compat";
+import { createClient, type Client, type InStatement, type Row } from "@tursodatabase/serverless/compat";
 import { applicationStatusSchema } from "@/lib/schemas/common";
 import type { BackupJson, ImportMode } from "@/lib/schemas/backup";
 import type { ApplicationNote, JobApplication, ParsedCreateJobApplicationInput } from "@/types";
@@ -47,41 +47,7 @@ import {
 } from "./applicationNoteRepositoryShared";
 import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
 import { TursoAgentApiTokenRepository } from "./tursoAgentApiTokenRepository";
-
-type NamedArgs = Record<string, InValue>;
-
-function rowValue(row: Row, column: string): InValue | undefined {
-  return row[column];
-}
-
-function requiredString(row: Row, column: string): string {
-  const value = rowValue(row, column);
-  if (value === null || value === undefined) {
-    throw new Error(`Missing required database column: ${column}`);
-  }
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "bigint" || typeof value === "boolean") return String(value);
-  if (value instanceof Date) return value.toISOString();
-  throw new Error(`Unsupported value for database column: ${column}`);
-}
-
-function nullableString(row: Row, column: string): string | null {
-  const value = rowValue(row, column);
-  if (value === null || value === undefined) return null;
-  return requiredString(row, column);
-}
-
-function requiredNumber(row: Row, column: string): number {
-  const value = rowValue(row, column);
-  if (typeof value === "number") return value;
-  if (typeof value === "bigint") return Number(value);
-  if (typeof value === "boolean") return value ? 1 : 0;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    if (!Number.isNaN(parsed)) return parsed;
-  }
-  throw new Error(`Unsupported numeric value for database column: ${column}`);
-}
+import { nullableString, requiredNumber, requiredString, tursoFirstRow, tursoRows } from "./tursoRowHelpers";
 
 function applicationStatus(row: Row): JobApplication["status"] {
   const parsed = applicationStatusSchema.safeParse(requiredString(row, "status"));
@@ -131,23 +97,15 @@ function tursoRowToNote(row: Row): ApplicationNote {
   return rowToNote(rowToNoteRow(row));
 }
 
-async function rows(client: Client, sql: string, args?: InValue[] | NamedArgs): Promise<Row[]> {
-  const result = args === undefined ? await client.execute(sql) : await client.execute({ sql, args });
-  return result.rows;
-}
-
-async function firstRow(client: Client, sql: string, args?: InValue[] | NamedArgs): Promise<Row | null> {
-  const result = await rows(client, sql, args);
-  return result[0] ?? null;
-}
-
 async function tableExists(client: Client, table: string): Promise<boolean> {
-  const row = await firstRow(client, `SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?`, [table]);
+  const row = await tursoFirstRow(client, `SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?`, [
+    table,
+  ]);
   return row !== null;
 }
 
 async function columnExists(client: Client, column: string): Promise<boolean> {
-  const result = await rows(client, "PRAGMA table_info(applications)");
+  const result = await tursoRows(client, "PRAGMA table_info(applications)");
   return result.some((row) => nullableString(row, "name") === column);
 }
 
@@ -155,7 +113,7 @@ async function agentApiTokenColumnExists(client: Client, column: string): Promis
   if (!(await tableExists(client, "agent_api_tokens"))) {
     return false;
   }
-  const result = await rows(client, "PRAGMA table_info(agent_api_tokens)");
+  const result = await tursoRows(client, "PRAGMA table_info(agent_api_tokens)");
   return result.some((row) => nullableString(row, "name") === column);
 }
 
@@ -164,7 +122,7 @@ async function migrateLegacyApplicationNotes(client: Client): Promise<void> {
     return;
   }
 
-  const apps = await rows(
+  const apps = await tursoRows(
     client,
     `SELECT id, notes, updated_at FROM applications WHERE notes IS NOT NULL AND trim(notes) <> ''`,
   );
@@ -172,7 +130,7 @@ async function migrateLegacyApplicationNotes(client: Client): Promise<void> {
 
   for (const app of apps) {
     const applicationId = requiredString(app, "id");
-    const existing = await firstRow(
+    const existing = await tursoFirstRow(
       client,
       `SELECT 1 AS found FROM application_notes WHERE application_id = ? LIMIT 1`,
       [applicationId],
@@ -225,7 +183,7 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
 
   async list(): Promise<JobApplication[]> {
     await this.ready;
-    return (await rows(this.client, LIST_APPLICATIONS_SQL)).map(tursoRowToApplication);
+    return (await tursoRows(this.client, LIST_APPLICATIONS_SQL)).map(tursoRowToApplication);
   }
 
   async listByIds(ids: string[]): Promise<JobApplication[]> {
@@ -237,7 +195,7 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
     const uniqueIds = [...new Set(ids)];
     const placeholders = uniqueIds.map(() => "?").join(", ");
     const sql = LIST_APPLICATIONS_SQL.replace("FROM applications", `FROM applications WHERE id IN (${placeholders})`);
-    const applications = (await rows(this.client, sql, uniqueIds)).map(tursoRowToApplication);
+    const applications = (await tursoRows(this.client, sql, uniqueIds)).map(tursoRowToApplication);
     const applicationsById = new Map(applications.map((application) => [application.id, application]));
 
     return uniqueIds.flatMap((id) => {
@@ -248,7 +206,7 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
 
   async getById(id: string): Promise<JobApplication | null> {
     await this.ready;
-    const row = await firstRow(this.client, GET_APPLICATION_BY_ID_SQL, [id]);
+    const row = await tursoFirstRow(this.client, GET_APPLICATION_BY_ID_SQL, [id]);
     return row ? tursoRowToApplication(row) : null;
   }
 
@@ -270,7 +228,7 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
 
   async update(id: string, input: Partial<ParsedCreateJobApplicationInput>): Promise<JobApplication | null> {
     await this.ready;
-    const existingRow = await firstRow(this.client, GET_APPLICATION_BY_ID_SQL, [id]);
+    const existingRow = await tursoFirstRow(this.client, GET_APPLICATION_BY_ID_SQL, [id]);
     if (!existingRow) {
       return null;
     }
@@ -320,12 +278,12 @@ class TursoApplicationNoteRepository implements ApplicationNoteRepository {
 
   async listAll(): Promise<ApplicationNote[]> {
     await this.ready;
-    return (await rows(this.client, LIST_ALL_NOTES_SQL)).map(tursoRowToNote);
+    return (await tursoRows(this.client, LIST_ALL_NOTES_SQL)).map(tursoRowToNote);
   }
 
   async listByApplicationId(applicationId: string): Promise<ApplicationNote[]> {
     await this.ready;
-    return (await rows(this.client, LIST_NOTES_BY_APPLICATION_SQL, [applicationId])).map(tursoRowToNote);
+    return (await tursoRows(this.client, LIST_NOTES_BY_APPLICATION_SQL, [applicationId])).map(tursoRowToNote);
   }
 
   async create(applicationId: string, content: string): Promise<ApplicationNote> {
@@ -351,7 +309,7 @@ class TursoApplicationNoteRepository implements ApplicationNoteRepository {
       return null;
     }
 
-    const row = await firstRow(this.client, GET_NOTE_FOR_APPLICATION_SQL, [noteId, applicationId]);
+    const row = await tursoFirstRow(this.client, GET_NOTE_FOR_APPLICATION_SQL, [noteId, applicationId]);
     return row ? tursoRowToNote(row) : null;
   }
 

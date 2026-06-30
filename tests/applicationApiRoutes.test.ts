@@ -7,7 +7,7 @@ import { DELETE as deleteNote, PATCH as patchNote } from "@/app/api/applications
 import { PATCH as patchApplication } from "@/app/api/applications/[id]/route";
 import { POST as bulkArchiveApplicationsRoute } from "@/app/api/applications/bulk-archive/route";
 import { POST as bulkFetchApplicationsRoute } from "@/app/api/applications/bulk/route";
-import { authorizedAppRequest, restoreAppAccessToken, withTestAppAccessToken } from "./testAppAuth";
+import { authorizedAppRequest, emptyRouteContext, restoreAppAccessToken, withTestAppAccessToken } from "./testAppAuth";
 
 const missingApplicationId = "00000000-0000-4000-a000-000000000099";
 const originalAppAccessToken = process.env.APP_ACCESS_TOKEN;
@@ -196,6 +196,7 @@ describe("application API routes", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       }),
+      emptyRouteContext,
     );
     expect(allResponse.status).toBe(200);
     const allBody = (await allResponse.json()) as { applications: { id: string }[] };
@@ -207,6 +208,7 @@ describe("application API routes", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: [second.id] }),
       }),
+      emptyRouteContext,
     );
     expect(subsetResponse.status).toBe(200);
     const subsetBody = (await subsetResponse.json()) as { applications: { id: string }[] };
@@ -230,6 +232,7 @@ describe("application API routes", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: [] }),
       }),
+      emptyRouteContext,
     );
 
     expect(response.status).toBe(200);
@@ -313,6 +316,7 @@ describe("application API routes", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       }),
+      emptyRouteContext,
     );
 
     expect(response.status).toBe(200);
@@ -331,6 +335,7 @@ describe("application API routes", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ statuses: ["applied"] }),
       }),
+      emptyRouteContext,
     );
 
     expect(response.status).toBe(400);

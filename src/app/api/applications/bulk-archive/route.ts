@@ -1,26 +1,22 @@
 import { ARCHIVABLE_STATUSES, isArchivableStatusList } from "@/lib/archivableStatuses";
-import { requireAppAccess } from "@/lib/server/appAuth";
+import { withAppAccess } from "@/lib/server/appAuth";
 import { badRequestResponse } from "@/lib/server/applicationRouteHelpers";
 import { getRepository } from "@/lib/server/db";
 import { log } from "@/lib/server/logging/logger";
-import { parseRequestBody } from "@/lib/server/parseRequestBody";
+import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { bulkArchiveApplicationsSchema } from "@/lib/schemas/application";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
-  }
-
+export const POST = withAppAccess(async (request: Request) => {
   const parsed = await parseRequestBody(request, bulkArchiveApplicationsSchema);
-  if (!parsed.ok) {
-    return badRequestResponse(parsed.error);
+  const data = parsedBodyOrResponse(parsed);
+  if (data instanceof Response) {
+    return data;
   }
 
-  const statuses = parsed.data.statuses ?? [...ARCHIVABLE_STATUSES];
+  const statuses = data.statuses ?? [...ARCHIVABLE_STATUSES];
   if (!isArchivableStatusList(statuses)) {
     return badRequestResponse("Only rejected and passed statuses can be bulk archived");
   }
@@ -37,4 +33,4 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(result);
-}
+});

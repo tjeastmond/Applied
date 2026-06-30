@@ -1,7 +1,8 @@
 import { log } from "@/lib/server/logging/logger";
 import type { LogContext } from "@/lib/server/logging/types";
-import { getRepository } from "@/lib/server/db";
+import { getAgentApiTokenRepository, getRepository } from "@/lib/server/db";
 import { parseUuid } from "@/lib/schemas/common";
+import type { AgentApiTokenRepository } from "@/lib/server/repositories/agentApiTokenRepository";
 import { NextResponse } from "next/server";
 
 export type ApplicationIdRouteContext = { params: Promise<{ id: string }> };
@@ -36,4 +37,38 @@ export async function requireApplicationId(rawId: string): Promise<string | null
   }
   const application = await getRepository().getById(id);
   return application ? id : null;
+}
+
+export async function requireApplicationRouteContext(
+  context: ApplicationIdRouteContext,
+): Promise<{ id: string } | Response> {
+  const { id: rawId } = await context.params;
+  const id = await requireApplicationId(rawId);
+  if (!id) {
+    return applicationNotFoundResponse();
+  }
+  return { id };
+}
+
+export async function requireApplicationNoteRouteContext(
+  context: ApplicationNoteRouteContext,
+): Promise<{ applicationId: string; noteId: string } | Response> {
+  const { id: rawId, noteId: rawNoteId } = await context.params;
+  const noteId = parseUuid(rawNoteId);
+  if (!noteId) {
+    return noteNotFoundResponse();
+  }
+  const applicationId = await requireApplicationId(rawId);
+  if (!applicationId) {
+    return applicationNotFoundResponse();
+  }
+  return { applicationId, noteId };
+}
+
+export function requireAgentTokenRepository(): AgentApiTokenRepository | Response {
+  const repository = getAgentApiTokenRepository();
+  if (!repository) {
+    return jsonError("Agent token management is unavailable", 503);
+  }
+  return repository;
 }

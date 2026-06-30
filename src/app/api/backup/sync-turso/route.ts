@@ -1,5 +1,5 @@
 import { importModeSchema } from "@/lib/schemas/backup";
-import { requireAppAccess } from "@/lib/server/appAuth";
+import { withAppAccess } from "@/lib/server/appAuth";
 import { logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
 import { isTursoSyncAvailable, pushSqliteToTurso } from "@/lib/server/services/databaseTransferService";
@@ -7,12 +7,7 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
-  }
-
+export const POST = withAppAccess(async (request: Request) => {
   if (!isTursoSyncAvailable()) {
     return NextResponse.json(
       { error: "Turso sync is only available in local development with SQLite and Turso credentials configured" },
@@ -60,4 +55,4 @@ export async function POST(request: Request) {
       method: "POST",
     });
   }
-}
+});

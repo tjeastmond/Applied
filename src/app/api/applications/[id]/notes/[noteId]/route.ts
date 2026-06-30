@@ -1,44 +1,32 @@
-import { parseUuid } from "@/lib/schemas/common";
-import { requireAppAccess } from "@/lib/server/appAuth";
+import { withAppAccess } from "@/lib/server/appAuth";
 import { getNoteRepository } from "@/lib/server/db";
 import { touchApplicationUpdatedAt } from "@/lib/server/touchApplicationUpdatedAt";
 import {
-  applicationNotFoundResponse,
-  badRequestResponse,
   type ApplicationNoteRouteContext,
   noteNotFoundResponse,
-  requireApplicationId,
+  requireApplicationNoteRouteContext,
 } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
-import { parseRequestBody } from "@/lib/server/parseRequestBody";
+import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { createApplicationNoteSchema } from "@/lib/schemas/note";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function PATCH(request: Request, context: ApplicationNoteRouteContext) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
+export const PATCH = withAppAccess<ApplicationNoteRouteContext>(async (request: Request, context) => {
+  const routeContext = await requireApplicationNoteRouteContext(context);
+  if (routeContext instanceof Response) {
+    return routeContext;
   }
-
-  const { id: rawId, noteId: rawNoteId } = await context.params;
-  const noteId = parseUuid(rawNoteId);
-  if (!noteId) {
-    return noteNotFoundResponse();
-  }
-
-  const applicationId = await requireApplicationId(rawId);
-  if (!applicationId) {
-    return applicationNotFoundResponse();
-  }
+  const { applicationId, noteId } = routeContext;
 
   const parsed = await parseRequestBody(request, createApplicationNoteSchema);
-  if (!parsed.ok) {
-    return badRequestResponse(parsed.error);
+  const data = parsedBodyOrResponse(parsed);
+  if (data instanceof Response) {
+    return data;
   }
 
-  const note = await getNoteRepository().updateForApplication(applicationId, noteId, parsed.data.content);
+  const note = await getNoteRepository().updateForApplication(applicationId, noteId, data.content);
   if (!note) {
     return noteNotFoundResponse();
   }
@@ -53,24 +41,14 @@ export async function PATCH(request: Request, context: ApplicationNoteRouteConte
   });
 
   return NextResponse.json({ ...note, applicationUpdatedAt });
-}
+});
 
-export async function DELETE(request: Request, context: ApplicationNoteRouteContext) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
+export const DELETE = withAppAccess<ApplicationNoteRouteContext>(async (_request: Request, context) => {
+  const routeContext = await requireApplicationNoteRouteContext(context);
+  if (routeContext instanceof Response) {
+    return routeContext;
   }
-
-  const { id: rawId, noteId: rawNoteId } = await context.params;
-  const noteId = parseUuid(rawNoteId);
-  if (!noteId) {
-    return noteNotFoundResponse();
-  }
-
-  const applicationId = await requireApplicationId(rawId);
-  if (!applicationId) {
-    return applicationNotFoundResponse();
-  }
+  const { applicationId, noteId } = routeContext;
 
   const deleted = await getNoteRepository().deleteForApplication(applicationId, noteId);
   if (!deleted) {
@@ -87,4 +65,4 @@ export async function DELETE(request: Request, context: ApplicationNoteRouteCont
   });
 
   return new NextResponse(null, { status: 204 });
-}
+});

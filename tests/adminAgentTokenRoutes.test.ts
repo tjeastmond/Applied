@@ -7,7 +7,7 @@ import {
   DELETE as revokeAgentTokenRoute,
   PATCH as renameAgentTokenRoute,
 } from "@/app/api/admin/agent-tokens/[id]/route";
-import { authorizedAppRequest, restoreAppAccessToken, withTestAppAccessToken } from "./testAppAuth";
+import { authorizedAppRequest, emptyRouteContext, restoreAppAccessToken, withTestAppAccessToken } from "./testAppAuth";
 
 const originalAgentApiToken = process.env.AGENT_API_TOKEN;
 const originalAppAccessToken = process.env.APP_ACCESS_TOKEN;
@@ -30,7 +30,10 @@ describe("admin agent token routes", () => {
   });
 
   test("GET /api/admin/agent-tokens requires app access", async () => {
-    const response = await listAgentTokensRoute(new Request("http://localhost/api/admin/agent-tokens"));
+    const response = await listAgentTokensRoute(
+      new Request("http://localhost/api/admin/agent-tokens"),
+      emptyRouteContext,
+    );
     expect(response.status).toBe(401);
   });
 
@@ -40,6 +43,7 @@ describe("admin agent token routes", () => {
         method: "POST",
         body: JSON.stringify({ name: "CI Agent" }),
       }),
+      emptyRouteContext,
     );
 
     expect(createResponse.status).toBe(201);
@@ -50,7 +54,7 @@ describe("admin agent token routes", () => {
     expect(created.token.length).toBeGreaterThan(20);
     expect(created.record.name).toBe("CI Agent");
 
-    const listResponse = await listAgentTokensRoute(authorizedAppRequest("/api/admin/agent-tokens"));
+    const listResponse = await listAgentTokensRoute(authorizedAppRequest("/api/admin/agent-tokens"), emptyRouteContext);
     expect(listResponse.status).toBe(200);
     const listed = (await listResponse.json()) as {
       tokens: { id: string; name: string; tokenPrefix: string; createdAt: string; lastUsedAt: string | null }[];
@@ -73,7 +77,7 @@ describe("admin agent token routes", () => {
   test("GET reports env token status when AGENT_API_TOKEN is set", async () => {
     process.env.AGENT_API_TOKEN = "env-bootstrap-token";
 
-    const response = await listAgentTokensRoute(authorizedAppRequest("/api/admin/agent-tokens"));
+    const response = await listAgentTokensRoute(authorizedAppRequest("/api/admin/agent-tokens"), emptyRouteContext);
     expect(response.status).toBe(200);
     const body = (await response.json()) as { envTokenConfigured: boolean; envTokenRegistered: boolean };
     expect(body.envTokenConfigured).toBe(true);
@@ -88,6 +92,7 @@ describe("admin agent token routes", () => {
         method: "POST",
         body: JSON.stringify({ name: "Environment" }),
       }),
+      emptyRouteContext,
     );
 
     expect(response.status).toBe(201);
@@ -95,7 +100,7 @@ describe("admin agent token routes", () => {
     expect(body.record.name).toBe("Environment");
     expect(body.record.lastUsedAt).toBeNull();
 
-    const listResponse = await listAgentTokensRoute(authorizedAppRequest("/api/admin/agent-tokens"));
+    const listResponse = await listAgentTokensRoute(authorizedAppRequest("/api/admin/agent-tokens"), emptyRouteContext);
     const listed = (await listResponse.json()) as { envTokenRegistered: boolean; tokens: { name: string }[] };
     expect(listed.envTokenRegistered).toBe(true);
     expect(listed.tokens).toHaveLength(1);
@@ -107,6 +112,7 @@ describe("admin agent token routes", () => {
         method: "POST",
         body: JSON.stringify({ name: "Environment" }),
       }),
+      emptyRouteContext,
     );
 
     expect(response.status).toBe(400);
@@ -120,6 +126,7 @@ describe("admin agent token routes", () => {
         method: "POST",
         body: JSON.stringify({ name: "Environment" }),
       }),
+      emptyRouteContext,
     );
     expect(first.status).toBe(201);
 
@@ -128,6 +135,7 @@ describe("admin agent token routes", () => {
         method: "POST",
         body: JSON.stringify({ name: "Environment Again" }),
       }),
+      emptyRouteContext,
     );
     expect(second.status).toBe(409);
   });
@@ -143,6 +151,7 @@ describe("admin agent token routes", () => {
         method: "POST",
         body: JSON.stringify({ name: "Third" }),
       }),
+      emptyRouteContext,
     );
 
     expect(response.status).toBe(409);
@@ -160,6 +169,7 @@ describe("admin agent token routes", () => {
         method: "POST",
         body: JSON.stringify({ name: "Environment" }),
       }),
+      emptyRouteContext,
     );
 
     expect(response.status).toBe(409);

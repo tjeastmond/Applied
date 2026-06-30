@@ -1,35 +1,31 @@
 import { importAgentTokenFromEnvSchema } from "@/lib/schemas/agentToken";
-import { badRequestResponse, jsonError, logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
-import { requireAppAccess } from "@/lib/server/appAuth";
+import { jsonError, logAndRespondFromUnknown, requireAgentTokenRepository } from "@/lib/server/applicationRouteHelpers";
+import { withAppAccess } from "@/lib/server/appAuth";
 import { isAgentEnvTokenConfigured } from "@/lib/server/agentEnvToken";
 import { agentTokenLimitResponse } from "@/lib/server/agentTokenLimit";
-import { getAgentApiTokenRepository } from "@/lib/server/db";
 import { log } from "@/lib/server/logging/logger";
-import { parseRequestBody } from "@/lib/server/parseRequestBody";
+import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
-  }
-
+export const POST = withAppAccess(async (request: Request) => {
   const envToken = process.env.AGENT_API_TOKEN?.trim();
   if (!isAgentEnvTokenConfigured() || !envToken) {
     return jsonError("AGENT_API_TOKEN is not configured", 400);
   }
 
   const parsed = await parseRequestBody(request, importAgentTokenFromEnvSchema);
-  if (!parsed.ok) {
-    return badRequestResponse(parsed.error);
+  const data = parsedBodyOrResponse(parsed);
+  if (data instanceof Response) {
+    return data;
   }
 
-  const repository = getAgentApiTokenRepository();
-  if (!repository) {
-    return jsonError("Agent token management is unavailable", 503);
+  const repositoryOrResponse = requireAgentTokenRepository();
+  if (repositoryOrResponse instanceof Response) {
+    return repositoryOrResponse;
   }
+  const repository = repositoryOrResponse;
 
   try {
     const alreadyRegistered = await Promise.resolve(repository.hasActiveTokenWithHash(envToken));
@@ -42,7 +38,7 @@ export async function POST(request: Request) {
       return limitError;
     }
 
-    const imported = await Promise.resolve(repository.importFromRawToken(parsed.data.name, envToken));
+    const imported = await Promise.resolve(repository.importFromRawToken(data.name, envToken));
     log.info("agent token imported from env", {
       route: "/api/admin/agent-tokens/from-env",
       method: "POST",
@@ -56,4 +52,4 @@ export async function POST(request: Request) {
       method: "POST",
     });
   }
-}
+});

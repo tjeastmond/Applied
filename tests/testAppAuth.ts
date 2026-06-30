@@ -22,4 +22,6 @@ export function authorizedAppRequest(path: string, init: RequestInit = {}): Requ
   });
 }
 
+export const emptyRouteContext = { params: Promise.resolve({}) };
+
 export { TEST_APP_ACCESS_TOKEN };

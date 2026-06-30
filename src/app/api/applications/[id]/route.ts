@@ -1,35 +1,31 @@
 import { statusUpdateNoteContent } from "@/lib/applicationStatus";
-import { requireAppAccess } from "@/lib/server/appAuth";
+import { withAppAccess } from "@/lib/server/appAuth";
 import { getNoteRepository, getRepository } from "@/lib/server/db";
 import {
   applicationNotFoundResponse,
   badRequestResponse,
   type ApplicationIdRouteContext,
-  requireApplicationId,
+  requireApplicationRouteContext,
 } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
-import { parseRequestBody } from "@/lib/server/parseRequestBody";
+import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
 import { patchJobApplicationSchema } from "@/lib/schemas/application";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function PATCH(request: Request, context: ApplicationIdRouteContext) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
+export const PATCH = withAppAccess<ApplicationIdRouteContext>(async (request: Request, context) => {
+  const routeContext = await requireApplicationRouteContext(context);
+  if (routeContext instanceof Response) {
+    return routeContext;
   }
-
-  const { id: rawId } = await context.params;
-  const id = await requireApplicationId(rawId);
-  if (!id) {
-    return applicationNotFoundResponse();
-  }
+  const { id } = routeContext;
 
   const parsed = await parseRequestBody(request, patchJobApplicationSchema);
-  if (!parsed.ok) {
-    return badRequestResponse(parsed.error);
+  const data = parsedBodyOrResponse(parsed);
+  if (data instanceof Response) {
+    return data;
   }
 
   const repository = getRepository();
@@ -38,12 +34,12 @@ export async function PATCH(request: Request, context: ApplicationIdRouteContext
     return applicationNotFoundResponse();
   }
 
-  const effectiveViaRecruiter = parsed.data.viaRecruiter ?? existing.viaRecruiter;
-  if (!effectiveViaRecruiter && (parsed.data.recruiterName != null || parsed.data.recruiterFirm != null)) {
+  const effectiveViaRecruiter = data.viaRecruiter ?? existing.viaRecruiter;
+  if (!effectiveViaRecruiter && (data.recruiterName != null || data.recruiterFirm != null)) {
     return badRequestResponse("recruiter fields require viaRecruiter: true");
   }
 
-  const sanitized = sanitizeApplicationInput(parsed.data);
+  const sanitized = sanitizeApplicationInput(data);
   const statusChanging = sanitized.status !== undefined && sanitized.status !== existing.status;
 
   const updated = await repository.update(id, sanitized);
@@ -65,19 +61,14 @@ export async function PATCH(request: Request, context: ApplicationIdRouteContext
   });
 
   return NextResponse.json(updated);
-}
+});
 
-export async function DELETE(request: Request, context: ApplicationIdRouteContext) {
-  const authError = await requireAppAccess(request);
-  if (authError) {
-    return authError;
+export const DELETE = withAppAccess<ApplicationIdRouteContext>(async (_request: Request, context) => {
+  const routeContext = await requireApplicationRouteContext(context);
+  if (routeContext instanceof Response) {
+    return routeContext;
   }
-
-  const { id: rawId } = await context.params;
-  const id = await requireApplicationId(rawId);
-  if (!id) {
-    return applicationNotFoundResponse();
-  }
+  const { id } = routeContext;
 
   const deleted = await getRepository().delete(id);
   if (!deleted) {
@@ -91,4 +82,4 @@ export async function DELETE(request: Request, context: ApplicationIdRouteContex
   });
 
   return new NextResponse(null, { status: 204 });
-}
+});

@@ -1,21 +1,11 @@
+import { bearerTokenFromRequest } from "@/lib/server/bearerAuth";
+
 export const APP_SESSION_COOKIE = "applied-session";
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 export function getAppAccessToken(): string | undefined {
   const token = process.env.APP_ACCESS_TOKEN?.trim();
   return token && token.length > 0 ? token : undefined;
-}
-
-export function bearerTokenFromRequest(request: Request): string | null {
-  const header = request.headers.get("authorization");
-  if (!header) return null;
-
-  const [scheme, token] = header.split(" ");
-  if (scheme?.toLowerCase() !== "bearer" || !token || header.split(" ").length !== 2) {
-    return null;
-  }
-
-  return token;
 }
 
 function constantTimeEqual(left: string, right: string): boolean {
