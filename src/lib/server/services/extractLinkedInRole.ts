@@ -19,11 +19,24 @@ function isJobPosting(record: object): boolean {
   return false;
 }
 
-export function parseLinkedInTitleLikeText(text: string): LinkedInRole | null {
-  const match = text.trim().match(/^(.+?) hiring (.+?) \| .+ \| LinkedIn$/i);
-  if (!match?.[1] || !match?.[2]) return null;
+const LINKEDIN_TITLE_PATTERNS = [
+  // Company hiring Title | Location | LinkedIn
+  /^(.+?) hiring (.+?) \| .+ \| LinkedIn$/i,
+  // Company hiring Title in Location | LinkedIn
+  /^(.+?) hiring (.+?) in .+ \| LinkedIn$/i,
+] as const;
 
-  return { company: match[1].trim(), title: match[2].trim() };
+export function parseLinkedInTitleLikeText(text: string): LinkedInRole | null {
+  const trimmed = text.trim();
+
+  for (const pattern of LINKEDIN_TITLE_PATTERNS) {
+    const match = trimmed.match(pattern);
+    if (match?.[1] && match?.[2]) {
+      return { company: match[1].trim(), title: match[2].trim() };
+    }
+  }
+
+  return null;
 }
 
 function extractFromJsonLd(document: Document): LinkedInRole | null {

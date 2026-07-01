@@ -36,6 +36,17 @@ describe("parseLinkedInTitleLikeText", () => {
     });
   });
 
+  it("parses Company hiring Title in Location | LinkedIn format", () => {
+    expect(
+      parseLinkedInTitleLikeText(
+        "Gambit Technologies hiring Senior Node.js Engineer (Remote) in United States | LinkedIn",
+      ),
+    ).toEqual({
+      company: "Gambit Technologies",
+      title: "Senior Node.js Engineer (Remote)",
+    });
+  });
+
   it("parses titles with complex punctuation", () => {
     expect(
       parseLinkedInTitleLikeText("Acme Corp hiring Senior SWE - Platform/API (L5) | San Francisco, CA | LinkedIn"),
