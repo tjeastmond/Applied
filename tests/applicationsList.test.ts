@@ -3,7 +3,7 @@ import { removeApplication, sortApplications, upsertApplication } from "../src/l
 import { makeJobApplication } from "./fixtures/jobApplication";
 
 describe("applicationsList", () => {
-  it("sorts by updatedAt then createdAt descending", () => {
+  it("sorts pinned applications first, then by updatedAt and createdAt descending", () => {
     const sorted = sortApplications([
       makeJobApplication({
         id: "a",
@@ -13,9 +13,10 @@ describe("applicationsList", () => {
       }),
       makeJobApplication({
         id: "b",
+        pinned: true,
         appliedAt: "2026-06-02",
         createdAt: "2026-06-01T09:00:00.000Z",
-        updatedAt: "2026-06-03T09:00:00.000Z",
+        updatedAt: "2026-06-01T09:00:00.000Z",
       }),
       makeJobApplication({
         id: "c",
@@ -23,9 +24,16 @@ describe("applicationsList", () => {
         createdAt: "2026-06-01T11:00:00.000Z",
         updatedAt: "2026-06-03T09:00:00.000Z",
       }),
+      makeJobApplication({
+        id: "d",
+        pinned: true,
+        appliedAt: "2026-06-02",
+        createdAt: "2026-06-01T08:00:00.000Z",
+        updatedAt: "2026-06-03T10:00:00.000Z",
+      }),
     ]);
 
-    expect(sorted.map((item) => item.id)).toEqual(["c", "b", "a"]);
+    expect(sorted.map((item) => item.id)).toEqual(["d", "b", "c", "a"]);
   });
 
   it("upserts and removes applications", () => {

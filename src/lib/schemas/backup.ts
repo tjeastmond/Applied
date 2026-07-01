@@ -22,6 +22,7 @@ const backupApplicationSchema = z
     fullJd: z.string().nullable(),
     status: applicationStatusSchema,
     archived: z.boolean().optional(),
+    pinned: z.boolean().optional(),
     createdAt: z.string().min(1),
     updatedAt: z.string().min(1),
   })
@@ -30,6 +31,7 @@ const backupApplicationSchema = z
     salaryRange: application.salaryRange ?? null,
     desiredSalary: application.desiredSalary ?? null,
     archived: application.archived ?? false,
+    pinned: application.pinned ?? false,
   }));
 
 const backupNoteSchema = z.strictObject({

@@ -99,6 +99,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
       full_jd: updated.full_jd,
       status: updated.status,
       archived: updated.archived,
+      pinned: updated.pinned,
       updated_at: updated.updated_at,
     });
 

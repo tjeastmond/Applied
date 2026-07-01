@@ -1,19 +1,22 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, type MouseEvent } from "react";
 import { ApplicationMetadataLine } from "@/components/ApplicationMetadataLine";
 import { ApplicationStatusPicker } from "@/components/ApplicationStatusPicker";
+import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/applicationForm";
 import { applicationCardPropsEqual } from "@/lib/applicationCardEquality";
 import { cn } from "@/lib/utils";
 import type { ApplicationStatus, JobApplication } from "@/types";
+import { PinIcon } from "lucide-react";
 
 type ApplicationCardProps = {
   application: JobApplication;
   onOpen: (id: string) => void;
   onPrefetchNotes: (id: string) => void;
   onStatusChange: (id: string, status: ApplicationStatus) => void;
+  onPinChange: (id: string, pinned: boolean) => void;
 };
 
 export const ApplicationCard = memo(function ApplicationCard({
@@ -21,6 +24,7 @@ export const ApplicationCard = memo(function ApplicationCard({
   onOpen,
   onPrefetchNotes,
   onStatusChange,
+  onPinChange,
 }: ApplicationCardProps) {
   const { id } = application;
   const title = application.title || application.url;
@@ -32,6 +36,13 @@ export const ApplicationCard = memo(function ApplicationCard({
   const handleStatusChange = useCallback(
     (status: ApplicationStatus) => onStatusChange(id, status),
     [id, onStatusChange],
+  );
+  const handlePinToggle = useCallback(
+    (event: MouseEvent) => {
+      event.stopPropagation();
+      onPinChange(id, !application.pinned);
+    },
+    [application.pinned, id, onPinChange],
   );
 
   return (
@@ -66,11 +77,26 @@ export const ApplicationCard = memo(function ApplicationCard({
             stopPropagation
           />
         </div>
-        <ApplicationStatusPicker
-          className="pointer-events-auto"
-          status={application.status}
-          onStatusChange={handleStatusChange}
-        />
+        <div className="pointer-events-auto flex shrink-0 items-start gap-1">
+          {!application.archived ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className={cn(
+                "text-muted-foreground hover:text-foreground",
+                application.pinned &&
+                  "text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300",
+              )}
+              aria-label={application.pinned ? "Unpin application" : "Pin application"}
+              title={application.pinned ? "Unpin" : "Pin"}
+              onClick={handlePinToggle}
+            >
+              <PinIcon className={cn(application.pinned && "fill-current")} />
+            </Button>
+          ) : null}
+          <ApplicationStatusPicker status={application.status} onStatusChange={handleStatusChange} />
+        </div>
       </CardHeader>
     </Card>
   );

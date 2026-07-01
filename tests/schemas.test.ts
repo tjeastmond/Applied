@@ -178,6 +178,14 @@ describe("patchJobApplicationSchema", () => {
 
     expect(parsed.archived).toBe(true);
   });
+
+  it("accepts pinned boolean patches", () => {
+    const parsed = patchJobApplicationSchema.parse({
+      pinned: true,
+    });
+
+    expect(parsed.pinned).toBe(true);
+  });
 });
 
 describe("parseJobUrlRequestSchema", () => {

@@ -108,6 +108,7 @@ const optionalApplicationFieldsSchema = {
   fullJd: optionalFullJdSchema,
   status: applicationStatusSchema.optional(),
   archived: z.boolean().optional(),
+  pinned: z.boolean().optional(),
 } as const;
 
 const jobApplicationSchema = requiredApplicationFieldsSchema.extend(optionalApplicationFieldsSchema);

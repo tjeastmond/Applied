@@ -286,8 +286,60 @@ describe("application API routes", () => {
     );
 
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { archived: boolean };
+    const body = (await response.json()) as { archived: boolean; pinned: boolean };
     expect(body.archived).toBe(true);
+    expect(body.pinned).toBe(false);
+  });
+
+  test("PATCH toggles pinned field", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/pin",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+      }),
+    );
+
+    const response = await patchApplication(
+      authorizedAppRequest("/api/applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pinned: true }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { pinned: boolean };
+    expect(body.pinned).toBe(true);
+  });
+
+  test("PATCH archive clears pinned field", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/pinned-archive",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+        status: "rejected",
+        pinned: true,
+      }),
+    );
+
+    const response = await patchApplication(
+      authorizedAppRequest("/api/applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: true }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { archived: boolean; pinned: boolean };
+    expect(body.archived).toBe(true);
+    expect(body.pinned).toBe(false);
   });
 
   test("bulk archive archives rejected and passed applications", async () => {
@@ -298,6 +350,7 @@ describe("application API routes", () => {
         company: "Acme",
         appliedAt: "2026-06-01",
         status: "rejected",
+        pinned: true,
       }),
     );
     await getRepository().create(
@@ -322,10 +375,12 @@ describe("application API routes", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
       archivedCount: number;
-      applications: { id: string; archived: boolean }[];
+      applications: { id: string; archived: boolean; pinned: boolean }[];
     };
     expect(body.archivedCount).toBe(1);
-    expect(body.applications.find((item) => item.id === rejected.id)?.archived).toBe(true);
+    const archived = body.applications.find((item) => item.id === rejected.id);
+    expect(archived?.archived).toBe(true);
+    expect(archived?.pinned).toBe(false);
   });
 
   test("bulk archive rejects non-archivable statuses", async () => {

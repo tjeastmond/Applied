@@ -75,6 +75,7 @@ function rowToApplicationRow(row: Row): ApplicationRow {
     full_jd: nullableString(row, "full_jd"),
     status: applicationStatus(row),
     archived: requiredNumber(row, "archived"),
+    pinned: requiredNumber(row, "pinned"),
     created_at: requiredString(row, "created_at"),
     updated_at: requiredString(row, "updated_at"),
   };
@@ -166,6 +167,10 @@ async function migrateTurso(client: Client): Promise<void> {
 
   if (!(await columnExists(client, "archived"))) {
     await client.execute(`ALTER TABLE applications ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`);
+  }
+
+  if (!(await columnExists(client, "pinned"))) {
+    await client.execute(`ALTER TABLE applications ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`);
   }
 
   await migrateLegacyApplicationNotes(client);

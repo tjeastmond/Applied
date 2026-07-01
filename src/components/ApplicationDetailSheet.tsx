@@ -89,6 +89,7 @@ export function ApplicationDetailSheet({
   const [unsavedCloseDialogOpen, setUnsavedCloseDialogOpen] = useState(false);
   const [isSavingBeforeClose, setIsSavingBeforeClose] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isPinning, setIsPinning] = useState(false);
   const [noteSortOrder, setNoteSortOrder] = useState<NoteSortOrder>(DEFAULT_NOTE_SORT_ORDER);
 
   const applicationId = application?.id ?? null;
@@ -386,6 +387,25 @@ export function ApplicationDetailSheet({
       );
     } finally {
       setIsArchiving(false);
+    }
+  }
+
+  async function togglePin() {
+    if (!applicationId || !applicationRef.current) return;
+
+    const nextPinned = !applicationRef.current.pinned;
+    setIsPinning(true);
+    try {
+      const updated = await updateApplication(applicationId, { pinned: nextPinned });
+      onApplicationChange(updated);
+      syncFormFromSavedApplication(updated);
+      toast.success(nextPinned ? toastMessages.applicationPinned : toastMessages.applicationUnpinned);
+    } catch (error) {
+      toast.error(
+        errorMessage(error, nextPinned ? toastMessages.applicationPinFailed : toastMessages.applicationUnpinFailed),
+      );
+    } finally {
+      setIsPinning(false);
     }
   }
 
@@ -706,6 +726,16 @@ export function ApplicationDetailSheet({
               >
                 Delete
               </Button>
+              {application && !application.archived ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!applicationId || isPinning}
+                  onClick={() => void togglePin()}
+                >
+                  {isPinning ? "Saving…" : application.pinned ? "Unpin" : "Pin"}
+                </Button>
+              ) : null}
               {application ? (
                 <Button
                   type="button"

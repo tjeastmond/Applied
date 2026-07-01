@@ -28,6 +28,7 @@ export interface JobApplication extends ApplicationSalaryFields {
   fullJd: string | null;
   status: ApplicationStatus;
   archived: boolean;
+  pinned: boolean;
   createdAt: string;
   updatedAt: string;
 }

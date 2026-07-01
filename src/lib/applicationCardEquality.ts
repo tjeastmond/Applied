@@ -15,6 +15,7 @@ export function applicationCardPropsEqual(
     a.appliedAt === b.appliedAt &&
     a.linkedinUrl === b.linkedinUrl &&
     a.url === b.url &&
+    a.pinned === b.pinned &&
     a.updatedAt === b.updatedAt
   );
 }

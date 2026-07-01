@@ -18,6 +18,7 @@ export function makeJobApplication(overrides: Partial<JobApplication> & Pick<Job
     fullJd: overrides.fullJd ?? null,
     status: overrides.status ?? "applied",
     archived: overrides.archived ?? false,
+    pinned: overrides.pinned ?? false,
     createdAt: overrides.createdAt ?? "2026-06-01T10:00:00.000Z",
     updatedAt: overrides.updatedAt ?? "2026-06-01T10:00:00.000Z",
   };

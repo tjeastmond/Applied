@@ -387,6 +387,41 @@ export function AuthenticatedApp({
     [updateApplicationStatus],
   );
 
+  const handlePinChange = useCallback((id: string, pinned: boolean) => {
+    void (async () => {
+      let previousApplication: JobApplication | undefined;
+
+      setApplications((prev) => {
+        const application = prev.find((item) => item.id === id);
+        if (!application || application.pinned === pinned) return prev;
+        previousApplication = application;
+        return upsertApplication(prev, { ...application, pinned });
+      });
+
+      if (!previousApplication) return;
+
+      const snapshot = previousApplication;
+
+      try {
+        const updated = await updateApplication(id, { pinned });
+        setApplications((prev) => {
+          const current = prev.find((item) => item.id === id);
+          if (!current || current.pinned !== pinned) return prev;
+          return upsertApplication(prev, updated);
+        });
+      } catch (error) {
+        setApplications((prev) => {
+          const current = prev.find((item) => item.id === id);
+          if (!current || current.pinned !== pinned) return prev;
+          return upsertApplication(prev, snapshot);
+        });
+        toast.error(
+          errorMessage(error, pinned ? toastMessages.applicationPinFailed : toastMessages.applicationUnpinFailed),
+        );
+      }
+    })();
+  }, []);
+
   const handleDeleteDialogOpenChange = useCallback(
     (open: boolean) => {
       if (!open && !isDeleting) {
@@ -668,6 +703,7 @@ export function AuthenticatedApp({
                   onOpen={handleOpenApplication}
                   onPrefetchNotes={handlePrefetchNotes}
                   onStatusChange={handleStatusChange}
+                  onPinChange={handlePinChange}
                 />
               ))}
               <ApplicationCardPagination

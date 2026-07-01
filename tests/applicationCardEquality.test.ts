@@ -39,4 +39,11 @@ describe("applicationCardPropsEqual", () => {
       applicationCardPropsEqual({ application: base }, { application: makeJobApplication({ id: "a", title: "Lead" }) }),
     ).toBe(false);
   });
+
+  it("detects pinned changes", () => {
+    const base = makeJobApplication({ id: "a", title: "Engineer" });
+    expect(
+      applicationCardPropsEqual({ application: base }, { application: makeJobApplication({ id: "a", pinned: true }) }),
+    ).toBe(false);
+  });
 });
