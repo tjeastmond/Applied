@@ -47,8 +47,9 @@ import {
   type NoteSortOrder,
 } from "@/lib/noteSort";
 import { toastMessages } from "@/lib/toastMessages";
+import { cn } from "@/lib/utils";
 import type { ApplicationNote, ApplicationStatus, JobApplication } from "@/types";
-import { ChevronDownIcon, CopyIcon, ExternalLinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { BookmarkIcon, ChevronDownIcon, CopyIcon, ExternalLinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 export function ApplicationDetailSheet({
@@ -731,9 +732,14 @@ export function ApplicationDetailSheet({
                   type="button"
                   variant="outline"
                   disabled={!applicationId || isPinning}
+                  className={cn(
+                    application.pinned &&
+                      "border-red-200 bg-red-500/10 text-red-500 hover:border-red-200 hover:bg-red-500/20 hover:text-red-600 dark:border-red-800 dark:bg-red-500/15 dark:text-red-400/90 dark:hover:border-red-700 dark:hover:bg-red-500/25 dark:hover:text-red-300",
+                  )}
                   onClick={() => void togglePin()}
                 >
-                  {isPinning ? "Saving…" : application.pinned ? "Unpin" : "Pin"}
+                  <BookmarkIcon className={cn("size-4", application.pinned && "fill-current")} />
+                  {isPinning ? "Saving…" : application.pinned ? "Remove Bookmark" : "Bookmark"}
                 </Button>
               ) : null}
               {application ? (

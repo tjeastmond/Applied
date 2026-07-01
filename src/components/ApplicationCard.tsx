@@ -9,7 +9,7 @@ import { formatDate } from "@/lib/applicationForm";
 import { applicationCardPropsEqual } from "@/lib/applicationCardEquality";
 import { cn } from "@/lib/utils";
 import type { ApplicationStatus, JobApplication } from "@/types";
-import { PinIcon } from "lucide-react";
+import { BookmarkIcon } from "lucide-react";
 
 type ApplicationCardProps = {
   application: JobApplication;
@@ -68,33 +68,36 @@ export const ApplicationCard = memo(function ApplicationCard({
       <CardHeader className="pointer-events-none relative z-10 flex flex-row items-start justify-between gap-3 space-y-0 py-4">
         <div className="min-w-0 flex-1 space-y-1 text-left">
           <CardTitle className="text-base">{title}</CardTitle>
-          <ApplicationMetadataLine
-            variant="card"
-            company={application.company}
-            appliedLabel={appliedLabel}
-            linkedinUrl={application.linkedinUrl}
-            postingUrl={postingUrl}
-            stopPropagation
-          />
+          <div className="flex items-center gap-1">
+            {!application.archived ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className={cn(
+                  "pointer-events-auto -ml-1 shrink-0",
+                  "text-muted-foreground hover:text-foreground",
+                  application.pinned && "text-[#b3cde0] hover:bg-[#b3cde0]/20 hover:text-[#b3cde0]",
+                )}
+                aria-label={application.pinned ? "Remove bookmark" : "Bookmark application"}
+                title={application.pinned ? "Remove Bookmark" : "Bookmark"}
+                onClick={handlePinToggle}
+              >
+                <BookmarkIcon className={cn(application.pinned && "fill-current")} />
+              </Button>
+            ) : null}
+            <ApplicationMetadataLine
+              variant="card"
+              company={application.company}
+              appliedLabel={appliedLabel}
+              linkedinUrl={application.linkedinUrl}
+              postingUrl={postingUrl}
+              stopPropagation
+              className="min-w-0 flex-1"
+            />
+          </div>
         </div>
-        <div className="pointer-events-auto flex shrink-0 items-start gap-1">
-          {!application.archived ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className={cn(
-                "text-muted-foreground hover:text-foreground",
-                application.pinned &&
-                  "text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300",
-              )}
-              aria-label={application.pinned ? "Unpin application" : "Pin application"}
-              title={application.pinned ? "Unpin" : "Pin"}
-              onClick={handlePinToggle}
-            >
-              <PinIcon className={cn(application.pinned && "fill-current")} />
-            </Button>
-          ) : null}
+        <div className="pointer-events-auto shrink-0">
           <ApplicationStatusPicker status={application.status} onStatusChange={handleStatusChange} />
         </div>
       </CardHeader>

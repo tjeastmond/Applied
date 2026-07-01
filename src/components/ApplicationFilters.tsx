@@ -82,7 +82,7 @@ export const ApplicationFilters = memo(function ApplicationFilters({
               "active:translate-y-0",
               !hasActiveFilters && "[&_svg]:text-muted-foreground disabled:opacity-100",
               hasActiveFilters &&
-                "border-border bg-destructive/20 hover:border-border hover:bg-destructive/25 dark:border-input dark:hover:border-input text-white hover:text-white [&_svg]:text-white",
+                "border-border bg-destructive/45 hover:border-border hover:bg-destructive/55 dark:border-input dark:bg-destructive/50 dark:hover:border-input dark:hover:bg-destructive/60 text-white hover:text-white [&_svg]:text-white",
             )}
             onClick={onClearFilters}
             aria-label="Clear filters"
