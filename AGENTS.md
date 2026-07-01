@@ -26,8 +26,8 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 
 ```bash
 pnpm install         # install dependencies
-pnpm dev             # Next.js dev server with Turbopack (port 3030 from .env.local)
-pnpm dev:clean       # wipe .next and start dev (if HMR/CSS breaks)
+pnpm dev             # Next.js dev server (port 3030 from .env.local; preserves .next for HMR)
+pnpm dev:clean       # recovery only: wipe .next and restart dev (if HMR/CSS breaks)
 pnpm logs:tail       # tail local server logs (data/logs/current.log)
 pnpm run check       # typecheck + tests + lint + format + build (full CI gate)
 ```
@@ -68,7 +68,7 @@ Local defaults live in `.env.local`; copy from `.env.example` when bootstrapping
 | ------------ | ----------------------------------------------------------------------------- |
 | Runtime      | Node.js                                                                       |
 | Package mgr  | pnpm                                                                          |
-| Framework    | Next.js 15 (App Router)                                                       |
+| Framework    | Next.js 16 (App Router)                                                       |
 | Frontend     | React 19, TypeScript (strict)                                                 |
 | Styling      | Tailwind CSS 4, Shadcn UI (`base-nova` style), Roboto Mono (self-hosted)      |
 | Icons        | Lucide React                                                                  |
@@ -144,7 +144,8 @@ applied.dev/
 │   │           └── extractFullJd.ts
 │   └── components/ui/              # Shadcn components (do not lint)
 ├── scripts/
-│   ├── dev-clean.sh                # pnpm dev entry (wipe .next, start Turbopack)
+│   ├── dev.sh                      # pnpm dev entry (normal start, no .next wipe)
+│   ├── dev-clean.sh                # pnpm dev:clean (wipe .next, restart dev)
 │   ├── ensure-log-file.ts          # init log dir/symlink for logs:tail
 │   └── logs-tail.sh                # pnpm logs:tail entry
 ├── tests/                          # Vitest (*.test.ts)
@@ -452,7 +453,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 |           | Development                                                  | Production                                                                  |
 | --------- | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| Server    | `pnpm dev` (Next.js HMR)                                     | `pnpm run build` + `pnpm start`                                             |
+| Server    | `pnpm dev` (Next.js HMR; dev cache in `.next/dev`)           | `pnpm run build` + `pnpm start`                                             |
 | API       | Same Next.js process                                         | Same Next.js process                                                        |
 | API calls | Same-origin `/api`                                           | Same-origin `/api`                                                          |
 | Database  | `DATABASE_PROVIDER=sqlite` with `data/applied.db` by default | Local file SQLite for self-hosted Node; `DATABASE_PROVIDER=turso` on Vercel |
@@ -470,7 +471,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 
 - Applied.dev is a single-page job application tracker; `AppPage` wraps `LoginGate` (blocks dashboard until authenticated; local dev `LoginPanel` dev-quick click-to-login persists app access token in `app_access_config`) and `AuthenticatedApp` (main list UI: header/tab title `APPLIED.`; clickable logo `resetToHome` clears filters, exits archived view, and resets page; header archive icon toggles active/archived view persisted as `applied-dev-view-mode`; archived view auto-selects rejected/passed status filters; clear filters also returns to active view; `ThemeToggle`, header `LogOut`, icon-only `AdminDialog` for backup/export, bulk archive, Copy All URLs, and agent token management); server-hydrated initial data via `loadInitialPageData()` in `page.tsx` — applications, notes, and `salaryRange`/`desiredSalary`; `force-dynamic`; page size from cookie for SSR, synced from `localStorage`; `ApplicationFilters` for company/status/search plus Include Archived toggle (`applied-dev-include-archived`) via `filterApplications` (search includes salary fields); card pagination via `ApplicationCardPagination`/`applicationPagination`; list footer with `hello@swoo.io` and MIT License link to GitHub; notes seeded in `useApplicationNotesCache` from server hydration; clipboard-only URL prefill on new-application open with parse filling `salaryRange` when found)
 - Stack: Next.js App Router, Node.js, pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI, self-hosted Roboto Mono
-- `pnpm dev` runs `scripts/dev-clean.sh` (wipes `.next`, reads `PORT` from `.env.local`, then starts Turbopack on port 3030 by default); personal-bin CLI `scripts/applied` (`applied start|stop|restart|status|logs`) manages the dev server in the background
+- `pnpm dev` runs `scripts/dev.sh` (reads `PORT` from `.env.local`, starts dev on port 3030 by default without wiping `.next`); `pnpm dev:clean` runs `scripts/dev-clean.sh` for recovery when the cache is corrupted; Next 16 isolates dev output in `.next/dev` so `pnpm run check` (which runs `next build`) is safe while dev is running; personal-bin CLI `scripts/applied` (`applied start|stop|restart|status|logs`) manages the dev server in the background
 - Required application form fields: job posting URL, title, company, apply date; optional `salaryRange` (parsed from postings) and `desiredSalary` (form-only); parsed job postings store cleaned minimal HTML in `full_jd`; user notes live in `application_notes` (many per application)
 - Database persistence is selected by `DATABASE_PROVIDER`: local SQLite via better-sqlite3 (`data/applied.db` by default) or Turso Cloud via `@tursodatabase/serverless`; runtime uses exactly one provider per process; API request bodies are validated with Zod and sanitized before persistence
 - Job URL parse uses `extractJobCompany`, `extractParaformRole`, and `extractLinkedInRole`: Y Combinator, Ashby, and Paraform are job boards, not employers; Paraform title/company from JSON-LD, Next data, and og:title patterns; LinkedIn `/jobs/view/` URLs strip query params before fetch/store (canonical `/jobs/view/{id}/` path) and parse title/company from `"Company hiring Title | ..."` via `extractLinkedInRole` (not raw og:title/hostname); `normalizeJobTitle()` strips `| Y Combinator` and `| Simplify` suffixes on save only (Zod `titleSchema` + repository insert/update rows), not during URL parse or DB reads

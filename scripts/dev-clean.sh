@@ -29,4 +29,4 @@ while [ "$attempt" -le "$max_attempts" ]; do
   attempt=$((attempt + 1))
 done
 
-exec next dev --turbopack -p "${PORT:-$default_port}"
+exec next dev -p "${PORT:-$default_port}"
