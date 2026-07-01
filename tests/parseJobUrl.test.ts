@@ -125,6 +125,30 @@ describe("parseJobUrl", () => {
     expect(result.title).toBe("Founding Engineer | Y Combinator");
   });
 
+  it("extracts linkedin title and company from og:title and canonicalizes fetch URL", async () => {
+    const html = `<!doctype html><html><head>
+      <meta property="og:title" content="Crossing Hurdles hiring Software Engineer (Node.js/React) | Remote in United States | LinkedIn" />
+      <meta property="og:site_name" content="LinkedIn" />
+    </head><body></body></html>`;
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(html, {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await parseJobUrl(
+      "https://www.linkedin.com/jobs/view/4426925841/?alternateChannel=search&trackingId=abc",
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith("https://www.linkedin.com/jobs/view/4426925841/", expect.any(Object));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.title).toBe("Software Engineer (Node.js/React)");
+    expect(result.company).toBe("Crossing Hurdles");
+  });
+
   it("extracts salaryRange from Work at a Startup embedded job data", async () => {
     const html = `<!doctype html><html><head>
       <meta property="og:title" content="Software Engineer at MindFort | Y Combinator's Work at a Startup" />

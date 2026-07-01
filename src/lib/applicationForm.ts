@@ -1,4 +1,5 @@
 import { formatZodError } from "@/lib/formatZodError";
+import { canonicalizeLinkedInJobUrl } from "@/lib/linkedinJobUrl";
 import {
   createJobApplicationSchema,
   requiredApplicationFieldsSchema,
@@ -62,10 +63,17 @@ export function isProbablyHttpUrl(value: string): boolean {
 export function normalizePastedJobUrl(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
-  if (isProbablyHttpUrl(trimmed)) return trimmed;
 
-  const withScheme = `https://${trimmed.replace(/^\/+/, "")}`;
-  return isProbablyHttpUrl(withScheme) ? withScheme : null;
+  let normalized: string;
+  if (isProbablyHttpUrl(trimmed)) {
+    normalized = trimmed;
+  } else {
+    const withScheme = `https://${trimmed.replace(/^\/+/, "")}`;
+    if (!isProbablyHttpUrl(withScheme)) return null;
+    normalized = withScheme;
+  }
+
+  return canonicalizeLinkedInJobUrl(normalized);
 }
 
 /** Like {@link normalizePastedJobUrl}, but only when the clipboard text is a single URL (no extra lines or prose). */

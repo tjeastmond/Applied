@@ -11,6 +11,7 @@ import {
   safeFormToInput,
   type FormState,
 } from "@/lib/applicationForm";
+import { canonicalizeLinkedInJobUrl } from "@/lib/linkedinJobUrl";
 import { toastMessages } from "@/lib/toastMessages";
 import type { ParsedCreateJobApplicationInput } from "@/lib/schemas/application";
 import type { JobApplication } from "@/types";
@@ -56,23 +57,22 @@ export function useApplicationFormActions({
 
   const parse = useCallback(
     async (urlOverride?: string): Promise<boolean> => {
-      const url = (typeof urlOverride === "string" ? urlOverride : (form?.url ?? "")).trim();
+      const url = canonicalizeLinkedInJobUrl(
+        (typeof urlOverride === "string" ? urlOverride : (form?.url ?? "")).trim(),
+      );
       if (!url) return false;
       if (parseInFlightUrlRef.current === url) return false;
 
       const scopeId = form?.id;
       parseInFlightUrlRef.current = url;
       setIsParsing(true);
-      if (typeof urlOverride === "string") {
-        setForm((prev) => (prev ? { ...prev, url: url.trim() } : prev));
-      }
+      setForm((prev) => (prev ? { ...prev, url } : prev));
       try {
         const result = await parseJobUrl(url);
         if (result.ok) {
           setForm((prev) => {
             if (!prev || (scopeId !== undefined && prev.id !== scopeId)) return prev;
-            const base = typeof urlOverride === "string" ? { ...prev, url: urlOverride.trim() } : prev;
-            return mergeParseResult(base, result);
+            return mergeParseResult({ ...prev, url }, result);
           });
           toast.success(parseSuccessMessage);
           return true;

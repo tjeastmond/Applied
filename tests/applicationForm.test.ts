@@ -44,6 +44,12 @@ describe("normalizePastedJobUrl", () => {
   it("returns null for non-URL text", () => {
     expect(normalizePastedJobUrl("not a url")).toBeNull();
   });
+
+  it("strips query params from linkedin job view URLs", () => {
+    expect(
+      normalizePastedJobUrl("https://www.linkedin.com/jobs/view/4426925841/?alternateChannel=search&trackingId=abc"),
+    ).toBe("https://www.linkedin.com/jobs/view/4426925841/");
+  });
 });
 
 describe("normalizeClipboardOnlyJobUrl", () => {

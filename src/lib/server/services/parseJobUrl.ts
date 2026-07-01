@@ -1,5 +1,6 @@
 import { parseHTML } from "linkedom";
 import { errorMessage } from "@/lib/errorMessage";
+import { canonicalizeLinkedInJobUrl } from "@/lib/linkedinJobUrl";
 import { log } from "@/lib/server/logging/logger";
 import { hostFromUrl } from "@/lib/server/logging/sanitize";
 import { parseParsedApplicationSalaryFields } from "@/lib/schemas/application";
@@ -12,6 +13,7 @@ import {
 } from "@/lib/server/urlSafety";
 import { buildFullJd } from "./extractFullJd";
 import { extractJobCompany } from "./extractJobCompany";
+import { extractLinkedInRole, isLinkedInHost } from "./extractLinkedInRole";
 import { extractJobSalary } from "./extractJobSalary";
 import { extractParaformRole, isParaformHost } from "./extractParaformRole";
 
@@ -49,9 +51,11 @@ function hostnameToCompany(url: URL): string | null {
 }
 
 export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult> {
+  urlString = canonicalizeLinkedInJobUrl(urlString.trim());
+
   let url: URL;
   try {
-    url = new URL(urlString.trim());
+    url = new URL(urlString);
   } catch {
     return { ok: false, error: "Invalid URL" };
   }
@@ -115,20 +119,23 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
     const { document } = parseHTML(html);
 
     const paraformRole = isParaformHost(currentUrl.hostname) ? extractParaformRole(document) : null;
+    const linkedInRole = isLinkedInHost(currentUrl.hostname) ? extractLinkedInRole(document) : null;
 
-    const rawTitle =
+    const title =
+      linkedInRole?.title ??
       paraformRole?.title ??
       getMetaContent(document, "og:title") ??
       document.querySelector("title")?.textContent?.trim() ??
       document.querySelector("h1")?.textContent?.trim() ??
       null;
-    const title = rawTitle;
 
-    const company = extractJobCompany(currentUrl, document, {
-      siteName: getMetaContent(document, "og:site_name"),
-      applicationName: getMetaContent(document, "application-name"),
-      hostnameFallback: hostnameToCompany(currentUrl),
-    });
+    const company =
+      linkedInRole?.company ??
+      extractJobCompany(currentUrl, document, {
+        siteName: getMetaContent(document, "og:site_name"),
+        applicationName: getMetaContent(document, "application-name"),
+        hostnameFallback: hostnameToCompany(currentUrl),
+      });
 
     const metaDescription =
       getMetaContent(document, "og:description") ?? getMetaContent(document, "description") ?? null;
