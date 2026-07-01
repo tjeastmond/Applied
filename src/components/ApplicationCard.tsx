@@ -76,8 +76,7 @@ export const ApplicationCard = memo(function ApplicationCard({
                 size="icon-sm"
                 className={cn(
                   "pointer-events-auto -ml-1 shrink-0",
-                  "text-muted-foreground hover:text-foreground",
-                  application.pinned && "text-[#b3cde0] hover:bg-[#b3cde0]/20 hover:text-[#b3cde0]",
+                  "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
                 aria-label={application.pinned ? "Remove bookmark" : "Bookmark application"}
                 title={application.pinned ? "Remove Bookmark" : "Bookmark"}
