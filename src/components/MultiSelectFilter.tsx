@@ -30,6 +30,7 @@ export function MultiSelectFilter<T extends string>({
   formatSingleLabel,
   disabled = false,
   className,
+  contentClassName,
 }: {
   items: MultiSelectFilterItem<T>[];
   selected: Set<T>;
@@ -40,6 +41,7 @@ export function MultiSelectFilter<T extends string>({
   formatSingleLabel?: (value: T) => string;
   disabled?: boolean;
   className?: string;
+  contentClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const activeCount = selected.size;
@@ -78,7 +80,7 @@ export function MultiSelectFilter<T extends string>({
           </Button>
         }
       />
-      <DropdownMenuContent align="start">
+      <DropdownMenuContent align="start" className={contentClassName}>
         <DropdownMenuGroup>
           <DropdownMenuLabel>{groupLabel}</DropdownMenuLabel>
           {items.map((item) => (

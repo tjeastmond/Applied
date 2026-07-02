@@ -28,6 +28,7 @@ export const CompanyFilter = memo(function CompanyFilter({
       groupLabel="Company"
       disabled={disabled}
       className={className}
+      contentClassName="max-h-72"
     />
   );
 });
