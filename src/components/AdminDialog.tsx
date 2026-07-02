@@ -42,6 +42,7 @@ import {
   countArchivableApplications,
 } from "@/lib/applicationArchive";
 import { errorMessage } from "@/lib/errorMessage";
+import { isAdminOpenShortcut, isEditableKeyboardTarget } from "@/lib/keyboardShortcut";
 import { FILTER_CONTROL_HEIGHT_CLASS } from "@/lib/filterControls";
 import { toastMessages } from "@/lib/toastMessages";
 import { cn } from "@/lib/utils";
@@ -158,6 +159,18 @@ export function AdminDialog({
 
     void loadTokens({ showLoading: false });
   }, [loadTokens, open]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!isAdminOpenShortcut(event)) return;
+      if (isEditableKeyboardTarget(event.target)) return;
+      event.preventDefault();
+      setOpen(true);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   async function handleExport(format: "sql" | "json") {
     setExporting(true);

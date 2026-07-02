@@ -3,22 +3,48 @@ export function isMacPlatform(): boolean {
   return /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
 }
 
+function modKeyLabel(key: string): string {
+  return isMacPlatform() ? `⌘${key}` : `Ctrl+${key}`;
+}
+
+function modKeyDescription(key: string, action: string): string {
+  const modifier = isMacPlatform() ? "Command" : "Ctrl";
+  return `${modifier}+${key} ${action}`;
+}
+
+function hasNoModKeys(event: KeyboardEvent): boolean {
+  return !event.metaKey && !event.ctrlKey && !event.altKey;
+}
+
+function isUnmodifiedKey(event: KeyboardEvent, key: string, allowShift = false): boolean {
+  if (event.key !== key || !hasNoModKeys(event)) return false;
+  return allowShift || !event.shiftKey;
+}
+
 export function modKShortcutLabel(): string {
-  return isMacPlatform() ? "⌘K" : "Ctrl+K";
+  return modKeyLabel("K");
+}
+
+/** Lowercase key label for the keyboard shortcuts help panel only. */
+export function modKShortcutDisplayLabel(): string {
+  return modKeyLabel("k");
 }
 
 export function modKShortcutDescription(): string {
-  const modifier = isMacPlatform() ? "Command" : "Ctrl";
-  return `${modifier}+K opens the new application modal`;
+  return modKeyDescription("K", "opens the new application modal");
 }
 
 export function modSShortcutLabel(): string {
-  return isMacPlatform() ? "⌘S" : "Ctrl+S";
+  return modKeyLabel("S");
+}
+
+/** Lowercase key label for the keyboard shortcuts help panel only. */
+export function modSShortcutDisplayLabel(): string {
+  return modKeyLabel("s");
 }
 
 export function modSShortcutDescription(): string {
-  const modifier = isMacPlatform() ? "Command" : "Ctrl";
-  return `${modifier}+S saves application changes`;
+  return modKeyDescription("S", "saves application changes");
 }
 
 export function modEnterShortcutLabel(): string {
@@ -26,8 +52,7 @@ export function modEnterShortcutLabel(): string {
 }
 
 export function modEnterShortcutDescription(): string {
-  const modifier = isMacPlatform() ? "Command" : "Ctrl";
-  return `${modifier}+Enter adds the note`;
+  return modKeyDescription("Enter", "adds the note");
 }
 
 export function isModKeyChord(event: KeyboardEvent, key: string): boolean {
@@ -36,8 +61,15 @@ export function isModKeyChord(event: KeyboardEvent, key: string): boolean {
 }
 
 export function isSearchFocusSlash(event: KeyboardEvent): boolean {
-  if (event.key !== "/") return false;
-  return !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey;
+  return isUnmodifiedKey(event, "/");
+}
+
+export function isAdminOpenShortcut(event: KeyboardEvent): boolean {
+  return isUnmodifiedKey(event, "a");
+}
+
+export function isShortcutsHelpOpenShortcut(event: KeyboardEvent): boolean {
+  return isUnmodifiedKey(event, "?", true);
 }
 
 export function isEditableKeyboardTarget(target: EventTarget | null): boolean {
@@ -63,4 +95,57 @@ export function consumeDoubleEscape(
     return true;
   }
   return false;
+}
+
+export type KeyboardShortcutContext = "Global" | "Detail Drawer";
+
+export type KeyboardShortcutEntry = {
+  keys: string;
+  description: string;
+  context: KeyboardShortcutContext;
+};
+
+export function appKeyboardShortcuts(): KeyboardShortcutEntry[] {
+  return [
+    {
+      keys: modKShortcutDisplayLabel(),
+      description: modKShortcutDescription(),
+      context: "Global",
+    },
+    {
+      keys: "/",
+      description: "Focus search",
+      context: "Global",
+    },
+    {
+      keys: "Esc Esc",
+      description: "Clear filters",
+      context: "Global",
+    },
+    {
+      keys: "a",
+      description: "Open admin/settings",
+      context: "Global",
+    },
+    {
+      keys: "?",
+      description: "Open keyboard shortcuts",
+      context: "Global",
+    },
+    {
+      keys: modSShortcutDisplayLabel(),
+      description: modSShortcutDescription(),
+      context: "Detail Drawer",
+    },
+    {
+      keys: modEnterShortcutLabel(),
+      description: modEnterShortcutDescription(),
+      context: "Detail Drawer",
+    },
+    {
+      keys: "Esc",
+      description: "Cancel note edit",
+      context: "Detail Drawer",
+    },
+  ];
 }

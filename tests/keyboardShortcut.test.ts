@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  appKeyboardShortcuts,
   consumeDoubleEscape,
   DOUBLE_ESCAPE_INTERVAL_MS,
+  isAdminOpenShortcut,
   isModKeyChord,
   isSearchFocusSlash,
+  isShortcutsHelpOpenShortcut,
+  modKShortcutDisplayLabel,
+  modSShortcutDisplayLabel,
 } from "@/lib/keyboardShortcut";
 
 function keyEvent(init: Partial<KeyboardEvent> & { key: string }): KeyboardEvent {
@@ -35,6 +40,39 @@ describe("isModKeyChord", () => {
   });
 });
 
+describe("isAdminOpenShortcut", () => {
+  it("matches unmodified lowercase a", () => {
+    expect(isAdminOpenShortcut(keyEvent({ key: "a" }))).toBe(true);
+  });
+
+  it("ignores a with modifiers", () => {
+    expect(isAdminOpenShortcut(keyEvent({ key: "a", metaKey: true }))).toBe(false);
+    expect(isAdminOpenShortcut(keyEvent({ key: "a", ctrlKey: true }))).toBe(false);
+    expect(isAdminOpenShortcut(keyEvent({ key: "a", altKey: true }))).toBe(false);
+    expect(isAdminOpenShortcut(keyEvent({ key: "a", shiftKey: true }))).toBe(false);
+  });
+
+  it("ignores uppercase A and other keys", () => {
+    expect(isAdminOpenShortcut(keyEvent({ key: "A" }))).toBe(false);
+    expect(isAdminOpenShortcut(keyEvent({ key: "b" }))).toBe(false);
+  });
+});
+
+describe("isShortcutsHelpOpenShortcut", () => {
+  it("matches unmodified question mark", () => {
+    expect(isShortcutsHelpOpenShortcut(keyEvent({ key: "?", shiftKey: true }))).toBe(true);
+  });
+
+  it("ignores question mark with meta or ctrl", () => {
+    expect(isShortcutsHelpOpenShortcut(keyEvent({ key: "?", metaKey: true }))).toBe(false);
+    expect(isShortcutsHelpOpenShortcut(keyEvent({ key: "?", ctrlKey: true }))).toBe(false);
+  });
+
+  it("ignores other keys", () => {
+    expect(isShortcutsHelpOpenShortcut(keyEvent({ key: "/" }))).toBe(false);
+  });
+});
+
 describe("isSearchFocusSlash", () => {
   it("matches unmodified slash", () => {
     expect(isSearchFocusSlash(keyEvent({ key: "/" }))).toBe(true);
@@ -47,6 +85,31 @@ describe("isSearchFocusSlash", () => {
 
   it("ignores other keys", () => {
     expect(isSearchFocusSlash(keyEvent({ key: "?" }))).toBe(false);
+  });
+});
+
+describe("appKeyboardShortcuts", () => {
+  it("returns the full shortcut catalog", () => {
+    const shortcuts = appKeyboardShortcuts();
+    expect(shortcuts).toHaveLength(8);
+
+    const globalKeys = shortcuts.filter((entry) => entry.context === "Global").map((entry) => entry.keys);
+    expect(globalKeys).toContain(modKShortcutDisplayLabel());
+    expect(globalKeys).toContain("/");
+    expect(globalKeys).toContain("Esc Esc");
+    expect(globalKeys).toContain("a");
+    expect(globalKeys).toContain("?");
+
+    const detailKeys = shortcuts.filter((entry) => entry.context === "Detail Drawer").map((entry) => entry.keys);
+    expect(detailKeys).toHaveLength(3);
+    expect(detailKeys).toContain(modSShortcutDisplayLabel());
+    expect(detailKeys).toContain("Esc");
+  });
+
+  it("includes focus search and clear filters descriptions", () => {
+    const shortcuts = appKeyboardShortcuts();
+    expect(shortcuts.find((entry) => entry.keys === "/")?.description).toBe("Focus search");
+    expect(shortcuts.find((entry) => entry.keys === "Esc Esc")?.description).toBe("Clear filters");
   });
 });
 

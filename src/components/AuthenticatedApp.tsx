@@ -8,6 +8,7 @@ import { ApplicationDetailSheet } from "@/components/ApplicationDetailSheet";
 import { AdminDialog } from "@/components/AdminDialog";
 import { ApplicationCardPagination } from "@/components/ApplicationCardPagination";
 import { ApplicationFilters } from "@/components/ApplicationFilters";
+import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -737,6 +738,7 @@ export function AuthenticatedApp({
           )}
         </div>
       </section>
+      <KeyboardShortcutsHelp />
     </div>
   );
 }
