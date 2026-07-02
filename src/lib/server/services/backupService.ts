@@ -101,7 +101,7 @@ export function applicationToRow(application: BackupJson["applications"][number]
     full_jd: application.fullJd,
     status: application.status,
     archived: application.archived ? 1 : 0,
-    pinned: application.pinned ? 1 : 0,
+    pinned: application.archived ? 0 : application.pinned ? 1 : 0,
     created_at: application.createdAt,
     updated_at: application.updatedAt,
   };

@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { CLEAR_PINNED_ON_ARCHIVED_SQL } from "./applicationRepositoryShared";
 import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
 
 function columnExists(db: Database.Database, column: string): boolean {
@@ -63,6 +64,8 @@ export function migrate(db: Database.Database): void {
   if (!columnExists(db, "pinned")) {
     db.exec(`ALTER TABLE applications ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`);
   }
+
+  db.exec(CLEAR_PINNED_ON_ARCHIVED_SQL);
 
   migrateLegacyApplicationNotes(db);
 

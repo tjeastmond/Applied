@@ -342,6 +342,33 @@ describe("application API routes", () => {
     expect(body.pinned).toBe(false);
   });
 
+  test("PATCH rejects pin on archived application", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/archived-pin",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+        status: "rejected",
+        archived: true,
+      }),
+    );
+
+    const response = await patchApplication(
+      authorizedAppRequest("/api/applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pinned: true }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { archived: boolean; pinned: boolean };
+    expect(body.archived).toBe(true);
+    expect(body.pinned).toBe(false);
+  });
+
   test("bulk archive archives rejected and passed applications", async () => {
     const rejected = await getRepository().create(
       createJobApplicationSchema.parse({

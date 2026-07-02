@@ -178,6 +178,37 @@ describe("backupService", () => {
     expect(result.applications[0]?.archived).toBe(true);
   });
 
+  test("import clears pinned on archived applications", () => {
+    const exported = exportJson(openDatabase(":memory:"));
+    exported.applications.push({
+      id: crypto.randomUUID(),
+      url: "https://jobs.example.com/archived-pinned",
+      linkedinUrl: null,
+      title: "Archived",
+      company: "Acme",
+      appliedAt: "2026-06-01",
+      viaRecruiter: false,
+      recruiterName: null,
+      recruiterFirm: null,
+      contactEmail: null,
+      contactPhone: null,
+      salaryRange: null,
+      desiredSalary: null,
+      fullJd: null,
+      status: "rejected",
+      archived: true,
+      pinned: true,
+      createdAt: "2026-06-01T00:00:00.000Z",
+      updatedAt: "2026-06-01T00:00:00.000Z",
+    });
+
+    const freshDb = openDatabase(":memory:");
+    const result = importJson(freshDb, exported, "replace");
+
+    expect(result.applications[0]?.archived).toBe(true);
+    expect(result.applications[0]?.pinned).toBe(false);
+  });
+
   test("exports omit app access tokens", async () => {
     const db = openDatabase(":memory:");
     await seedSampleData(db);

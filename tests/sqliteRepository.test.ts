@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
+import { CLEAR_PINNED_ON_ARCHIVED_SQL } from "@/lib/server/db/applicationRepositoryShared";
 import { openDatabase } from "@/lib/server/db/migrate";
 import { SqliteJobApplicationRepository } from "@/lib/server/db/sqliteRepository";
 
@@ -199,5 +200,48 @@ describe("SqliteJobApplicationRepository", () => {
     expect(result.applications.find((item) => item.id === passed.id)?.archived).toBe(true);
     expect(result.applications.find((item) => item.id === rejected.id)?.archived).toBe(true);
     expect(result.applications.find((item) => item.id === active.id)?.archived).toBe(false);
+  });
+
+  test("update clears pinned when archiving and rejects pin on archived applications", async () => {
+    const db = openDatabase(":memory:");
+    const repository = new SqliteJobApplicationRepository(db);
+
+    const created = await repository.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/pinned",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "rejected",
+        pinned: true,
+      }),
+    );
+
+    expect(created.pinned).toBe(true);
+
+    const archived = await repository.update(created.id, { archived: true });
+    expect(archived?.archived).toBe(true);
+    expect(archived?.pinned).toBe(false);
+
+    const repinned = await repository.update(created.id, { pinned: true });
+    expect(repinned?.archived).toBe(true);
+    expect(repinned?.pinned).toBe(false);
+  });
+
+  test("migrate clears pinned on already-archived applications", () => {
+    const db = openDatabase(":memory:");
+    const id = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+
+    db.prepare(
+      `INSERT INTO applications (
+        id, url, title, company, applied_at, via_recruiter, status, archived, pinned, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, 0, 'rejected', 1, 1, ?, ?)`,
+    ).run(id, "https://jobs.example.com/stale-pin", "Engineer", "Acme", "2026-06-01", timestamp, timestamp);
+
+    db.exec(CLEAR_PINNED_ON_ARCHIVED_SQL);
+
+    const row = db.prepare(`SELECT pinned FROM applications WHERE id = ?`).get(id) as { pinned: number };
+    expect(row.pinned).toBe(0);
   });
 });

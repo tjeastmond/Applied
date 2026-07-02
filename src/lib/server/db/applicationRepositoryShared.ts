@@ -107,12 +107,15 @@ export function rowToApplication(row: ApplicationRow): JobApplication {
   };
 }
 
+export const CLEAR_PINNED_ON_ARCHIVED_SQL = "UPDATE applications SET pinned = 0 WHERE archived = 1 AND pinned = 1";
+
 export function buildApplicationInsertRow(
   input: ParsedCreateJobApplicationInput,
   id = crypto.randomUUID(),
   timestamp = nowIso(),
 ): ApplicationRow {
   const viaRecruiter = input.viaRecruiter ?? false;
+  const archived = input.archived ? 1 : 0;
 
   return {
     id,
@@ -130,8 +133,8 @@ export function buildApplicationInsertRow(
     desired_salary: trimOrNull(input.desiredSalary),
     full_jd: trimOrNull(input.fullJd),
     status: input.status ?? "applied",
-    archived: input.archived ? 1 : 0,
-    pinned: input.pinned ? 1 : 0,
+    archived,
+    pinned: archived === 1 ? 0 : input.pinned ? 1 : 0,
     created_at: timestamp,
     updated_at: timestamp,
   };
@@ -143,9 +146,9 @@ export function buildApplicationUpdateRow(
   timestamp = nowIso(),
 ): ApplicationRow {
   const viaRecruiter = input.viaRecruiter !== undefined ? input.viaRecruiter : existing.via_recruiter === 1;
-  const becomingArchived = input.archived === true;
   const archived = input.archived !== undefined ? (input.archived ? 1 : 0) : existing.archived;
-  const pinned = becomingArchived ? 0 : input.pinned !== undefined ? (input.pinned ? 1 : 0) : existing.pinned;
+  const requestedPinned = input.pinned !== undefined ? (input.pinned ? 1 : 0) : existing.pinned;
+  const pinned = archived === 1 ? 0 : requestedPinned;
 
   return {
     ...existing,

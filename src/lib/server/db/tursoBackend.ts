@@ -23,6 +23,7 @@ import {
   buildApplicationInsertRow,
   buildApplicationUpdateRow,
   buildBulkArchiveByStatusesSql,
+  CLEAR_PINNED_ON_ARCHIVED_SQL,
   DELETE_APPLICATION_SQL,
   GET_APPLICATION_BY_ID_SQL,
   INSERT_APPLICATION_SQL,
@@ -172,6 +173,8 @@ async function migrateTurso(client: Client): Promise<void> {
   if (!(await columnExists(client, "pinned"))) {
     await client.execute(`ALTER TABLE applications ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`);
   }
+
+  await client.execute(CLEAR_PINNED_ON_ARCHIVED_SQL);
 
   await migrateLegacyApplicationNotes(client);
 
