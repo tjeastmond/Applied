@@ -133,6 +133,16 @@ export function appKeyboardShortcuts(): KeyboardShortcutEntry[] {
       context: "Global",
     },
     {
+      keys: "↑ / ↓",
+      description: "Navigate application cards",
+      context: "Global",
+    },
+    {
+      keys: "Enter",
+      description: "Open selected application",
+      context: "Global",
+    },
+    {
       keys: modSShortcutDisplayLabel(),
       description: modSShortcutDescription(),
       context: "Detail Drawer",

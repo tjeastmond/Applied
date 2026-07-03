@@ -38,13 +38,18 @@ import {
   statusFiltersForViewMode,
   type ApplicationViewMode,
 } from "@/lib/applicationArchive";
+import { uniqueCompanyNames } from "@/lib/companyFilter";
 import {
   paginateItems,
   persistApplicationPageSize,
   readStoredApplicationPageSize,
   type ApplicationPageSize,
 } from "@/lib/applicationPagination";
-import { uniqueCompanyNames } from "@/lib/companyFilter";
+import {
+  canHandleApplicationCardNavigation,
+  cardNavigationKeyFromEvent,
+  resolveNextCardId,
+} from "@/lib/applicationCardNavigation";
 import { errorMessage } from "@/lib/errorMessage";
 import {
   consumeDoubleEscape,
@@ -83,8 +88,12 @@ export function AuthenticatedApp({
   const [formOpen, setFormOpen] = useState(false);
   const [applications, setApplications] = useState<JobApplication[]>(() => initialApplications);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [keyboardHighlightId, setKeyboardHighlightId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const detailClosingIdRef = useRef<string | null>(null);
+  const hoveredCardIdRef = useRef<string | null>(null);
+  const keyboardHighlightIdRef = useRef(keyboardHighlightId);
+  keyboardHighlightIdRef.current = keyboardHighlightId;
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -164,11 +173,12 @@ export function AuthenticatedApp({
     function onScroll() {
       const list = applicationsListRef.current;
       if (!list) return;
+      hoveredCardIdRef.current = null;
       list.dataset.scrollHoverLocked = "";
       clearTimeout(timeout);
       timeout = setTimeout(() => {
         const el = applicationsListRef.current;
-        if (el) delete el.dataset.scrollHoverLocked;
+        if (el && !keyboardHighlightIdRef.current) delete el.dataset.scrollHoverLocked;
       }, 150);
     }
 
@@ -338,7 +348,10 @@ export function AuthenticatedApp({
     if (closingId === null) return;
     detailClosingIdRef.current = null;
     setSelectedId((current) => (current === closingId ? null : current));
-  }, []);
+    if (visibleApplicationIds.includes(closingId)) {
+      setKeyboardHighlightId(closingId);
+    }
+  }, [visibleApplicationIds]);
 
   const requestDelete = useCallback((id: string) => {
     setPendingDeleteId(id);
@@ -458,6 +471,7 @@ export function AuthenticatedApp({
       clearNotesCacheAll();
       setCurrentPage(1);
       setSelectedId(null);
+      setKeyboardHighlightId(null);
       setDetailOpen(false);
       setFormOpen(false);
     },
@@ -525,6 +539,103 @@ export function AuthenticatedApp({
     setCurrentPage(1);
     applicationsListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  const handleCardMouseEnter = useCallback((id: string) => {
+    hoveredCardIdRef.current = id;
+    setKeyboardHighlightId(null);
+  }, []);
+
+  const handleCardMouseLeave = useCallback(() => {
+    hoveredCardIdRef.current = null;
+  }, []);
+
+  const scrollCardIntoView = useCallback((id: string) => {
+    const card = applicationsListRef.current?.querySelector<HTMLElement>(`[data-application-id="${id}"]`);
+    card?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    if (!keyboardHighlightId) return;
+    if (visibleApplicationIds.includes(keyboardHighlightId)) return;
+    setKeyboardHighlightId(null);
+  }, [keyboardHighlightId, visibleApplicationIds]);
+
+  useEffect(() => {
+    const list = applicationsListRef.current;
+    if (!list) return;
+    if (keyboardHighlightId) {
+      list.dataset.scrollHoverLocked = "";
+    } else {
+      delete list.dataset.scrollHoverLocked;
+    }
+  }, [keyboardHighlightId]);
+
+  useEffect(() => {
+    function onMouseMove() {
+      if (keyboardHighlightIdRef.current === null) return;
+      setKeyboardHighlightId(null);
+      hoveredCardIdRef.current = null;
+    }
+
+    window.addEventListener("mousemove", onMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", onMouseMove);
+  }, []);
+
+  useEffect(() => {
+    function onMouseDown(event: MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("[data-application-id]")) return;
+      hoveredCardIdRef.current = null;
+    }
+
+    window.addEventListener("mousedown", onMouseDown);
+    return () => window.removeEventListener("mousedown", onMouseDown);
+  }, []);
+
+  useEffect(() => {
+    if (visibleApplications.length === 0) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      const navKey = cardNavigationKeyFromEvent(event);
+      if (!navKey) return;
+
+      if (
+        !canHandleApplicationCardNavigation({
+          formOpen,
+          detailOpen,
+          pendingDeleteId,
+          visibleCardCount: visibleApplications.length,
+          target: event.target,
+        })
+      ) {
+        return;
+      }
+
+      if (navKey === "enter") {
+        const highlightId = keyboardHighlightIdRef.current;
+        if (!highlightId) return;
+        event.preventDefault();
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        handleOpenApplication(highlightId);
+        return;
+      }
+
+      event.preventDefault();
+      const currentId = keyboardHighlightIdRef.current;
+      const nextId = resolveNextCardId(visibleApplicationIds, currentId, navKey, hoveredCardIdRef.current);
+      if (!nextId || nextId === currentId) return;
+      const list = applicationsListRef.current;
+      if (list) list.dataset.scrollHoverLocked = "";
+      setKeyboardHighlightId(nextId);
+      scrollCardIntoView(nextId);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [detailOpen, formOpen, handleOpenApplication, pendingDeleteId, scrollCardIntoView, visibleApplicationIds]);
 
   useEffect(() => {
     if (!hasActiveFilters || applications.length === 0) return;
@@ -701,10 +812,13 @@ export function AuthenticatedApp({
                 <ApplicationCard
                   key={application.id}
                   application={application}
+                  keyboardHighlighted={keyboardHighlightId === application.id && !detailOpen}
                   onOpen={handleOpenApplication}
                   onPrefetchNotes={handlePrefetchNotes}
                   onStatusChange={handleStatusChange}
                   onPinChange={handlePinChange}
+                  onMouseEnterCard={handleCardMouseEnter}
+                  onMouseLeaveCard={handleCardMouseLeave}
                 />
               ))}
               <ApplicationCardPagination

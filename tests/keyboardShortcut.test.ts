@@ -91,7 +91,7 @@ describe("isSearchFocusSlash", () => {
 describe("appKeyboardShortcuts", () => {
   it("returns the full shortcut catalog", () => {
     const shortcuts = appKeyboardShortcuts();
-    expect(shortcuts).toHaveLength(8);
+    expect(shortcuts).toHaveLength(10);
 
     const globalKeys = shortcuts.filter((entry) => entry.context === "Global").map((entry) => entry.keys);
     expect(globalKeys).toContain(modKShortcutDisplayLabel());

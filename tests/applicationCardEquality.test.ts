@@ -40,6 +40,16 @@ describe("applicationCardPropsEqual", () => {
     ).toBe(false);
   });
 
+  it("detects keyboard highlight changes", () => {
+    const base = makeJobApplication({ id: "a", title: "Engineer" });
+    expect(
+      applicationCardPropsEqual(
+        { application: base, keyboardHighlighted: false },
+        { application: base, keyboardHighlighted: true },
+      ),
+    ).toBe(false);
+  });
+
   it("detects pinned changes", () => {
     const base = makeJobApplication({ id: "a", title: "Engineer" });
     expect(

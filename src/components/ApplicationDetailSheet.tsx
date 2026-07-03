@@ -102,6 +102,7 @@ export function ApplicationDetailSheet({
   const syncedUpdatedAtRef = useRef<string | null>(null);
   const syncedApplicationIdRef = useRef<string | null>(null);
   const manualSaveBaselineRef = useRef<JobApplication | null>(null);
+  const sheetContentRef = useRef<HTMLDivElement>(null);
 
   const updateManualSaveBaseline = useCallback((baseline: JobApplication | null) => {
     manualSaveBaselineRef.current = baseline;
@@ -512,6 +513,8 @@ export function ApplicationDetailSheet({
         }}
       >
         <SheetContent
+          ref={sheetContentRef}
+          initialFocus={sheetContentRef}
           side="right"
           className="border-border flex w-[60vw] max-w-[60vw] min-w-[60vw] flex-col gap-0 overflow-hidden border-l p-0 sm:max-w-[60vw]"
         >

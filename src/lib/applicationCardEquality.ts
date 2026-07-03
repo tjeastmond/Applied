@@ -2,8 +2,8 @@ import type { JobApplication } from "@/types";
 
 /** Fields shown on the list card — skip re-render when none of these change. */
 export function applicationCardPropsEqual(
-  prev: { application: JobApplication },
-  next: { application: JobApplication },
+  prev: { application: JobApplication; keyboardHighlighted?: boolean },
+  next: { application: JobApplication; keyboardHighlighted?: boolean },
 ): boolean {
   const a = prev.application;
   const b = next.application;
@@ -16,6 +16,7 @@ export function applicationCardPropsEqual(
     a.linkedinUrl === b.linkedinUrl &&
     a.url === b.url &&
     a.pinned === b.pinned &&
-    a.updatedAt === b.updatedAt
+    a.updatedAt === b.updatedAt &&
+    (prev.keyboardHighlighted ?? false) === (next.keyboardHighlighted ?? false)
   );
 }
