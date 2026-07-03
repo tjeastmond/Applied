@@ -738,7 +738,7 @@ export function AuthenticatedApp({
           )}
         </div>
       </section>
-      <KeyboardShortcutsHelp />
+      <KeyboardShortcutsHelp detailDrawerActive={detailOpen || selectedId !== null} />
     </div>
   );
 }

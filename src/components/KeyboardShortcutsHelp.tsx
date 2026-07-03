@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   appKeyboardShortcuts,
@@ -18,12 +18,35 @@ const SECTIONS: KeyboardShortcutContext[] = ["Global", "Detail Drawer"];
 
 const BUBBLE_FILL = "border-[#333333] bg-[#333333] text-white";
 
-export function KeyboardShortcutsHelp() {
+const POP_IN_DURATION_MS = 450;
+
+export function KeyboardShortcutsHelp({ detailDrawerActive = false }: { detailDrawerActive?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [popIn, setPopIn] = useState(false);
+  const detailDrawerActiveRef = useRef(detailDrawerActive);
   const shortcuts = appKeyboardShortcuts();
 
   useEffect(() => {
+    const wasActive = detailDrawerActiveRef.current;
+    detailDrawerActiveRef.current = detailDrawerActive;
+
+    if (detailDrawerActive) {
+      setOpen(false);
+      setPopIn(false);
+      return;
+    }
+
+    if (wasActive) {
+      setPopIn(true);
+      const timer = window.setTimeout(() => setPopIn(false), POP_IN_DURATION_MS);
+      return () => window.clearTimeout(timer);
+    }
+  }, [detailDrawerActive]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (detailDrawerActive) return;
+
       if (open && event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
@@ -39,7 +62,10 @@ export function KeyboardShortcutsHelp() {
 
     window.addEventListener("keydown", onKeyDown, { capture: true });
     return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
-  }, [open]);
+  }, [detailDrawerActive, open]);
+
+  const bubbleHidden = detailDrawerActive;
+  const bubbleEntering = popIn && !detailDrawerActive;
 
   return (
     <>
@@ -87,10 +113,18 @@ export function KeyboardShortcutsHelp() {
         variant="ghost"
         size="icon"
         className={cn(
-          "text-foreground fixed right-4 bottom-4 z-[60] h-10 w-10 rounded-full border bg-transparent p-0 shadow-none transition-colors",
+          "text-foreground fixed right-4 bottom-4 z-[60] h-10 w-10 rounded-full border bg-transparent p-0 shadow-none",
           "border-[#333333] hover:border-[#333333] hover:bg-[#333333] hover:text-white",
+          bubbleHidden &&
+            "pointer-events-none translate-y-2 scale-75 opacity-0 transition-[transform,opacity] duration-300 ease-out motion-reduce:scale-100 motion-reduce:transition-none",
+          bubbleEntering &&
+            "animate-in fade-in-0 zoom-in-50 slide-in-from-bottom-4 duration-[450ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:animate-none",
+          !bubbleHidden &&
+            !bubbleEntering &&
+            "transition-[transform,opacity,background-color,border-color,color] duration-300 ease-out motion-reduce:transition-none",
           open && BUBBLE_FILL,
         )}
+        aria-hidden={bubbleHidden}
         aria-label="Keyboard shortcuts"
         aria-expanded={open}
         title="Keyboard Shortcuts"
