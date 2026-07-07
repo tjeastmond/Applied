@@ -25,22 +25,12 @@ export function modKShortcutLabel(): string {
   return modKeyLabel("K");
 }
 
-/** Lowercase key label for the keyboard shortcuts help panel only. */
-export function modKShortcutDisplayLabel(): string {
-  return modKeyLabel("k");
-}
-
 export function modKShortcutDescription(): string {
   return modKeyDescription("K", "opens the new application modal");
 }
 
 export function modSShortcutLabel(): string {
   return modKeyLabel("S");
-}
-
-/** Lowercase key label for the keyboard shortcuts help panel only. */
-export function modSShortcutDisplayLabel(): string {
-  return modKeyLabel("s");
 }
 
 export function modSShortcutDescription(): string {
@@ -108,7 +98,7 @@ export type KeyboardShortcutEntry = {
 export function appKeyboardShortcuts(): KeyboardShortcutEntry[] {
   return [
     {
-      keys: modKShortcutDisplayLabel(),
+      keys: modKeyLabel("k"),
       description: modKShortcutDescription(),
       context: "Global",
     },
@@ -143,7 +133,7 @@ export function appKeyboardShortcuts(): KeyboardShortcutEntry[] {
       context: "Global",
     },
     {
-      keys: modSShortcutDisplayLabel(),
+      keys: modKeyLabel("s"),
       description: modSShortcutDescription(),
       context: "Detail Drawer",
     },

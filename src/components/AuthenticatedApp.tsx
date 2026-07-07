@@ -594,7 +594,7 @@ export function AuthenticatedApp({
   }, []);
 
   useEffect(() => {
-    if (visibleApplications.length === 0) return;
+    if (visibleApplicationIds.length === 0) return;
 
     function onKeyDown(event: KeyboardEvent) {
       const navKey = cardNavigationKeyFromEvent(event);
@@ -605,7 +605,7 @@ export function AuthenticatedApp({
           formOpen,
           detailOpen,
           pendingDeleteId,
-          visibleCardCount: visibleApplications.length,
+          visibleCardCount: visibleApplicationIds.length,
           target: event.target,
         })
       ) {

@@ -4,7 +4,6 @@ export type CardNavigationDirection = "up" | "down";
 
 export type CardNavigationKey = CardNavigationDirection | "enter";
 
-/** Index math for moving among visible cards (no wrap at edges). */
 export function stepCardIndex(currentIndex: number, direction: CardNavigationDirection, count: number): number {
   if (count <= 0) return -1;
   if (currentIndex === -1) {

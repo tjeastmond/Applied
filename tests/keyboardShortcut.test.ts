@@ -7,8 +7,8 @@ import {
   isModKeyChord,
   isSearchFocusSlash,
   isShortcutsHelpOpenShortcut,
-  modKShortcutDisplayLabel,
-  modSShortcutDisplayLabel,
+  modKShortcutDescription,
+  modSShortcutDescription,
 } from "@/lib/keyboardShortcut";
 
 function keyEvent(init: Partial<KeyboardEvent> & { key: string }): KeyboardEvent {
@@ -94,7 +94,7 @@ describe("appKeyboardShortcuts", () => {
     expect(shortcuts).toHaveLength(10);
 
     const globalKeys = shortcuts.filter((entry) => entry.context === "Global").map((entry) => entry.keys);
-    expect(globalKeys).toContain(modKShortcutDisplayLabel());
+    expect(shortcuts.find((entry) => entry.description === modKShortcutDescription())?.keys).toMatch(/^(⌘k|Ctrl\+k)$/);
     expect(globalKeys).toContain("/");
     expect(globalKeys).toContain("Esc Esc");
     expect(globalKeys).toContain("a");
@@ -102,7 +102,7 @@ describe("appKeyboardShortcuts", () => {
 
     const detailKeys = shortcuts.filter((entry) => entry.context === "Detail Drawer").map((entry) => entry.keys);
     expect(detailKeys).toHaveLength(3);
-    expect(detailKeys).toContain(modSShortcutDisplayLabel());
+    expect(shortcuts.find((entry) => entry.description === modSShortcutDescription())?.keys).toMatch(/^(⌘s|Ctrl\+s)$/);
     expect(detailKeys).toContain("Esc");
   });
 
