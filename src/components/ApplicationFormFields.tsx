@@ -180,6 +180,32 @@ export function ApplicationFormFields({
     </>
   );
 
+  const contactPhoneField = (
+    <Field>
+      <FieldLabel htmlFor="contactPhone">Contact Phone</FieldLabel>
+      <Input
+        id="contactPhone"
+        type="tel"
+        placeholder="555-123-4567"
+        value={form.contactPhone ?? ""}
+        onChange={(e) => updateField("contactPhone", e.target.value)}
+      />
+    </Field>
+  );
+
+  const contactEmailField = (
+    <Field>
+      <FieldLabel htmlFor="contactEmail">Contact Email</FieldLabel>
+      <Input
+        id="contactEmail"
+        type="email"
+        placeholder="name@company.com"
+        value={form.contactEmail ?? ""}
+        onChange={(e) => updateField("contactEmail", e.target.value)}
+      />
+    </Field>
+  );
+
   const contactFields = minimal ? null : (
     <>
       <Field>
@@ -203,29 +229,11 @@ export function ApplicationFormFields({
             onChange={(e) => updateField("recruiterName", e.target.value)}
           />
         </Field>
-        <Field>
-          <FieldLabel htmlFor="contactPhone">Contact Phone</FieldLabel>
-          <Input
-            id="contactPhone"
-            type="tel"
-            placeholder="555-123-4567"
-            value={form.contactPhone ?? ""}
-            onChange={(e) => updateField("contactPhone", e.target.value)}
-          />
-        </Field>
+        {detail ? contactEmailField : contactPhoneField}
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="contactEmail">Contact Email</FieldLabel>
-          <Input
-            id="contactEmail"
-            type="email"
-            placeholder="name@company.com"
-            value={form.contactEmail ?? ""}
-            onChange={(e) => updateField("contactEmail", e.target.value)}
-          />
-        </Field>
+        {detail ? contactPhoneField : contactEmailField}
         <Field>
           <FieldLabel htmlFor="recruiterFirm">Recruiter Firm</FieldLabel>
           <Input
