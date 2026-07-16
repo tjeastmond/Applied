@@ -3,6 +3,7 @@ export const APPLICATION_STATUSES = [
   "to_apply",
   "interviewing",
   "waiting",
+  "no_response",
   "rejected",
   "offer",
   "passed",
@@ -15,17 +16,13 @@ const STATUS_OPTIONS_BY_VALUE: { value: ApplicationStatus; label: string }[] = [
   { value: "to_apply", label: "To Apply" },
   { value: "interviewing", label: "Interviewing" },
   { value: "waiting", label: "Waiting" },
+  { value: "no_response", label: "No Response" },
   { value: "rejected", label: "Rejected" },
   { value: "offer", label: "Offer" },
   { value: "passed", label: "Passed" },
 ];
 
-export const APPLICATION_STATUS_OPTIONS = [
-  STATUS_OPTIONS_BY_VALUE.find((option) => option.value === "applied")!,
-  ...STATUS_OPTIONS_BY_VALUE.filter((option) => option.value !== "applied").sort((a, b) =>
-    a.label.localeCompare(b.label),
-  ),
-];
+export const APPLICATION_STATUS_OPTIONS = [...STATUS_OPTIONS_BY_VALUE].sort((a, b) => a.label.localeCompare(b.label));
 
 const STATUS_TAG_CLASSES: Record<ApplicationStatus, string> = {
   applied:
@@ -36,6 +33,8 @@ const STATUS_TAG_CLASSES: Record<ApplicationStatus, string> = {
     "border-blue-200 bg-blue-100 text-blue-800 aria-expanded:ring-blue-300/50 focus-visible:border-blue-300 focus-visible:ring-blue-300/40 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200",
   waiting:
     "border-amber-200 bg-amber-100 text-amber-900 aria-expanded:ring-amber-300/50 focus-visible:border-amber-300 focus-visible:ring-amber-300/40 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200",
+  no_response:
+    "border-stone-300 bg-stone-100 text-stone-800 aria-expanded:ring-stone-300/50 focus-visible:border-stone-300 focus-visible:ring-stone-300/40 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200",
   rejected:
     "border-red-200 bg-red-100 text-red-800 aria-expanded:ring-red-300/50 focus-visible:border-red-300 focus-visible:ring-red-300/40 dark:border-red-900 dark:bg-red-950 dark:text-red-200",
   offer:
@@ -49,6 +48,7 @@ const STATUS_DOT_CLASSES: Record<ApplicationStatus, string> = {
   to_apply: "bg-cyan-500",
   interviewing: "bg-blue-500",
   waiting: "bg-amber-500",
+  no_response: "bg-stone-500",
   rejected: "bg-red-500",
   offer: "bg-green-600",
   passed: "bg-violet-500",
