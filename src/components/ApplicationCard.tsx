@@ -19,6 +19,7 @@ type ApplicationCardProps = {
   onPrefetchNotes: (id: string) => void;
   onStatusChange: (id: string, status: ApplicationStatus) => void;
   onPinChange: (id: string, pinned: boolean) => void;
+  onCompanyFilter?: (company: string) => void;
   onMouseEnterCard?: (id: string) => void;
   onMouseLeaveCard?: () => void;
 };
@@ -30,6 +31,7 @@ export const ApplicationCard = memo(function ApplicationCard({
   onPrefetchNotes,
   onStatusChange,
   onPinChange,
+  onCompanyFilter,
   onMouseEnterCard,
   onMouseLeaveCard,
 }: ApplicationCardProps) {
@@ -107,6 +109,7 @@ export const ApplicationCard = memo(function ApplicationCard({
               linkedinUrl={application.linkedinUrl}
               postingUrl={postingUrl}
               stopPropagation
+              onCompanyClick={onCompanyFilter}
               className="min-w-0 flex-1"
             />
           </div>

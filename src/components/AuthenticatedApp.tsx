@@ -334,6 +334,12 @@ export function AuthenticatedApp({
     [prefetch],
   );
 
+  const handleCompanyFilter = useCallback((company: string) => {
+    const trimmed = company.trim();
+    if (!trimmed) return;
+    setSelectedCompanies(new Set([trimmed]));
+  }, []);
+
   const handleDetailOpenChange = useCallback((open: boolean) => {
     setDetailOpen(open);
     if (!open) {
@@ -817,6 +823,7 @@ export function AuthenticatedApp({
                   onPrefetchNotes={handlePrefetchNotes}
                   onStatusChange={handleStatusChange}
                   onPinChange={handlePinChange}
+                  onCompanyFilter={handleCompanyFilter}
                   onMouseEnterCard={handleCardMouseEnter}
                   onMouseLeaveCard={handleCardMouseLeave}
                 />
