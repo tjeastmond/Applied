@@ -113,7 +113,7 @@ export function useApplicationNotesCache(options?: UseApplicationNotesCacheOptio
   );
 
   const prefetchMany = useCallback(
-    (applicationIds: string[]) => {
+    (applicationIds: readonly string[]) => {
       const queue = applicationIds.filter((id) => entriesRef.current[id] === undefined);
       if (queue.length === 0) return;
 

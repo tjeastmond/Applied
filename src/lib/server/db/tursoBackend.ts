@@ -22,6 +22,7 @@ import {
 import {
   buildApplicationInsertRow,
   buildApplicationUpdateRow,
+  applicationRowToUpdateArgs,
   buildBulkArchiveByStatusesSql,
   CLEAR_PINNED_ON_ARCHIVED_SQL,
   DELETE_APPLICATION_SQL,
@@ -246,7 +247,7 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
 
     await this.client.execute({
       sql: UPDATE_APPLICATION_SQL,
-      args: updated,
+      args: applicationRowToUpdateArgs(updated),
     });
 
     return rowToApplication(updated);

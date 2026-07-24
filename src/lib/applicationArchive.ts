@@ -55,7 +55,7 @@ export function archiveViewToggleLabel(viewMode: ApplicationViewMode): string {
 }
 
 export function partitionApplicationsByView(
-  applications: JobApplication[],
+  applications: readonly JobApplication[],
   viewMode: ApplicationViewMode,
   includeArchived = false,
 ): JobApplication[] {

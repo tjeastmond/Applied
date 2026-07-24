@@ -1,17 +1,15 @@
 import { describe, expect, test } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { TursoDatabaseBackend } from "@/lib/server/db/tursoBackend";
+import { requireTursoTestConfig } from "./helpers/tursoTestConfig";
 
-const tursoTestUrl = process.env.TURSO_TEST_DATABASE_URL;
-const tursoTestAuthToken = process.env.TURSO_TEST_AUTH_TOKEN;
-const describeWithTurso = tursoTestUrl && tursoTestAuthToken ? describe : describe.skip;
-
-describeWithTurso("TursoDatabaseBackend", () => {
+describe("TursoDatabaseBackend", () => {
   test("matches core application and note repository behavior", async () => {
+    const tursoConfig = requireTursoTestConfig();
     const backend = new TursoDatabaseBackend({
       provider: "turso",
-      url: tursoTestUrl!,
-      authToken: tursoTestAuthToken!,
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
     });
 
     try {
@@ -49,10 +47,11 @@ describeWithTurso("TursoDatabaseBackend", () => {
   });
 
   test("agentApiTokens supports create, validate, and revoke", async () => {
+    const tursoConfig = requireTursoTestConfig();
     const backend = new TursoDatabaseBackend({
       provider: "turso",
-      url: tursoTestUrl!,
-      authToken: tursoTestAuthToken!,
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
     });
 
     try {

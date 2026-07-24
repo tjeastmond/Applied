@@ -9,7 +9,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["tests/**/*.test.ts"],
+    include: ["tests/**/*.spec.ts"],
+    setupFiles: ["tests/setup.ts"],
+    fileParallelism: false,
     pool: "forks",
   },
 });

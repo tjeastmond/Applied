@@ -180,6 +180,13 @@ export function buildApplicationUpdateRow(
   };
 }
 
+/** Named UPDATE args for libsql — excludes created_at, which is not in UPDATE_APPLICATION_SQL. */
+export function applicationRowToUpdateArgs(row: ApplicationRow): Omit<ApplicationRow, "created_at"> {
+  const { created_at, ...updateArgs } = row;
+  void created_at;
+  return updateArgs;
+}
+
 export function buildBulkArchiveByStatusesSql(statuses: readonly string[]): string {
   const placeholders = statuses.map(() => "?").join(", ");
   return `UPDATE applications SET archived = 1, pinned = 0, updated_at = ? WHERE archived = 0 AND status IN (${placeholders})`;

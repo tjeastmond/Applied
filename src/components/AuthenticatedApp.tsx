@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { deleteApplication, updateApplication } from "@/api";
 import { AddApplicationDialog } from "@/components/AddApplicationDialog";
 import { ApplicationCard } from "@/components/ApplicationCard";
@@ -23,33 +23,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useApplicationListView } from "@/hooks/useApplicationListView";
 import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
 import { removeApplication, sortApplications, upsertApplication } from "@/lib/applicationsList";
-import { filterApplications, hasActiveApplicationFilters } from "@/lib/applicationFilters";
-import {
-  applicationMatchesViewMode,
-  archiveViewToggleLabel,
-  nextViewMode,
-  partitionApplicationsByView,
-  persistApplicationViewMode,
-  readStoredApplicationViewMode,
-  readStoredIncludeArchived,
-  persistIncludeArchived,
-  statusFiltersForViewMode,
-  type ApplicationViewMode,
-} from "@/lib/applicationArchive";
-import { uniqueCompanyNames } from "@/lib/companyFilter";
-import {
-  paginateItems,
-  persistApplicationPageSize,
-  readStoredApplicationPageSize,
-  type ApplicationPageSize,
-} from "@/lib/applicationPagination";
+import { applicationMatchesViewMode, archiveViewToggleLabel } from "@/lib/applicationArchive";
 import {
   canHandleApplicationCardNavigation,
   cardNavigationKeyFromEvent,
   resolveNextCardId,
 } from "@/lib/applicationCardNavigation";
+import { isApplicationVisible, shouldClearKeyboardHighlight } from "@/lib/applicationListView";
+import type { ApplicationPageSize } from "@/lib/applicationPagination";
 import { errorMessage } from "@/lib/errorMessage";
 import {
   consumeDoubleEscape,
@@ -73,10 +57,6 @@ type AuthenticatedAppProps = {
   onLogout: () => void;
 };
 
-let hasRestoredApplicationPageSizePreference = false;
-let hasRestoredApplicationViewModePreference = false;
-let hasRestoredIncludeArchivedPreference = false;
-
 export function AuthenticatedApp({
   initialApplications,
   initialNotesByApplicationId,
@@ -98,16 +78,40 @@ export function AuthenticatedApp({
   selectedIdRef.current = selectedId;
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(() => new Set());
-  const [selectedStatuses, setSelectedStatuses] = useState<Set<ApplicationStatus>>(() => new Set());
-  const [viewMode, setViewMode] = useState<ApplicationViewMode>("active");
-  const [includeArchived, setIncludeArchived] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState<ApplicationPageSize>(initialPageSize);
-  const [hasSyncedPageSize, setHasSyncedPageSize] = useState(
-    () => initialPageSizeFromPreference || hasRestoredApplicationPageSizePreference,
-  );
+  const {
+    snapshot,
+    viewMode,
+    includeArchived,
+    selectedCompanies,
+    selectedStatuses,
+    searchQuery,
+    pageSize,
+    hasSyncedPageSize,
+    setSelectedCompanies,
+    setSelectedStatuses,
+    setSearchQuery,
+    clearFilters,
+    resetToHome,
+    handleViewModeToggle,
+    handleIncludeArchivedChange,
+    handlePageChange: setListPage,
+    handlePageSizeChange: setListPageSize,
+    handleCompanyFilter,
+    resetListPagination,
+  } = useApplicationListView({
+    applications,
+    initialPageSize,
+    initialPageSizeFromPreference,
+  });
+  const {
+    companyNames,
+    visibleApplications,
+    visibleApplicationIds,
+    hasActiveFilters,
+    pagination: paginatedApplications,
+    isArchivedViewEmpty,
+    isFilteredEmpty,
+  } = snapshot;
   const applicationsListRef = useRef<HTMLDivElement>(null);
   const lastEscapeAtRef = useRef<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -121,48 +125,6 @@ export function AuthenticatedApp({
     removeApplication: clearNotesCache,
     clearAll: clearNotesCacheAll,
   } = useApplicationNotesCache({ initialNotesByApplicationId });
-
-  useLayoutEffect(() => {
-    if (hasRestoredApplicationPageSizePreference) {
-      setHasSyncedPageSize(true);
-      return;
-    }
-
-    if (initialPageSizeFromPreference) {
-      hasRestoredApplicationPageSizePreference = true;
-      setHasSyncedPageSize(true);
-      return;
-    }
-
-    const storedPageSize = readStoredApplicationPageSize();
-    setPageSize(storedPageSize);
-    persistApplicationPageSize(storedPageSize);
-    hasRestoredApplicationPageSizePreference = true;
-    setHasSyncedPageSize(true);
-  }, [initialPageSizeFromPreference]);
-
-  useLayoutEffect(() => {
-    if (hasRestoredApplicationViewModePreference) {
-      return;
-    }
-
-    const storedViewMode = readStoredApplicationViewMode();
-    if (storedViewMode === "archived") {
-      setViewMode("archived");
-      setSelectedStatuses(statusFiltersForViewMode("archived"));
-    }
-
-    hasRestoredApplicationViewModePreference = true;
-  }, []);
-
-  useLayoutEffect(() => {
-    if (hasRestoredIncludeArchivedPreference) {
-      return;
-    }
-
-    setIncludeArchived(readStoredIncludeArchived());
-    hasRestoredIncludeArchivedPreference = true;
-  }, []);
 
   useEffect(() => {
     setApplications(initialApplications);
@@ -222,45 +184,6 @@ export function AuthenticatedApp({
     if (!selectedId) return false;
     return isLoading(selectedId) || notesByApplicationId[selectedId] === undefined;
   }, [selectedId, notesByApplicationId, isLoading]);
-  const viewApplications = useMemo(
-    () => partitionApplicationsByView(applications, viewMode, includeArchived),
-    [applications, viewMode, includeArchived],
-  );
-  const companyNames = useMemo(() => uniqueCompanyNames(viewApplications), [viewApplications]);
-  const filteredApplications = useMemo(
-    () =>
-      filterApplications(viewApplications, {
-        selectedCompanies,
-        selectedStatuses,
-        searchQuery,
-      }),
-    [viewApplications, selectedCompanies, selectedStatuses, searchQuery],
-  );
-  const paginatedApplications = useMemo(
-    () => paginateItems(filteredApplications, currentPage, pageSize),
-    [filteredApplications, currentPage, pageSize],
-  );
-  const visibleApplications = paginatedApplications.items;
-  const visibleApplicationIds = useMemo(
-    () => visibleApplications.map((application) => application.id),
-    [visibleApplications],
-  );
-  const hasActiveFilters = useMemo(
-    () =>
-      hasActiveApplicationFilters({
-        selectedCompanies,
-        selectedStatuses,
-        searchQuery,
-        viewMode,
-        includeArchived,
-      }),
-    [selectedCompanies, selectedStatuses, searchQuery, viewMode, includeArchived],
-  );
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCompanies, selectedStatuses, searchQuery, viewMode, includeArchived]);
-
   useEffect(() => {
     if (!selectedApplication || !detailOpen) return;
 
@@ -268,21 +191,6 @@ export function AuthenticatedApp({
       setDetailOpen(false);
     }
   }, [detailOpen, includeArchived, selectedApplication, viewMode]);
-
-  useEffect(() => {
-    if (paginatedApplications.page !== currentPage) {
-      setCurrentPage(paginatedApplications.page);
-    }
-  }, [currentPage, paginatedApplications.page]);
-
-  useEffect(() => {
-    setSelectedCompanies((prev) => {
-      if (prev.size === 0) return prev;
-      const available = new Set(companyNames);
-      const next = new Set([...prev].filter((name) => available.has(name)));
-      return next.size === prev.size ? prev : next;
-    });
-  }, [companyNames]);
 
   useEffect(() => {
     prefetchMany(visibleApplicationIds);
@@ -334,12 +242,6 @@ export function AuthenticatedApp({
     [prefetch],
   );
 
-  const handleCompanyFilter = useCallback((company: string) => {
-    const trimmed = company.trim();
-    if (!trimmed) return;
-    setSelectedCompanies(new Set([trimmed]));
-  }, []);
-
   const handleDetailOpenChange = useCallback((open: boolean) => {
     setDetailOpen(open);
     if (!open) {
@@ -354,7 +256,7 @@ export function AuthenticatedApp({
     if (closingId === null) return;
     detailClosingIdRef.current = null;
     setSelectedId((current) => (current === closingId ? null : current));
-    if (visibleApplicationIds.includes(closingId)) {
+    if (isApplicationVisible(closingId, visibleApplicationIds)) {
       setKeyboardHighlightId(closingId);
     }
   }, [visibleApplicationIds]);
@@ -475,13 +377,13 @@ export function AuthenticatedApp({
     (nextApplications: JobApplication[]) => {
       setApplications(sortApplications(nextApplications));
       clearNotesCacheAll();
-      setCurrentPage(1);
+      resetListPagination();
       setSelectedId(null);
       setKeyboardHighlightId(null);
       setDetailOpen(false);
       setFormOpen(false);
     },
-    [clearNotesCacheAll],
+    [clearNotesCacheAll, resetListPagination],
   );
 
   const handleApplicationsUpdated = useCallback((nextApplications: JobApplication[]) => {
@@ -496,55 +398,21 @@ export function AuthenticatedApp({
     [setNotes],
   );
 
-  const clearFilters = useCallback(() => {
-    setSelectedCompanies(new Set());
-    setSelectedStatuses(new Set());
-    setSearchQuery("");
-    setIncludeArchived(false);
-    persistIncludeArchived(false);
-    setViewMode((current) => {
-      if (current !== "archived") return current;
-      persistApplicationViewMode("active");
-      return "active";
-    });
-  }, []);
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setListPage(page);
+      applicationsListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [setListPage],
+  );
 
-  const resetToHome = useCallback(() => {
-    clearFilters();
-    setCurrentPage(1);
-  }, [clearFilters]);
-
-  const handleViewModeChange = useCallback((next: ApplicationViewMode) => {
-    setViewMode((current) => {
-      if (current === next) return current;
-      persistApplicationViewMode(next);
-      setSelectedStatuses(statusFiltersForViewMode(next));
-      setCurrentPage(1);
-      return next;
-    });
-  }, []);
-
-  const handleViewModeToggle = useCallback(() => {
-    handleViewModeChange(nextViewMode(viewMode));
-  }, [handleViewModeChange, viewMode]);
-
-  const handleIncludeArchivedChange = useCallback((next: boolean) => {
-    setIncludeArchived(next);
-    persistIncludeArchived(next);
-    setCurrentPage(1);
-  }, []);
-
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
-    applicationsListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
-
-  const handlePageSizeChange = useCallback((nextPageSize: ApplicationPageSize) => {
-    setPageSize(nextPageSize);
-    persistApplicationPageSize(nextPageSize);
-    setCurrentPage(1);
-    applicationsListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (nextPageSize: ApplicationPageSize) => {
+      setListPageSize(nextPageSize);
+      applicationsListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [setListPageSize],
+  );
 
   const handleCardMouseEnter = useCallback((id: string) => {
     hoveredCardIdRef.current = id;
@@ -561,8 +429,7 @@ export function AuthenticatedApp({
   }, []);
 
   useEffect(() => {
-    if (!keyboardHighlightId) return;
-    if (visibleApplicationIds.includes(keyboardHighlightId)) return;
+    if (!shouldClearKeyboardHighlight(keyboardHighlightId, visibleApplicationIds)) return;
     setKeyboardHighlightId(null);
   }, [keyboardHighlightId, visibleApplicationIds]);
 
@@ -788,7 +655,7 @@ export function AuthenticatedApp({
                 </Button>
               </CardContent>
             </Card>
-          ) : viewMode === "archived" && viewApplications.length === 0 ? (
+          ) : isArchivedViewEmpty ? (
             <Card className="shadow-sm shadow-black/5">
               <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
                 <p className="text-muted-foreground text-sm">No archived applications.</p>
@@ -797,7 +664,7 @@ export function AuthenticatedApp({
                 </Button>
               </CardContent>
             </Card>
-          ) : filteredApplications.length === 0 ? (
+          ) : isFilteredEmpty ? (
             <Card className="shadow-sm shadow-black/5">
               <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
                 <p className="text-muted-foreground text-sm">No applications match the current filters.</p>

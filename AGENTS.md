@@ -148,7 +148,7 @@ applied.dev/
 │   ├── dev-clean.sh                # pnpm dev:clean (wipe .next, restart dev)
 │   ├── ensure-log-file.ts          # init log dir/symlink for logs:tail
 │   └── logs-tail.sh                # pnpm logs:tail entry
-├── tests/                          # Vitest (*.test.ts)
+├── tests/                          # Vitest (*.spec.ts)
 ├── data/                           # SQLite DB + logs (gitignored); auto-created
 ├── .cursor/rules/logging.mdc       # Agent logging conventions
 ├── .ai/issues.md                   # Track bugs/issues found during work
@@ -334,19 +334,19 @@ Server code uses `log.*` from `@/lib/server/logging/logger` — not `console.*`.
 
 | Command             | What it runs                      |
 | ------------------- | --------------------------------- |
-| `pnpm test`         | Watch mode — `tests/**/*.test.ts` |
+| `pnpm test`         | Watch mode — `tests/**/*.spec.ts` |
 | `pnpm run test:run` | Single run for Vitest tests       |
 | `pnpm run check`    | Full gate before shipping         |
 
 **Test files:**
 
-- `tests/applicationForm.test.ts` — form validation
-- `tests/parseJobUrl.test.ts` — parse service (mocked fetch)
-- `tests/extractFullJd.test.ts` — JD HTML sanitization
-- `tests/sqliteRepository.test.ts` — full CRUD lifecycle (better-sqlite3 in-memory)
-- `tests/logger.test.ts` — log levels, rotation, disabled mode
-- `tests/loggerSymlink.test.ts` — `current.log` symlink behavior
-- `tests/loggingSanitize.test.ts` — `hostFromUrl()` and error serialization
+- `tests/applicationForm.spec.ts` — form validation
+- `tests/parseJobUrl.spec.ts` — parse service (mocked fetch)
+- `tests/extractFullJd.spec.ts` — JD HTML sanitization
+- `tests/sqliteRepository.spec.ts` — full CRUD lifecycle (better-sqlite3 in-memory)
+- `tests/logger.spec.ts` — log levels, rotation, disabled mode
+- `tests/loggerSymlink.spec.ts` — `current.log` symlink behavior
+- `tests/loggingSanitize.spec.ts` — `hostFromUrl()` and error serialization
 
 ---
 

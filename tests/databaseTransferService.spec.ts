@@ -12,10 +12,7 @@ import {
 import { openDatabase } from "@/lib/server/db/migrate";
 import { SqliteDatabaseBackend } from "@/lib/server/db/sqliteBackend";
 import { TursoDatabaseBackend } from "@/lib/server/db/tursoBackend";
-
-const tursoTestUrl = process.env.TURSO_TEST_DATABASE_URL;
-const tursoTestAuthToken = process.env.TURSO_TEST_AUTH_TOKEN;
-const describeWithTurso = tursoTestUrl && tursoTestAuthToken ? describe : describe.skip;
+import { requireTursoTestConfig } from "./helpers/tursoTestConfig";
 
 describe("databaseTransferService", () => {
   test("compareTransferSnapshots reports count and timestamp differences", () => {
@@ -114,17 +111,38 @@ describe("databaseTransferService", () => {
   });
 
   test("resolveTursoTarget requires url and token", () => {
-    expect(() => resolveTursoTarget({})).toThrow("TURSO_DATABASE_URL is required");
-    expect(() => resolveTursoTarget({ tursoUrl: "libsql://example.turso.io" })).toThrow("TURSO_AUTH_TOKEN is required");
-    expect(
-      resolveTursoTarget({
-        tursoUrl: " libsql://example.turso.io ",
-        tursoAuthToken: " token ",
-      }),
-    ).toEqual({
-      tursoUrl: "libsql://example.turso.io",
-      tursoAuthToken: "token",
-    });
+    const tursoUrl = process.env.TURSO_DATABASE_URL;
+    const tursoAuthToken = process.env.TURSO_AUTH_TOKEN;
+    delete process.env.TURSO_DATABASE_URL;
+    delete process.env.TURSO_AUTH_TOKEN;
+
+    try {
+      expect(() => resolveTursoTarget({})).toThrow("TURSO_DATABASE_URL is required");
+      expect(() => resolveTursoTarget({ tursoUrl: "libsql://example.turso.io" })).toThrow(
+        "TURSO_AUTH_TOKEN is required",
+      );
+      expect(
+        resolveTursoTarget({
+          tursoUrl: " libsql://example.turso.io ",
+          tursoAuthToken: " token ",
+        }),
+      ).toEqual({
+        tursoUrl: "libsql://example.turso.io",
+        tursoAuthToken: "token",
+      });
+    } finally {
+      if (tursoUrl === undefined) {
+        delete process.env.TURSO_DATABASE_URL;
+      } else {
+        process.env.TURSO_DATABASE_URL = tursoUrl;
+      }
+
+      if (tursoAuthToken === undefined) {
+        delete process.env.TURSO_AUTH_TOKEN;
+      } else {
+        process.env.TURSO_AUTH_TOKEN = tursoAuthToken;
+      }
+    }
   });
 
   test("isTursoSyncAvailable requires development sqlite and turso credentials", () => {
@@ -164,8 +182,9 @@ describe("databaseTransferService", () => {
   });
 });
 
-describeWithTurso("pushSqliteToTurso integration", () => {
+describe("pushSqliteToTurso integration", () => {
   test("pushes in-memory sqlite export into Turso", async () => {
+    const tursoConfig = requireTursoTestConfig();
     const sourceDb = openDatabase(":memory:");
     const source = new SqliteDatabaseBackend({ provider: "sqlite", path: ":memory:" }, sourceDb);
 
@@ -181,8 +200,8 @@ describeWithTurso("pushSqliteToTurso integration", () => {
 
     const turso = new TursoDatabaseBackend({
       provider: "turso",
-      url: tursoTestUrl!,
-      authToken: tursoTestAuthToken!,
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
     });
 
     try {
