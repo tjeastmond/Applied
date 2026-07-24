@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { APPLICATION_VIEW_ALL_PAGE_SIZE } from "@/lib/applicationPagination";
 import {
-  isApplicationVisible,
   listViewQueriesEqual,
   pruneCompanySelection,
   resolveApplicationListView,
@@ -171,19 +170,12 @@ describe("pruneCompanySelection", () => {
 });
 
 describe("keyboard highlight visibility", () => {
-  it("checks whether a highlighted card remains visible", () => {
+  it("clears highlight when the card is not on the current page", () => {
     const visibleIds = ["a", "b"];
 
-    expect(isApplicationVisible("a", visibleIds)).toBe(true);
-    expect(isApplicationVisible("missing", visibleIds)).toBe(false);
     expect(shouldClearKeyboardHighlight(null, visibleIds)).toBe(false);
     expect(shouldClearKeyboardHighlight("a", visibleIds)).toBe(false);
     expect(shouldClearKeyboardHighlight("missing", visibleIds)).toBe(true);
-  });
-
-  it("clears highlight when filtered off the current page", () => {
-    const pageOneIds = ["a", "b", "c", "d", "e"];
-    expect(shouldClearKeyboardHighlight("a", pageOneIds)).toBe(false);
 
     const pageTwoIds = ["f", "g"];
     expect(shouldClearKeyboardHighlight("a", pageTwoIds)).toBe(true);

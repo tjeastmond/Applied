@@ -32,7 +32,7 @@ import {
   cardNavigationKeyFromEvent,
   resolveNextCardId,
 } from "@/lib/applicationCardNavigation";
-import { isApplicationVisible, shouldClearKeyboardHighlight } from "@/lib/applicationListView";
+import { shouldClearKeyboardHighlight } from "@/lib/applicationListView";
 import type { ApplicationPageSize } from "@/lib/applicationPagination";
 import { errorMessage } from "@/lib/errorMessage";
 import {
@@ -256,7 +256,7 @@ export function AuthenticatedApp({
     if (closingId === null) return;
     detailClosingIdRef.current = null;
     setSelectedId((current) => (current === closingId ? null : current));
-    if (isApplicationVisible(closingId, visibleApplicationIds)) {
+    if (visibleApplicationIds.includes(closingId)) {
       setKeyboardHighlightId(closingId);
     }
   }, [visibleApplicationIds]);

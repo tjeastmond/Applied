@@ -95,14 +95,9 @@ export function pruneCompanySelection(
   return next.size === selectedCompanies.size ? null : next;
 }
 
-export function isApplicationVisible(id: string, visibleApplicationIds: readonly string[]): boolean {
-  return visibleApplicationIds.includes(id);
-}
-
 export function shouldClearKeyboardHighlight(
   highlightId: string | null,
   visibleApplicationIds: readonly string[],
 ): boolean {
-  if (highlightId === null) return false;
-  return !isApplicationVisible(highlightId, visibleApplicationIds);
+  return highlightId !== null && !visibleApplicationIds.includes(highlightId);
 }

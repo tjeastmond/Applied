@@ -180,7 +180,6 @@ export function buildApplicationUpdateRow(
   };
 }
 
-/** Named UPDATE args for libsql — excludes created_at, which is not in UPDATE_APPLICATION_SQL. */
 export function applicationRowToUpdateArgs(row: ApplicationRow): Omit<ApplicationRow, "created_at"> {
   const { created_at, ...updateArgs } = row;
   void created_at;
