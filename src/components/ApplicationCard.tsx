@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/applicationForm";
 import { applicationCardPropsEqual } from "@/lib/applicationCardEquality";
-import { APPLICATION_CARD_HIGHLIGHT_CLASSES } from "@/lib/applicationCardStyles";
+import {
+  APPLICATION_CARD_HIGHLIGHT_CLASSES,
+  APPLICATION_CARD_KEYBOARD_MARKER_CLASSES,
+} from "@/lib/applicationCardStyles";
 import { cn } from "@/lib/utils";
 import type { ApplicationStatus, JobApplication } from "@/types";
 import { BookmarkIcon } from "lucide-react";
@@ -57,17 +60,24 @@ export const ApplicationCard = memo(function ApplicationCard({
   );
 
   return (
-    <Card
-      data-application-id={id}
-      className={cn(
-        "application-card relative gap-0 py-0 transition-colors",
-        "hover:bg-muted/50 dark:hover:bg-secondary hover:shadow-md hover:shadow-black/5 dark:hover:shadow-black/30",
-        keyboardHighlighted && APPLICATION_CARD_HIGHLIGHT_CLASSES,
-        "group-data-[scroll-hover-locked]/list:hover:bg-transparent group-data-[scroll-hover-locked]/list:dark:hover:bg-transparent",
-        "group-data-[scroll-hover-locked]/list:hover:shadow-none group-data-[scroll-hover-locked]/list:dark:hover:shadow-none",
-        keyboardHighlighted &&
-          "group-data-[scroll-hover-locked]/list:bg-muted/50 group-data-[scroll-hover-locked]/list:dark:bg-secondary group-data-[scroll-hover-locked]/list:shadow-md group-data-[scroll-hover-locked]/list:shadow-black/5 group-data-[scroll-hover-locked]/list:dark:shadow-black/30",
-      )}
+    <div className="flex items-center gap-1.5">
+      <div
+        className={cn("flex w-2 shrink-0 items-center justify-center", !keyboardHighlighted && "invisible")}
+        aria-hidden="true"
+      >
+        <span className={APPLICATION_CARD_KEYBOARD_MARKER_CLASSES} />
+      </div>
+      <Card
+        data-application-id={id}
+        className={cn(
+          "application-card relative min-w-0 flex-1 gap-0 py-0 transition-colors",
+          "hover:bg-muted/50 dark:hover:bg-secondary hover:shadow-md hover:shadow-black/5 dark:hover:shadow-black/30",
+          keyboardHighlighted && APPLICATION_CARD_HIGHLIGHT_CLASSES,
+          "group-data-[scroll-hover-locked]/list:hover:bg-transparent group-data-[scroll-hover-locked]/list:dark:hover:bg-transparent",
+          "group-data-[scroll-hover-locked]/list:hover:shadow-none group-data-[scroll-hover-locked]/list:dark:hover:shadow-none",
+          keyboardHighlighted &&
+            "group-data-[scroll-hover-locked]/list:bg-muted/50 group-data-[scroll-hover-locked]/list:dark:bg-secondary group-data-[scroll-hover-locked]/list:shadow-md group-data-[scroll-hover-locked]/list:shadow-black/5 group-data-[scroll-hover-locked]/list:dark:shadow-black/30",
+        )}
       onMouseEnter={handleMouseEnterCard}
       onMouseLeave={handleMouseLeaveCard}
     >
@@ -118,6 +128,7 @@ export const ApplicationCard = memo(function ApplicationCard({
           <ApplicationStatusPicker status={application.status} onStatusChange={handleStatusChange} />
         </div>
       </CardHeader>
-    </Card>
+      </Card>
+    </div>
   );
 }, applicationCardPropsEqual);
