@@ -78,56 +78,56 @@ export const ApplicationCard = memo(function ApplicationCard({
           keyboardHighlighted &&
             "group-data-[scroll-hover-locked]/list:bg-muted/50 group-data-[scroll-hover-locked]/list:dark:bg-secondary group-data-[scroll-hover-locked]/list:shadow-md group-data-[scroll-hover-locked]/list:shadow-black/5 group-data-[scroll-hover-locked]/list:dark:shadow-black/30",
         )}
-      onMouseEnter={handleMouseEnterCard}
-      onMouseLeave={handleMouseLeaveCard}
-    >
-      <button
-        type="button"
-        className={cn(
-          "application-card-hit focus-visible:ring-ring/50 absolute inset-0 z-0 rounded-xl focus-visible:ring-3 focus-visible:outline-none",
-          "cursor-pointer group-data-[scroll-hover-locked]/list:cursor-default",
-        )}
-        aria-label={`View details for ${title}`}
-        onClick={handleOpen}
-        onMouseEnter={handlePrefetch}
-        onFocus={handlePrefetch}
-      />
-      <CardHeader className="pointer-events-none relative z-10 flex flex-row items-start justify-between gap-3 space-y-0 py-4">
-        <div className="min-w-0 flex-1 space-y-1 text-left">
-          <CardTitle className="text-base">{title}</CardTitle>
-          <div className="flex items-center gap-1">
-            {!application.archived ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className={cn(
-                  "pointer-events-auto -ml-1 shrink-0",
-                  "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-                aria-label={application.pinned ? "Remove bookmark" : "Bookmark application"}
-                title={application.pinned ? "Remove Bookmark" : "Bookmark"}
-                onClick={handlePinToggle}
-              >
-                <BookmarkIcon className={cn(application.pinned && "fill-current")} />
-              </Button>
-            ) : null}
-            <ApplicationMetadataLine
-              variant="card"
-              company={application.company}
-              appliedLabel={appliedLabel}
-              linkedinUrl={application.linkedinUrl}
-              postingUrl={postingUrl}
-              stopPropagation
-              onCompanyClick={onCompanyFilter}
-              className="min-w-0 flex-1"
-            />
+        onMouseEnter={handleMouseEnterCard}
+        onMouseLeave={handleMouseLeaveCard}
+      >
+        <button
+          type="button"
+          className={cn(
+            "application-card-hit focus-visible:ring-ring/50 absolute inset-0 z-0 rounded-xl focus-visible:ring-3 focus-visible:outline-none",
+            "cursor-pointer group-data-[scroll-hover-locked]/list:cursor-default",
+          )}
+          aria-label={`View details for ${title}`}
+          onClick={handleOpen}
+          onMouseEnter={handlePrefetch}
+          onFocus={handlePrefetch}
+        />
+        <CardHeader className="pointer-events-none relative z-10 flex flex-row items-start justify-between gap-3 space-y-0 py-4">
+          <div className="min-w-0 flex-1 space-y-1 text-left">
+            <CardTitle className="text-base">{title}</CardTitle>
+            <div className="flex items-center gap-1">
+              {!application.archived ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className={cn(
+                    "pointer-events-auto -ml-1 shrink-0",
+                    "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                  aria-label={application.pinned ? "Remove bookmark" : "Bookmark application"}
+                  title={application.pinned ? "Remove Bookmark" : "Bookmark"}
+                  onClick={handlePinToggle}
+                >
+                  <BookmarkIcon className={cn(application.pinned && "fill-current")} />
+                </Button>
+              ) : null}
+              <ApplicationMetadataLine
+                variant="card"
+                company={application.company}
+                appliedLabel={appliedLabel}
+                linkedinUrl={application.linkedinUrl}
+                postingUrl={postingUrl}
+                stopPropagation
+                onCompanyClick={onCompanyFilter}
+                className="min-w-0 flex-1"
+              />
+            </div>
           </div>
-        </div>
-        <div className="pointer-events-auto shrink-0">
-          <ApplicationStatusPicker status={application.status} onStatusChange={handleStatusChange} />
-        </div>
-      </CardHeader>
+          <div className="pointer-events-auto shrink-0">
+            <ApplicationStatusPicker status={application.status} onStatusChange={handleStatusChange} />
+          </div>
+        </CardHeader>
       </Card>
     </div>
   );
