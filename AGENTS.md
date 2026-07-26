@@ -24,8 +24,19 @@ Single-page job application tracker. Users add/edit applications in a modal, par
 
 ## Quick Start
 
+**Node.js:** pin **24.7.0** (`.nvmrc`). Local dev uses nvm; Homebrew or other Node installs on `PATH` can differ. `better-sqlite3` is a native module — it must be built and run with the **same** Node major/minor or SQLite routes fail at runtime (`ERR_DLOPEN_FAILED`, `NODE_MODULE_VERSION` mismatch).
+
+Before `pnpm install`, `pnpm rebuild`, or `pnpm dev`:
+
 ```bash
-pnpm install         # install dependencies
+nvm use              # reads .nvmrc → 24.7.0
+node -v              # should print v24.7.0
+```
+
+If login or any DB route returns 500 with a `better_sqlite3.node` / `NODE_MODULE_VERSION` error: `nvm use && pnpm rebuild better-sqlite3`, then restart the dev server. Do **not** run `pnpm install` from a different Node than the one running `pnpm dev`. Do **not** start or stop the dev server unless the user asks — they often run it themselves (`pnpm dev` or `applied start`).
+
+```bash
+pnpm install         # install dependencies (after nvm use)
 pnpm dev             # Next.js dev server (port 3030 from .env.local; preserves .next for HMR)
 pnpm dev:clean       # recovery only: wipe .next and restart dev (if HMR/CSS breaks)
 pnpm logs:tail       # tail local server logs (data/logs/current.log)
@@ -470,7 +481,8 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 ## Learned Workspace Facts
 
 - Applied.dev is a single-page job application tracker; `AppPage` wraps `LoginGate` (blocks dashboard until authenticated; local dev `LoginPanel` dev-quick click-to-login persists app access token in `app_access_config`) and `AuthenticatedApp` (main list UI: header/tab title `APPLIED.`; clickable logo `resetToHome` clears filters, exits archived view, and resets page; header archive icon toggles active/archived view persisted as `applied-dev-view-mode`; archived view auto-selects rejected/passed status filters; clear filters also returns to active view; `ThemeToggle`, header `LogOut`, icon-only `AdminDialog` for backup/export, bulk archive, Copy All URLs, and agent token management; `KeyboardShortcutsHelp` fixed bottom-right); server-hydrated initial data via `loadInitialPageData()` in `page.tsx` — applications, notes, and `salaryRange`/`desiredSalary`; `force-dynamic`; page size from cookie for SSR, synced from `localStorage`; list filter/archive/pagination pipeline in `applicationListView.ts` with `useApplicationListView` hook; `ApplicationFilters` for company/status/search plus Include Archived toggle (`applied-dev-include-archived`); card pagination via `ApplicationCardPagination`; list footer with `hello@swoo.io` and MIT License link to GitHub; notes seeded in `useApplicationNotesCache` from server hydration; clipboard-only URL prefill on new-application open with parse filling `salaryRange` when found)
-- Stack: Next.js App Router, Node.js, pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI, self-hosted Roboto Mono
+- Stack: Next.js App Router, Node.js **24.7.0** (`.nvmrc`; nvm in the user's shell), pnpm, strict TypeScript, React, Tailwind CSS, Shadcn UI, self-hosted Roboto Mono
+- `better-sqlite3` must be compiled for the same Node as the dev server; mismatch (e.g. `pnpm install` under Homebrew Node 26 while `pnpm dev` uses nvm 24) breaks SQLite with `ERR_DLOPEN_FAILED` — fix with `nvm use && pnpm rebuild better-sqlite3` and a dev-server restart
 - `pnpm dev` runs `scripts/dev.sh` (reads `PORT` from `.env.local`, starts dev on port 3030 by default without wiping `.next`); `pnpm dev:clean` runs `scripts/dev-clean.sh` for recovery when the cache is corrupted; Next 16 isolates dev output in `.next/dev` so `pnpm run check` (which runs `next build`) is safe while dev is running; personal-bin CLI `scripts/applied` (`applied start|stop|restart|status|logs`) manages the dev server in the background; API auth hook lives in `src/proxy.ts` (Next.js 16 `proxy` convention replacing deprecated `middleware.ts`) — pass-through `/api/:path*` matcher placeholder for future centralized auth; route handlers still gate via `requireAppAccess`/`withAppAccess` today; Vitest loads `.env.local` via `tests/setup.ts`, includes `tests/**/*.spec.ts`, and uses `fileParallelism: false` for shared Turso DB access
 - Required application form fields: job posting URL, title, company, apply date; optional `salaryRange` (parsed from postings) and `desiredSalary` (form-only); parsed job postings store cleaned minimal HTML in `full_jd`; user notes live in `application_notes` (many per application)
 - Database persistence is selected by `DATABASE_PROVIDER`: local SQLite via better-sqlite3 (`data/applied.db` by default) or Turso Cloud via `@tursodatabase/serverless`; runtime uses exactly one provider per process; API request bodies are validated with Zod and sanitized before persistence; Turso integration specs require dedicated `TURSO_TEST_DATABASE_URL` and `TURSO_TEST_AUTH_TOKEN` in `.env.local` (empty test DB — specs wipe applications/notes; no fallback to app Turso credentials)
