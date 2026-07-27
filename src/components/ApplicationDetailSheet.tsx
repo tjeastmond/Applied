@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createApplicationNote, deleteApplicationNote, updateApplication, updateApplicationNote } from "@/api";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
 import { ApplicationMetadataLine } from "@/components/ApplicationMetadataLine";
+import { ApplicationStatusHistorySection } from "@/components/ApplicationStatusHistorySection";
 import { NoteContent } from "@/components/NoteContent";
 import { NoteSortPicker } from "@/components/NoteSortPicker";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ import {
 } from "@/lib/noteSort";
 import { toastMessages } from "@/lib/toastMessages";
 import { cn } from "@/lib/utils";
-import type { ApplicationNote, ApplicationStatus, JobApplication } from "@/types";
+import type { ApplicationNote, ApplicationStatus, ApplicationStatusHistoryEntry, JobApplication } from "@/types";
 import { BookmarkIcon, ChevronDownIcon, CopyIcon, ExternalLinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,6 +58,8 @@ export function ApplicationDetailSheet({
   open,
   notes,
   notesLoading,
+  statusHistory,
+  statusHistoryLoading,
   onNotesChange,
   onOpenChange,
   onCloseComplete,
@@ -68,6 +71,8 @@ export function ApplicationDetailSheet({
   open: boolean;
   notes: ApplicationNote[];
   notesLoading: boolean;
+  statusHistory: ApplicationStatusHistoryEntry[];
+  statusHistoryLoading: boolean;
   onNotesChange: (notes: ApplicationNote[]) => void;
   onOpenChange: (open: boolean) => void;
   onCloseComplete?: () => void;
@@ -557,6 +562,16 @@ export function ApplicationDetailSheet({
                     updateField={updateField}
                     onStatusChange={handleStatusChange}
                     onParse={() => void parse()}
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="px-6 py-6">
+                  <ApplicationStatusHistorySection
+                    key={applicationId}
+                    history={statusHistory}
+                    loading={statusHistoryLoading}
                   />
                 </div>
 

@@ -1,6 +1,7 @@
 import type {
   ApplicationNote,
   ApplicationNoteMutationResult,
+  ApplicationStatusHistoryEntry,
   AgentApiTokenSummary,
   CreateAgentApiTokenResult,
   CreateJobApplicationInput,
@@ -109,6 +110,10 @@ export function parseJobUrl(url: string): Promise<ParseJobUrlResult> {
 
 export function listApplicationNotes(applicationId: string): Promise<ApplicationNote[]> {
   return request<ApplicationNote[]>(`/api/applications/${applicationId}/notes`);
+}
+
+export function listApplicationStatusHistory(applicationId: string): Promise<ApplicationStatusHistoryEntry[]> {
+  return request<ApplicationStatusHistoryEntry[]>(`/api/applications/${applicationId}/status-history`);
 }
 
 export function createApplicationNote(applicationId: string, content: string): Promise<ApplicationNoteMutationResult> {

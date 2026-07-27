@@ -83,6 +83,30 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
+export function jobApplicationToApplicationRow(application: JobApplication): ApplicationRow {
+  return {
+    id: application.id,
+    url: application.url,
+    linkedin_url: application.linkedinUrl,
+    title: application.title,
+    company: application.company,
+    applied_at: application.appliedAt,
+    via_recruiter: application.viaRecruiter ? 1 : 0,
+    recruiter_name: application.recruiterName,
+    recruiter_firm: application.recruiterFirm,
+    contact_email: application.contactEmail,
+    contact_phone: application.contactPhone,
+    salary_range: application.salaryRange,
+    desired_salary: application.desiredSalary,
+    full_jd: application.fullJd,
+    status: application.status,
+    archived: application.archived ? 1 : 0,
+    pinned: application.pinned ? 1 : 0,
+    created_at: application.createdAt,
+    updated_at: application.updatedAt,
+  };
+}
+
 export function rowToApplication(row: ApplicationRow): JobApplication {
   return {
     id: row.id,

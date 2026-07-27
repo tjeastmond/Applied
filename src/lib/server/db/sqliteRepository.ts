@@ -15,6 +15,7 @@ import {
   type ApplicationRow,
   UPDATE_APPLICATION_SQL,
 } from "./applicationRepositoryShared";
+import { ensureDefaultUserIdSync, insertStatusHistorySync } from "./statusHistoryWriteShared";
 
 export class SqliteJobApplicationRepository implements JobApplicationRepository {
   private readonly db;
@@ -62,7 +63,19 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
   async create(input: ParsedCreateJobApplicationInput): Promise<JobApplication> {
     const created = buildApplicationInsertRow(input);
 
-    this.insertStmt.run(created);
+    const run = this.db.transaction(() => {
+      const userId = ensureDefaultUserIdSync(this.db);
+      this.insertStmt.run(created);
+      insertStatusHistorySync(this.db, {
+        applicationId: created.id,
+        userId,
+        fromStatus: null,
+        toStatus: created.status,
+        changedAt: created.created_at,
+      });
+    });
+
+    run();
 
     const row = this.getByIdStmt.get(created.id) as ApplicationRow | undefined;
 

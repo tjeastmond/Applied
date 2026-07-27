@@ -299,6 +299,9 @@ describe("backupJsonSchema", () => {
 
     expect(parsed.applications[0]?.salaryRange).toBeNull();
     expect(parsed.applications[0]?.desiredSalary).toBeNull();
+    expect(parsed.users).toEqual([]);
+    expect(parsed.statusHistory).toEqual([]);
+    expect(parsed.version).toBe(2);
   });
 });
 

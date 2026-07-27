@@ -37,7 +37,7 @@ describe("POST /api/backup/sync-turso", () => {
   test("pushes sqlite data to turso when available", async () => {
     vi.spyOn(databaseTransferService, "isTursoSyncAvailable").mockReturnValue(true);
     vi.spyOn(databaseTransferService, "pushSqliteToTurso").mockResolvedValue({
-      imported: { applications: 1, notes: 2 },
+      imported: { applications: 1, notes: 2, users: 1, statusHistory: 1 },
       verification: {
         source: { applicationCount: 1, noteCount: 2, latestUpdatedAt: "2026-06-01T00:00:00.000Z" },
         target: { applicationCount: 1, noteCount: 2, latestUpdatedAt: "2026-06-01T00:00:00.000Z" },
@@ -66,7 +66,7 @@ describe("POST /api/backup/sync-turso", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      imported: { applications: 1, notes: 2 },
+      imported: { applications: 1, notes: 2, users: 1, statusHistory: 1 },
       matches: true,
       differences: [],
     });
@@ -76,7 +76,7 @@ describe("POST /api/backup/sync-turso", () => {
   test("defaults to replace mode when body is omitted", async () => {
     vi.spyOn(databaseTransferService, "isTursoSyncAvailable").mockReturnValue(true);
     vi.spyOn(databaseTransferService, "pushSqliteToTurso").mockResolvedValue({
-      imported: { applications: 0, notes: 0 },
+      imported: { applications: 0, notes: 0, users: 0, statusHistory: 0 },
       verification: {
         source: { applicationCount: 0, noteCount: 0, latestUpdatedAt: null },
         target: { applicationCount: 0, noteCount: 0, latestUpdatedAt: null },

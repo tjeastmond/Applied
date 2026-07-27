@@ -51,6 +51,24 @@ export interface ApplicationNote {
   createdAt: string;
 }
 
+export interface User {
+  id: string;
+  displayName: string;
+  email: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApplicationStatusHistoryEntry {
+  id: string;
+  applicationId: string;
+  userId: string;
+  userDisplayName: string;
+  fromStatus: ApplicationStatus | null;
+  toStatus: ApplicationStatus;
+  changedAt: string;
+}
+
 export type ApplicationNoteMutationResult = ApplicationNote & {
   applicationUpdatedAt: string;
 };

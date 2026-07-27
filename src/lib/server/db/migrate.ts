@@ -2,6 +2,10 @@ import Database from "better-sqlite3";
 import { CLEAR_PINNED_ON_ARCHIVED_SQL } from "./applicationRepositoryShared";
 import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
 
+import { DEFAULT_USER_ID } from "@/lib/server/defaultUser";
+import { buildDefaultUserInsertArgs } from "./userRepositoryShared";
+import { INSERT_STATUS_HISTORY_SQL } from "./applicationStatusHistoryRepositoryShared";
+
 function columnExists(db: Database.Database, column: string): boolean {
   const columns = db.prepare("PRAGMA table_info(applications)").all() as { name: string }[];
   return columns.some((col) => col.name === column);
@@ -46,6 +50,60 @@ export function migrateLegacyApplicationNotes(db: Database.Database): void {
   db.exec(`UPDATE applications SET notes = NULL WHERE notes IS NOT NULL`);
 }
 
+function migrateDefaultUser(db: Database.Database): void {
+  if (!tableExists(db, "users")) {
+    return;
+  }
+
+  db.prepare(
+    `INSERT OR IGNORE INTO users (id, display_name, email, created_at, updated_at) VALUES (?, ?, NULL, ?, ?)`,
+  ).run(...buildDefaultUserInsertArgs());
+}
+
+export function backfillMissingStatusHistory(db: Database.Database): void {
+  migrateInitialStatusHistory(db);
+}
+
+function migrateInitialStatusHistory(db: Database.Database): void {
+  if (!tableExists(db, "application_status_history") || !tableExists(db, "users")) {
+    return;
+  }
+
+  migrateDefaultUser(db);
+
+  const missingCount = db
+    .prepare(
+      `SELECT COUNT(*) AS count FROM applications a
+       WHERE NOT EXISTS (
+         SELECT 1 FROM application_status_history h WHERE h.application_id = a.id
+       )`,
+    )
+    .get() as { count: number };
+
+  if (missingCount.count === 0) {
+    return;
+  }
+
+  const apps = db
+    .prepare(
+      `SELECT a.id, a.status, a.created_at FROM applications a
+       WHERE NOT EXISTS (
+         SELECT 1 FROM application_status_history h WHERE h.application_id = a.id
+       )`,
+    )
+    .all() as {
+    id: string;
+    status: string;
+    created_at: string;
+  }[];
+
+  const insert = db.prepare(INSERT_STATUS_HISTORY_SQL);
+
+  for (const app of apps) {
+    insert.run(crypto.randomUUID(), app.id, DEFAULT_USER_ID, null, app.status, app.created_at);
+  }
+}
+
 export function migrate(db: Database.Database): void {
   db.pragma("foreign_keys = ON");
 
@@ -72,6 +130,9 @@ export function migrate(db: Database.Database): void {
   if (!agentApiTokenColumnExists(db, "last_used_at")) {
     db.exec(`ALTER TABLE agent_api_tokens ADD COLUMN last_used_at TEXT`);
   }
+
+  migrateDefaultUser(db);
+  migrateInitialStatusHistory(db);
 }
 
 export function openDatabase(path = ":memory:"): Database.Database {

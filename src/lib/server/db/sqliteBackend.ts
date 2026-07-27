@@ -11,7 +11,9 @@ import { openDatabase } from "./migrate";
 import { SqliteAppAccessConfigRepository } from "./sqliteAppAccessConfigRepository";
 import { SqliteAgentApiTokenRepository } from "./sqliteAgentApiTokenRepository";
 import { SqliteApplicationNoteRepository } from "./sqliteApplicationNoteRepository";
+import { SqliteApplicationStatusHistoryRepository } from "./sqliteApplicationStatusHistoryRepository";
 import { SqliteJobApplicationRepository } from "./sqliteRepository";
+import { SqliteUserRepository } from "./sqliteUserRepository";
 
 function ensureDataDirectory(dbPath: string): void {
   const dataDir = dirname(dbPath);
@@ -24,6 +26,8 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
   readonly provider = "sqlite";
   readonly applications;
   readonly notes;
+  readonly users;
+  readonly statusHistory;
   readonly appAccessConfig;
   readonly agentApiTokens;
 
@@ -40,8 +44,10 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
     this.appAccessConfig = new SqliteAppAccessConfigRepository(this.db);
     this.agentApiTokens = new SqliteAgentApiTokenRepository(this.db);
     hydrateAppAccessTokenFromDatabase(this.appAccessConfig.getToken());
+    this.users = new SqliteUserRepository(this.db);
     this.applications = new SqliteJobApplicationRepository(this.db);
     this.notes = new SqliteApplicationNoteRepository(this.db);
+    this.statusHistory = new SqliteApplicationStatusHistoryRepository(this.db, this.users);
   }
 
   exportJson() {

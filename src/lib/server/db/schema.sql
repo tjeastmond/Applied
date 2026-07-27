@@ -51,3 +51,26 @@ CREATE TABLE IF NOT EXISTS agent_api_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_agent_api_tokens_active ON agent_api_tokens (revoked_at, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  email TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS application_status_history (
+  id TEXT PRIMARY KEY,
+  application_id TEXT NOT NULL REFERENCES applications (id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
+  from_status TEXT,
+  to_status TEXT NOT NULL,
+  changed_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_application_status_history_application_id
+  ON application_status_history (application_id, changed_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_application_status_history_user_id
+  ON application_status_history (user_id, changed_at DESC);

@@ -2,7 +2,8 @@ import { z } from "zod";
 import { applicationSalaryFieldSchemas } from "@/lib/schemas/application";
 import { applicationStatusSchema } from "@/lib/schemas/common";
 
-export const BACKUP_JSON_VERSION = 1 as const;
+export const BACKUP_JSON_VERSION = 2 as const;
+export const BACKUP_JSON_VERSION_LEGACY = 1 as const;
 
 const backupApplicationSchema = z
   .strictObject({
@@ -41,12 +42,40 @@ const backupNoteSchema = z.strictObject({
   createdAt: z.string().min(1),
 });
 
-export const backupJsonSchema = z.strictObject({
-  version: z.literal(BACKUP_JSON_VERSION),
-  exportedAt: z.string().min(1),
-  applications: z.array(backupApplicationSchema),
-  notes: z.array(backupNoteSchema),
+const backupUserSchema = z.strictObject({
+  id: z.string().uuid(),
+  displayName: z.string().min(1),
+  email: z.string().nullable(),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
 });
+
+const backupStatusHistorySchema = z.strictObject({
+  id: z.string().uuid(),
+  applicationId: z.string().uuid(),
+  userId: z.string().uuid(),
+  fromStatus: applicationStatusSchema.nullable(),
+  toStatus: applicationStatusSchema,
+  changedAt: z.string().min(1),
+});
+
+export const backupJsonSchema = z
+  .strictObject({
+    version: z.union([z.literal(BACKUP_JSON_VERSION), z.literal(BACKUP_JSON_VERSION_LEGACY)]),
+    exportedAt: z.string().min(1),
+    applications: z.array(backupApplicationSchema),
+    notes: z.array(backupNoteSchema),
+    users: z.array(backupUserSchema).optional(),
+    statusHistory: z.array(backupStatusHistorySchema).optional(),
+  })
+  .transform((backup) => ({
+    version: BACKUP_JSON_VERSION,
+    exportedAt: backup.exportedAt,
+    applications: backup.applications,
+    notes: backup.notes,
+    users: backup.users ?? [],
+    statusHistory: backup.statusHistory ?? [],
+  }));
 
 export type BackupJson = z.infer<typeof backupJsonSchema>;
 

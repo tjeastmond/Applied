@@ -155,6 +155,35 @@ describe("backupService", () => {
     expect(updated?.createdAt).toBe(original.createdAt);
   });
 
+  test("exports and imports status history in JSON backups", async () => {
+    const db = openDatabase(":memory:");
+    const appRepo = new SqliteJobApplicationRepository(db);
+    const application = await appRepo.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/history-backup",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "applied",
+      }),
+    );
+
+    const exported = exportJson(db);
+    expect(exported.version).toBe(2);
+    expect(exported.statusHistory.length).toBeGreaterThanOrEqual(1);
+    expect(exported.users.length).toBeGreaterThanOrEqual(1);
+
+    const freshDb = openDatabase(":memory:");
+    const result = importJson(freshDb, exported, "replace");
+    expect(result.imported.statusHistory).toBe(exported.statusHistory.length);
+    expect(result.imported.users).toBe(exported.users.length);
+
+    const historyRows = freshDb
+      .prepare(`SELECT to_status FROM application_status_history WHERE application_id = ?`)
+      .all(application.id) as { to_status: string }[];
+    expect(historyRows.some((row) => row.to_status === "applied")).toBe(true);
+  });
+
   test("exports and imports archived flag", async () => {
     const db = openDatabase(":memory:");
     const appRepo = new SqliteJobApplicationRepository(db);

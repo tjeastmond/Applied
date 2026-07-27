@@ -6,9 +6,11 @@ import type { DatabaseBackend } from "./databaseBackend";
 import { SqliteDatabaseBackend } from "./db/sqliteBackend";
 import { TursoDatabaseBackend } from "./db/tursoBackend";
 import type { ApplicationNoteRepository } from "./repositories/applicationNoteRepository";
+import type { ApplicationStatusHistoryRepository } from "./repositories/applicationStatusHistoryRepository";
 import type { AppAccessConfigRepository } from "./repositories/appAccessConfigRepository";
 import type { AgentApiTokenRepository } from "./repositories/agentApiTokenRepository";
 import type { JobApplicationRepository } from "./repositories/jobApplicationRepository";
+import type { UserRepository } from "./repositories/userRepository";
 
 const globalForDb = globalThis as unknown as {
   backend?: DatabaseBackend;
@@ -44,6 +46,14 @@ export function getRepository(): JobApplicationRepository {
 
 export function getNoteRepository(): ApplicationNoteRepository {
   return getDatabaseBackend().notes;
+}
+
+export function getUserRepository(): UserRepository {
+  return getDatabaseBackend().users;
+}
+
+export function getStatusHistoryRepository(): ApplicationStatusHistoryRepository {
+  return getDatabaseBackend().statusHistory;
 }
 
 export function getAppAccessConfigRepository(): AppAccessConfigRepository | null {

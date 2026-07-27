@@ -18,6 +18,10 @@ import {
   prepareSqlUpsertStatements,
   UPSERT_APPLICATION_SQL,
   UPSERT_NOTE_SQL,
+  UPSERT_STATUS_HISTORY_SQL,
+  UPSERT_USER_SQL,
+  statusHistoryToRow,
+  userToRow,
 } from "../services/backupService";
 import {
   buildApplicationInsertRow,
@@ -47,6 +51,25 @@ import {
   trimRequiredNoteContent,
   UPDATE_NOTE_FOR_APPLICATION_SQL,
 } from "./applicationNoteRepositoryShared";
+import {
+  buildStatusHistoryEntry,
+  HAS_STATUS_HISTORY_FOR_APPLICATION_SQL,
+  INSERT_STATUS_HISTORY_SQL,
+  LIST_STATUS_HISTORY_BY_APPLICATION_SQL,
+  rowToStatusHistoryEntry,
+  type StatusHistoryRow,
+} from "./applicationStatusHistoryRepositoryShared";
+import {
+  buildDefaultUserInsertArgs,
+  GET_USER_BY_ID_SQL,
+  INSERT_DEFAULT_USER_SQL,
+  rowToUser,
+  type UserRow,
+} from "./userRepositoryShared";
+import { DEFAULT_USER_ID } from "@/lib/server/defaultUser";
+import type { ApplicationStatusHistoryEntry, User } from "@/types";
+import type { ApplicationStatusHistoryRepository } from "../repositories/applicationStatusHistoryRepository";
+import type { UserRepository } from "../repositories/userRepository";
 import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
 import { TursoAgentApiTokenRepository } from "./tursoAgentApiTokenRepository";
 import { nullableString, requiredNumber, requiredString, tursoFirstRow, tursoRows } from "./tursoRowHelpers";
@@ -157,6 +180,64 @@ async function migrateLegacyApplicationNotes(client: Client): Promise<void> {
   await client.execute(`UPDATE applications SET notes = NULL WHERE notes IS NOT NULL`);
 }
 
+async function migrateDefaultUser(client: Client): Promise<void> {
+  if (!(await tableExists(client, "users"))) {
+    return;
+  }
+
+  await client.execute({
+    sql: INSERT_DEFAULT_USER_SQL,
+    args: buildDefaultUserInsertArgs(),
+  });
+}
+
+async function migrateInitialStatusHistory(client: Client): Promise<void> {
+  if (!(await tableExists(client, "application_status_history")) || !(await tableExists(client, "users"))) {
+    return;
+  }
+
+  await migrateDefaultUser(client);
+
+  const missingCountRow = await tursoFirstRow(
+    client,
+    `SELECT COUNT(*) AS count FROM applications a
+     WHERE NOT EXISTS (
+       SELECT 1 FROM application_status_history h WHERE h.application_id = a.id
+     )`,
+  );
+  const missingCount = missingCountRow ? Number(requiredString(missingCountRow, "count")) : 0;
+  if (missingCount === 0) {
+    return;
+  }
+
+  const apps = await tursoRows(
+    client,
+    `SELECT a.id, a.status, a.created_at FROM applications a
+     WHERE NOT EXISTS (
+       SELECT 1 FROM application_status_history h WHERE h.application_id = a.id
+     )`,
+  );
+
+  const statements: InStatement[] = [];
+  for (const app of apps) {
+    statements.push({
+      sql: INSERT_STATUS_HISTORY_SQL,
+      args: [
+        crypto.randomUUID(),
+        requiredString(app, "id"),
+        DEFAULT_USER_ID,
+        null,
+        requiredString(app, "status"),
+        requiredString(app, "created_at"),
+      ],
+    });
+  }
+
+  if (statements.length > 0) {
+    await client.batch(statements, "write");
+  }
+}
+
 async function migrateTurso(client: Client): Promise<void> {
   await client.execute("PRAGMA foreign_keys = ON");
   await client.executeMultiple(readSchemaSql());
@@ -181,6 +262,98 @@ async function migrateTurso(client: Client): Promise<void> {
 
   if (!(await agentApiTokenColumnExists(client, "last_used_at"))) {
     await client.execute(`ALTER TABLE agent_api_tokens ADD COLUMN last_used_at TEXT`);
+  }
+
+  await migrateDefaultUser(client);
+  await migrateInitialStatusHistory(client);
+}
+
+function rowToUserRow(row: Row): UserRow {
+  return {
+    id: requiredString(row, "id"),
+    display_name: requiredString(row, "display_name"),
+    email: nullableString(row, "email"),
+    created_at: requiredString(row, "created_at"),
+    updated_at: requiredString(row, "updated_at"),
+  };
+}
+
+function rowToStatusHistoryRow(row: Row): StatusHistoryRow {
+  const fromStatus = nullableString(row, "from_status");
+  return {
+    id: requiredString(row, "id"),
+    application_id: requiredString(row, "application_id"),
+    user_id: requiredString(row, "user_id"),
+    from_status: fromStatus as StatusHistoryRow["from_status"],
+    to_status: requiredString(row, "to_status") as StatusHistoryRow["to_status"],
+    changed_at: requiredString(row, "changed_at"),
+    user_display_name: requiredString(row, "user_display_name"),
+  };
+}
+
+class TursoUserRepository implements UserRepository {
+  constructor(
+    private readonly client: Client,
+    private readonly ready: Promise<void>,
+  ) {}
+
+  async getById(id: string): Promise<User | null> {
+    await this.ready;
+    const row = await tursoFirstRow(this.client, GET_USER_BY_ID_SQL, [id]);
+    return row ? rowToUser(rowToUserRow(row)) : null;
+  }
+
+  async ensureDefaultUser(): Promise<User> {
+    await this.ready;
+    await this.client.execute({
+      sql: INSERT_DEFAULT_USER_SQL,
+      args: buildDefaultUserInsertArgs(),
+    });
+
+    const user = await this.getById(DEFAULT_USER_ID);
+    if (!user) {
+      throw new Error("Failed to ensure default user");
+    }
+    return user;
+  }
+}
+
+class TursoApplicationStatusHistoryRepository implements ApplicationStatusHistoryRepository {
+  constructor(
+    private readonly client: Client,
+    private readonly ready: Promise<void>,
+    private readonly users: UserRepository,
+  ) {}
+
+  async listByApplicationId(applicationId: string): Promise<ApplicationStatusHistoryEntry[]> {
+    await this.ready;
+    return (await tursoRows(this.client, LIST_STATUS_HISTORY_BY_APPLICATION_SQL, [applicationId])).map((row) =>
+      rowToStatusHistoryEntry(rowToStatusHistoryRow(row)),
+    );
+  }
+
+  async record(
+    input: Parameters<ApplicationStatusHistoryRepository["record"]>[0],
+  ): Promise<ApplicationStatusHistoryEntry> {
+    await this.ready;
+    const entry = buildStatusHistoryEntry(input);
+
+    await this.client.execute({
+      sql: INSERT_STATUS_HISTORY_SQL,
+      args: [entry.id, entry.applicationId, entry.userId, entry.fromStatus, entry.toStatus, entry.changedAt],
+    });
+
+    const user = await this.users.getById(entry.userId);
+    return {
+      ...entry,
+      userDisplayName: user?.displayName ?? "Unknown",
+    };
+  }
+
+  async hasAnyForApplication(applicationId: string): Promise<boolean> {
+    await this.ready;
+    const row = await tursoFirstRow(this.client, HAS_STATUS_HISTORY_FOR_APPLICATION_SQL, [applicationId]);
+    return row !== null;
   }
 }
 
@@ -222,10 +395,32 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
   async create(input: ParsedCreateJobApplicationInput): Promise<JobApplication> {
     await this.ready;
     const created = buildApplicationInsertRow(input);
+    const history = buildStatusHistoryEntry({
+      applicationId: created.id,
+      userId: DEFAULT_USER_ID,
+      fromStatus: null,
+      toStatus: created.status,
+      changedAt: created.created_at,
+    });
 
+    await this.client.execute({
+      sql: INSERT_DEFAULT_USER_SQL,
+      args: buildDefaultUserInsertArgs(),
+    });
     await this.client.execute({
       sql: INSERT_APPLICATION_SQL,
       args: created,
+    });
+    await this.client.execute({
+      sql: INSERT_STATUS_HISTORY_SQL,
+      args: [
+        history.id,
+        history.applicationId,
+        history.userId,
+        history.fromStatus,
+        history.toStatus,
+        history.changedAt,
+      ],
     });
 
     const row = await this.getById(created.id);
@@ -339,6 +534,8 @@ export class TursoDatabaseBackend implements DatabaseBackend {
   readonly provider = "turso";
   readonly applications: JobApplicationRepository;
   readonly notes: ApplicationNoteRepository;
+  readonly users: UserRepository;
+  readonly statusHistory: ApplicationStatusHistoryRepository;
   readonly agentApiTokens;
 
   private readonly client: Client;
@@ -350,19 +547,50 @@ export class TursoDatabaseBackend implements DatabaseBackend {
       authToken: config.authToken,
     });
     this.ready = migrateTurso(this.client);
+    this.users = new TursoUserRepository(this.client, this.ready);
     this.applications = new TursoJobApplicationRepository(this.client, this.ready);
     this.notes = new TursoApplicationNoteRepository(this.client, this.ready);
+    this.statusHistory = new TursoApplicationStatusHistoryRepository(this.client, this.ready, this.users);
     this.agentApiTokens = new TursoAgentApiTokenRepository(this.client, this.ready);
   }
 
   async exportJson(): Promise<BackupJson> {
     await this.ready;
-    return createBackupJson(await this.applications.list(), await this.notes.listAll());
+    const users = (
+      await tursoRows(
+        this.client,
+        `SELECT id, display_name, email, created_at, updated_at FROM users ORDER BY created_at ASC`,
+      )
+    ).map((row) => ({
+      id: requiredString(row, "id"),
+      displayName: requiredString(row, "display_name"),
+      email: nullableString(row, "email"),
+      createdAt: requiredString(row, "created_at"),
+      updatedAt: requiredString(row, "updated_at"),
+    }));
+    const statusHistory = (
+      await tursoRows(
+        this.client,
+        `SELECT id, application_id, user_id, from_status, to_status, changed_at
+         FROM application_status_history
+         ORDER BY changed_at ASC`,
+      )
+    ).map((row) => ({
+      id: requiredString(row, "id"),
+      applicationId: requiredString(row, "application_id"),
+      userId: requiredString(row, "user_id"),
+      fromStatus: nullableString(row, "from_status") as BackupJson["statusHistory"][number]["fromStatus"],
+      toStatus: requiredString(row, "to_status") as BackupJson["statusHistory"][number]["toStatus"],
+      changedAt: requiredString(row, "changed_at"),
+    }));
+
+    return createBackupJson(await this.applications.list(), await this.notes.listAll(), users, statusHistory);
   }
 
   async exportSql(): Promise<string> {
     await this.ready;
-    return exportSqlFromRecords(await this.applications.list(), await this.notes.listAll());
+    const exported = await this.exportJson();
+    return exportSqlFromRecords(exported.applications, exported.notes, exported.users, exported.statusHistory);
   }
 
   async importJson(raw: unknown, mode: ImportMode) {
@@ -370,11 +598,16 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     const data = parseBackupJson(raw);
 
     if (mode === "replace") {
+      await this.client.execute("DELETE FROM application_status_history");
       await this.client.execute("DELETE FROM application_notes");
       await this.client.execute("DELETE FROM applications");
+      await this.client.execute("DELETE FROM users");
     }
 
-    // libsql batch() does not bind named args (@url); execute() does.
+    for (const user of data.users) {
+      await this.client.execute({ sql: UPSERT_USER_SQL, args: userToRow(user) });
+    }
+
     for (const application of data.applications) {
       await this.client.execute({ sql: UPSERT_APPLICATION_SQL, args: applicationToRow(application) });
     }
@@ -383,11 +616,21 @@ export class TursoDatabaseBackend implements DatabaseBackend {
       await this.client.execute({ sql: UPSERT_NOTE_SQL, args: noteToRow(note) });
     }
 
+    for (const entry of data.statusHistory) {
+      await this.client.execute({ sql: UPSERT_STATUS_HISTORY_SQL, args: statusHistoryToRow(entry) });
+    }
+
+    if (data.statusHistory.length === 0) {
+      await migrateInitialStatusHistory(this.client);
+    }
+
     return {
       applications: await this.applications.list(),
       imported: {
         applications: data.applications.length,
         notes: data.notes.length,
+        users: data.users.length,
+        statusHistory: data.statusHistory.length,
       },
     };
   }
@@ -420,5 +663,9 @@ export class TursoDatabaseBackend implements DatabaseBackend {
 
   reset(): void {
     this.client.close();
+  }
+
+  getTursoClient(): Client {
+    return this.client;
   }
 }

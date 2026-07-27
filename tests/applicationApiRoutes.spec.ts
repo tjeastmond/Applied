@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { openDatabase } from "@/lib/server/db/migrate";
-import { getRepository, getNoteRepository, useTestDatabase } from "@/lib/server/db";
+import { getRepository, getNoteRepository, getStatusHistoryRepository, useTestDatabase } from "@/lib/server/db";
 import { GET as getNotes, POST as postNote } from "@/app/api/applications/[id]/notes/route";
 import { DELETE as deleteNote, PATCH as patchNote } from "@/app/api/applications/[id]/notes/[noteId]/route";
 import { PATCH as patchApplication } from "@/app/api/applications/[id]/route";
+import { POST as createApplication } from "@/app/api/applications/route";
+import { GET as getStatusHistory } from "@/app/api/applications/[id]/status-history/route";
 import { POST as bulkArchiveApplicationsRoute } from "@/app/api/applications/bulk-archive/route";
 import { POST as bulkFetchApplicationsRoute } from "@/app/api/applications/bulk/route";
 import { authorizedAppRequest, emptyRouteContext, restoreAppAccessToken, withTestAppAccessToken } from "./testAppAuth";
@@ -121,6 +123,30 @@ describe("application API routes", () => {
     expect(refreshed?.updatedAt && refreshed.updatedAt >= beforeUpdatedAt).toBe(true);
   });
 
+  test("POST create records initial status history", async () => {
+    const response = await createApplication(
+      authorizedAppRequest("/api/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: "https://jobs.example.com/created",
+          title: "Engineer",
+          company: "Acme",
+          appliedAt: "2026-06-02",
+          status: "applied",
+        }),
+      }),
+      emptyRouteContext,
+    );
+
+    expect(response.status).toBe(201);
+    const application = (await response.json()) as { id: string; status: string };
+    const history = await getStatusHistoryRepository().listByApplicationId(application.id);
+    expect(history).toHaveLength(1);
+    expect(history[0]?.fromStatus).toBeNull();
+    expect(history[0]?.toStatus).toBe("applied");
+  });
+
   test("PATCH status change creates a status update note", async () => {
     const app = await getRepository().create(
       createJobApplicationSchema.parse({
@@ -146,6 +172,72 @@ describe("application API routes", () => {
     const notes = await getNoteRepository().listByApplicationId(app.id);
     expect(notes).toHaveLength(1);
     expect(notes[0]?.content).toBe("Status Update: Interviewing");
+  });
+
+  test("PATCH status change records structured status history", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/status-history",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+        status: "applied",
+      }),
+    );
+
+    const response = await patchApplication(
+      authorizedAppRequest("/api/applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "interviewing" }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    expect(response.status).toBe(200);
+
+    const history = await getStatusHistoryRepository().listByApplicationId(app.id);
+    expect(history.some((entry) => entry.fromStatus === "applied" && entry.toStatus === "interviewing")).toBe(true);
+    expect(history.some((entry) => entry.userDisplayName.length > 0)).toBe(true);
+  });
+
+  test("GET status history returns entries newest first", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/status-history-get",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+        status: "applied",
+      }),
+    );
+
+    await patchApplication(
+      authorizedAppRequest("/api/applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "interviewing" }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    await patchApplication(
+      authorizedAppRequest("/api/applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "offer" }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    const response = await getStatusHistory(authorizedAppRequest("/api/applications"), {
+      params: Promise.resolve({ id: app.id }),
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { fromStatus: string | null; toStatus: string }[];
+    expect(body[0]?.toStatus).toBe("offer");
+    expect(body.some((entry) => entry.fromStatus === "applied" && entry.toStatus === "interviewing")).toBe(true);
   });
 
   test("PATCH without status change does not create a status update note", async () => {

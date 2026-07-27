@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useApplicationListView } from "@/hooks/useApplicationListView";
 import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
+import { useApplicationStatusHistoryCache } from "@/hooks/useApplicationStatusHistoryCache";
 import { removeApplication, sortApplications, upsertApplication } from "@/lib/applicationsList";
 import { applicationMatchesViewMode, archiveViewToggleLabel } from "@/lib/applicationArchive";
 import {
@@ -125,6 +126,14 @@ export function AuthenticatedApp({
     removeApplication: clearNotesCache,
     clearAll: clearNotesCacheAll,
   } = useApplicationNotesCache({ initialNotesByApplicationId });
+  const {
+    prefetch: prefetchStatusHistory,
+    statusHistoryByApplicationId,
+    isLoading: isStatusHistoryLoading,
+    refetch: refetchStatusHistory,
+    removeApplication: clearStatusHistoryCache,
+    clearAll: clearStatusHistoryCacheAll,
+  } = useApplicationStatusHistoryCache();
 
   useEffect(() => {
     setApplications(initialApplications);
@@ -184,6 +193,14 @@ export function AuthenticatedApp({
     if (!selectedId) return false;
     return isLoading(selectedId) || notesByApplicationId[selectedId] === undefined;
   }, [selectedId, notesByApplicationId, isLoading]);
+  const selectedStatusHistory = useMemo(
+    () => (selectedId ? (statusHistoryByApplicationId[selectedId] ?? []) : []),
+    [selectedId, statusHistoryByApplicationId],
+  );
+  const selectedStatusHistoryLoading = useMemo(() => {
+    if (!selectedId) return false;
+    return isStatusHistoryLoading(selectedId) || statusHistoryByApplicationId[selectedId] === undefined;
+  }, [selectedId, statusHistoryByApplicationId, isStatusHistoryLoading]);
   useEffect(() => {
     if (!selectedApplication || !detailOpen) return;
 
@@ -229,17 +246,19 @@ export function AuthenticatedApp({
   const handleOpenApplication = useCallback(
     (id: string) => {
       void prefetch(id, { notifyOnError: true });
+      void prefetchStatusHistory(id, { notifyOnError: true });
       setSelectedId(id);
       setDetailOpen(true);
     },
-    [prefetch],
+    [prefetch, prefetchStatusHistory],
   );
 
   const handlePrefetchNotes = useCallback(
     (id: string) => {
       void prefetch(id);
+      void prefetchStatusHistory(id);
     },
-    [prefetch],
+    [prefetch, prefetchStatusHistory],
   );
 
   const handleDetailOpenChange = useCallback((open: boolean) => {
@@ -288,6 +307,7 @@ export function AuthenticatedApp({
           return upsertApplication(prev, updated);
         });
         void refetchNotes(id);
+        void refetchStatusHistory(id);
         return updated;
       } catch (error) {
         setApplications((prev) => {
@@ -299,7 +319,7 @@ export function AuthenticatedApp({
         return null;
       }
     },
-    [refetchNotes],
+    [refetchNotes, refetchStatusHistory],
   );
 
   const handleStatusChange = useCallback(
@@ -361,6 +381,7 @@ export function AuthenticatedApp({
       await deleteApplication(id);
       setPendingDeleteId(null);
       clearNotesCache(id);
+      clearStatusHistoryCache(id);
       setApplications((prev) => removeApplication(prev, id));
       if (selectedId === id) {
         handleDetailOpenChange(false);
@@ -371,19 +392,20 @@ export function AuthenticatedApp({
     } finally {
       setIsDeleting(false);
     }
-  }, [pendingDeleteId, clearNotesCache, selectedId, handleDetailOpenChange]);
+  }, [pendingDeleteId, clearNotesCache, clearStatusHistoryCache, selectedId, handleDetailOpenChange]);
 
   const handleBackupImported = useCallback(
     (nextApplications: JobApplication[]) => {
       setApplications(sortApplications(nextApplications));
       clearNotesCacheAll();
+      clearStatusHistoryCacheAll();
       resetListPagination();
       setSelectedId(null);
       setKeyboardHighlightId(null);
       setDetailOpen(false);
       setFormOpen(false);
     },
-    [clearNotesCacheAll, resetListPagination],
+    [clearNotesCacheAll, clearStatusHistoryCacheAll, resetListPagination],
   );
 
   const handleApplicationsUpdated = useCallback((nextApplications: JobApplication[]) => {
@@ -589,6 +611,8 @@ export function AuthenticatedApp({
         open={detailOpen}
         notes={selectedNotes}
         notesLoading={selectedNotesLoading}
+        statusHistory={selectedStatusHistory}
+        statusHistoryLoading={selectedStatusHistoryLoading}
         onNotesChange={handleNotesChange}
         onOpenChange={handleDetailOpenChange}
         onCloseComplete={handleDetailCloseComplete}

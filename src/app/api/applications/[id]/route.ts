@@ -1,6 +1,6 @@
-import { statusUpdateNoteContent } from "@/lib/applicationStatus";
 import { withAppAccess } from "@/lib/server/appAuth";
-import { getNoteRepository, getRepository } from "@/lib/server/db";
+import { getRepository } from "@/lib/server/db";
+import { patchApplicationWithSideEffects } from "@/lib/server/services/applicationMutationService";
 import {
   applicationNotFoundResponse,
   badRequestResponse,
@@ -42,13 +42,12 @@ export const PATCH = withAppAccess<ApplicationIdRouteContext>(async (request: Re
   const sanitized = sanitizeApplicationInput(data);
   const statusChanging = sanitized.status !== undefined && sanitized.status !== existing.status;
 
-  const updated = await repository.update(id, sanitized);
+  const updated =
+    statusChanging && sanitized.status
+      ? await patchApplicationWithSideEffects(id, data, existing)
+      : await getRepository().update(id, sanitized);
   if (!updated) {
     return applicationNotFoundResponse();
-  }
-
-  if (statusChanging && sanitized.status) {
-    await getNoteRepository().create(id, statusUpdateNoteContent(sanitized.status));
   }
 
   log.info("application updated", {
