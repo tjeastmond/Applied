@@ -215,6 +215,33 @@ Repository: `getNoteRepository()` in `src/lib/server/db.ts` (`create`, `listByAp
 
 Legacy `applications.notes` values are migrated into `application_notes` on startup.
 
+### `ApplicationStatusHistory` (`src/types.ts`)
+
+Structured audit log for status changes (separate from editable auto-notes).
+
+| Field           | Type                          | Notes                                      |
+| --------------- | ----------------------------- | ------------------------------------------ |
+| `id`            | `string`                      | UUID                                       |
+| `applicationId` | `string`                      | FK → `applications.id` (cascade on delete) |
+| `userId`        | `string`                      | FK → `users.id`                            |
+| `fromStatus`    | `ApplicationStatus \| null`   | `null` on initial create                   |
+| `toStatus`      | `ApplicationStatus`           | New status                                 |
+| `changedAt`     | `string`                      | ISO timestamp                              |
+
+Recorded atomically on application create and status PATCH. UI: collapsible `ApplicationStatusHistorySection` in the detail sheet (default collapsed). API list includes `userDisplayName`.
+
+### `User` (`src/types.ts`)
+
+Placeholder for future multi-user auth; single default user today.
+
+| Field         | Type             | Notes                                |
+| ------------- | ---------------- | ------------------------------------ |
+| `id`          | `string`         | UUID — `DEFAULT_USER_ID` for solo use |
+| `displayName` | `string`         | Shown in status history              |
+| `email`       | `string \| null` | Optional                             |
+| `createdAt`   | `string`         | ISO timestamp                        |
+| `updatedAt`   | `string`         | ISO timestamp                        |
+
 ### Schema migrations
 
 - `src/lib/server/db/schema.sql` — `CREATE TABLE IF NOT EXISTS` + index
@@ -238,6 +265,7 @@ All endpoints return JSON unless noted. Errors: `{ "error": "message" }` with 4x
 | `POST`   | `/api/applications/:id/notes`         | `{ "content": string }`                       | `ApplicationNote` (201)                              |
 | `PATCH`  | `/api/applications/:id/notes/:noteId` | `{ "content": string }`                       | `ApplicationNote` or 404                             |
 | `DELETE` | `/api/applications/:id/notes/:noteId` | —                                             | 204 or 404                                           |
+| `GET`    | `/api/applications/:id/status-history` | —                                             | `ApplicationStatusHistoryEntry[]` (newest first)       |
 | `POST`   | `/api/jobs/parse`                     | `{ "url": string }`                           | `ParseJobUrlResult`                                  |
 | `GET`    | `/api/admin/agent-tokens`             | —                                             | `{ tokens, envTokenConfigured, envTokenRegistered }` |
 | `POST`   | `/api/admin/agent-tokens`             | `{ "name": string }`                          | `CreateAgentApiTokenResult` (201)                    |
@@ -449,6 +477,78 @@ Squash-merge or rebase so `main` history reads as conventional commits.
 
 ---
 
+## Change Checklists
+
+When adding or changing persisted data, walk these lists before considering the work done. The most common regressions come from updating SQLite but not Turso, or shipping schema/API/UI without **backup/import** and **migration backfill**.
+
+### New or changed `JobApplication` field
+
+| Layer | Where to update |
+| ----- | ---------------- |
+| Types | `src/types.ts` — `JobApplication`, `CreateJobApplicationInput` |
+| Validation | `src/lib/schemas/application.ts`; `src/lib/server/sanitizeApplicationInput.ts` if values are sanitized on persist |
+| DB schema | `src/lib/server/db/schema.sql`, `schema.ts` (`BACKUP_SCHEMA_SQL`), `migrate.ts` (`ALTER TABLE` + backfill for existing DBs — schema.sql alone is not enough) |
+| Repository SQL | `src/lib/server/db/applicationRepositoryShared.ts` — row type, `INSERT`/`UPDATE`/`LIST` SQL, `rowToApplication`, `applicationToRow` |
+| Both backends | `src/lib/server/db/sqliteRepository.ts` **and** `src/lib/server/db/tursoBackend.ts` — keep behavior identical |
+| Parse (if from job URL) | `src/lib/server/services/parseJobUrl.ts`, parse schemas/types, `ApplicationFormFields` / add-dialog auto-fill |
+| Client form | `src/lib/applicationForm.ts`, `ApplicationFormFields.tsx` when user-editable |
+| Cards / detail sheet | `ApplicationCard.tsx`, `ApplicationDetailSheet.tsx`, `ApplicationMetadataLine.tsx` as needed |
+| Search / filters | `src/lib/applicationSearch.ts`, `ApplicationFilters.tsx`, filter helpers if the field is searchable or filterable |
+| SSR hydration | `src/lib/server/loadInitialPageData.ts`, `AuthenticatedApp.tsx` / `page.tsx` if the field must appear on first paint |
+| Backup | `src/lib/schemas/backup.ts`, `src/lib/server/services/backupService.ts` — JSON export/import **and** SQL `INSERT`/`ON CONFLICT` upserts |
+| Turso sync | `tursoBackend.ts` export/import paths; `databaseTransferService` if transfer verification lists columns |
+| Agent API | `src/lib/server/services/agentApplicationInterface.ts`; discovery text in `src/app/api/agent/route.ts` |
+| Tests | `sqliteRepository.spec.ts`, `tursoBackend.spec.ts`, `applicationApiRoutes.spec.ts`, `backupService.spec.ts`, `schemas.spec.ts`, `applicationForm.spec.ts` |
+| Docs | This file — Data Model table, REST API notes, Learned Workspace Facts |
+
+### New `ApplicationStatus` value
+
+| Layer | Where to update |
+| ----- | ---------------- |
+| Enum + labels + styling | `src/lib/applicationStatus.ts` — `APPLICATION_STATUSES`, `STATUS_OPTIONS`, tag/dot classes (`Record` must be exhaustive) |
+| Validation | `src/lib/schemas/common.ts` — `applicationStatusSchema` |
+| Archive / filter UX | `src/lib/archivableStatuses.ts`, `src/lib/applicationArchive.ts`, `StatusFilter.tsx`, archived-view defaults in `AuthenticatedApp.tsx` |
+| Status picker | `ApplicationStatusPicker.tsx` (options from `APPLICATION_STATUS_OPTIONS`) |
+| Side effects on change | Auto-note via `statusUpdateNoteContent`; structured history via `applicationMutationService.ts` / repository create — **same path for PATCH, POST, and agent create** |
+| Search | `src/lib/applicationSearch.ts` (matches labels) |
+| Tests | API PATCH tests, status/history specs, any filter/archive tests |
+| Docs | This file — status list in Data Model / Learned Workspace Facts |
+
+### New entity or child table (pattern: notes, status history)
+
+| Layer | Where to update |
+| ----- | ---------------- |
+| Schema + migration | `schema.sql`, `schema.ts`, `migrate.ts`; add **count-gated backfill** for existing rows (do not full-scan every startup) |
+| Types | `src/types.ts` |
+| Repository | Interface in `src/lib/server/repositories/`, shared SQL in `*RepositoryShared.ts`, `sqlite*Repository.ts`, methods on `tursoBackend.ts` |
+| DB wiring | `src/lib/server/db.ts`, `databaseBackend.ts`, `sqliteBackend.ts` |
+| Side-effect writes | Repository `create()` or `*MutationService.ts` inside a **transaction** (SQLite `db.transaction()`; Turso sequential `execute()`) |
+| API | `src/app/api/applications/[id]/…/route.ts` |
+| Client | `src/api.ts`, UI component, `use*Cache.ts` hook; wire in `ApplicationDetailSheet` + `AuthenticatedApp`; use `key={applicationId}` on per-app collapsible UI |
+| Toasts | `src/lib/toastMessages.ts` for load/save failures |
+| Backup | Bump `BACKUP_JSON_VERSION` when export shape changes; update Zod schema, JSON + SQL export/import, `ImportResult.imported` counts; SQL export order must respect FKs (**users → applications → notes → child tables**); SQL upsert uses `ON CONFLICT DO UPDATE`, not `INSERT OR REPLACE` on FK parent rows |
+| Turso | Mirror backup import/export in `tursoBackend.ts`; extend `syncTursoRoute.spec.ts` mocks |
+| Tests | New `tests/*.spec.ts`; extend `backupService.spec.ts`, `applicationApiRoutes.spec.ts`, `tursoBackend.spec.ts` |
+| Docs | Data Model subsection, REST API table, Learned Workspace Facts |
+
+### Side effects checklist (create / update)
+
+If saving record A must also write B (example: status change → history row + auto-note):
+
+1. Implement in **one atomic unit** with the primary write — not in the route handler alone.
+2. Browser POST, agent create, and repository `create()` must all hit the same code path.
+3. PATCH status changes go through `applicationMutationService.ts` (or equivalent), not ad-hoc route logic.
+
+### Verification before commit
+
+- Run **`pnpm run check`** (typecheck, all tests, lint, format, build) — not just tests for touched files.
+- Grep for parallel implementations: `sqliteRepository` vs `tursoBackend`, JSON backup vs SQL backup, POST route vs agent create.
+- Do **not** commit `next-env.d.ts` — Next.js rewrites the routes import between dev (`.next/dev/types/…`) and production build (`.next/types/…`).
+
+**Example — status history:** schema + `users` table, repositories (SQLite + Turso), recording on create/PATCH, `GET …/status-history`, detail-sheet UI + cache, backup **v2** (`users`, `statusHistory`), migration backfill, and tests across backup/API/repository suites. Missing backup was the original review finding; use the tables above to avoid that class of gap.
+
+---
+
 ## Known Gaps / Extension Points
 
 These exist in the data layer but are **not yet exposed in the UI**:
@@ -489,7 +589,7 @@ Likely next features: status workflow UI, filtering/sorting, search, export, aut
 - Job URL parse uses `extractJobCompany`, `extractParaformRole`, and `extractLinkedInRole`: Y Combinator, Ashby, and Paraform are job boards, not employers; Paraform title/company from JSON-LD, Next data, and og:title patterns; LinkedIn `/jobs/view/` URLs strip query params before fetch/store (canonical `/jobs/view/{id}/` path) and parse title/company from `"Company hiring Title | ..."` via `extractLinkedInRole` (not raw og:title/hostname); `normalizeJobTitle()` strips `| Y Combinator` and `| Simplify` suffixes on save only (Zod `titleSchema` + repository insert/update rows), not during URL parse or DB reads
 - Application statuses: `applied`, `to_apply`, `interviewing`, `waiting`, `no_response`, `rejected`, `offer`, `passed` — managed via `ApplicationStatusPicker` on cards and in the detail drawer; `APPLICATION_STATUS_OPTIONS` sorts all labels alphabetically (Applied, Interviewing, No Response, Offer, Passed, Rejected, To Apply, Waiting); `no_response` ("No Response") uses stone/gray tag styling; status changes auto-create a note `Status Update: {label}` via PATCH and record structured history in `application_status_history` (`user_id`, `application_id`, `from_status`, `to_status`, `changed_at`) on create and PATCH via `recordApplicationStatusChange`; `users` table plus `DEFAULT_USER_ID`/`DEFAULT_USER_DISPLAY_NAME` ("You") and `resolveCurrentUserId()` until per-user auth; migration backfills one initial history row per existing application; `GET /api/applications/:id/status-history` returns newest first with `userDisplayName` — authoritative audit trail (notes remain editable); agent API creates use `to_apply` (label "To Apply"); applications have `archived` boolean — bulk archive via AdminDialog (`POST /api/applications/bulk-archive`) archives rejected and passed only (not `no_response`); `pinned` boolean — bookmark/unbookmark via `BookmarkIcon` on the card metadata row (active view) or Bookmark/Remove Bookmark in detail drawer; active bookmark fill uses muted/border tone (`fill-current`); pinned apps sort first within the filtered list; archiving clears pins and hides bookmark controls
 - `ApplicationDetailSheet` is 60vw, slides from the right with blurred backdrop; detail form `Separator`s are full-width siblings between `DetailSection` blocks with `px-6` (not `-mx` bleed inside `overflow-y-auto`); detail contact rows are Contact Name | Contact Email, then Contact Phone | Recruiter Firm (`ApplicationFormFields` `variant="detail"`; add dialog keeps Name | Phone, Email | Firm); `ApplicationStatusHistorySection` between form fields and notes (color-coded status badges, arrow, timestamp, user display name); status history cached via `useApplicationStatusHistoryCache` (prefetch on drawer open, refetch after status change); note create/patch/delete bumps parent `updatedAt` via `touchApplicationUpdatedAt` so cards re-sort; notes render via `NoteContent`/`basicMarkdown.tsx`; unsaved manual-save checks use `manualSaveBaselineRef` with ref-based `isFormManuallyDirty()` at overlay close and `updateApplicationStatus` returns the saved record for baseline sync after status autosave; theme via `ThemeProvider` + blocking `themeInitScript()` before paint (near-black dark tokens in `styles.css`); Sonner follows active theme
-- Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 1` and include `archived`; provider-selected database backup via `GET /api/backup/database` (local SQLite returns a zipped `.db`; Turso returns a zipped SQL backup); `AdminDialog` "Create Backup" downloads `.zip`; when running local SQLite with Turso env configured, `AdminDialog` also offers "Turso Sync" via `POST /api/backup/sync-turso` (CLI: `pnpm db:push-turso`, `pnpm db:pull-turso`, `pnpm db:verify-turso`); backups intentionally exclude agent API tokens and app access tokens
+- Backup/export: `GET /api/backup/export?format=sql|json` and `POST /api/backup/import` (multipart `file`, `mode` `replace`|`upsert`); logic in `backupService.ts`; JSON backups use `version: 2` with `applications`, `notes`, `users`, and `statusHistory` (v1 imports coerce empty `users`/`statusHistory`); provider-selected database backup via `GET /api/backup/database` (local SQLite returns a zipped `.db`; Turso returns a zipped SQL backup); `AdminDialog` "Create Backup" downloads `.zip`; when running local SQLite with Turso env configured, `AdminDialog` also offers "Turso Sync" via `POST /api/backup/sync-turso` (CLI: `pnpm db:push-turso`, `pnpm db:pull-turso`, `pnpm db:verify-turso`); backups intentionally exclude agent API tokens and app access tokens
 - Agent API tokens: create/list/revoke/rename in `AdminDialog`; max 2 active per deployment (app login token does not count); raw token shown once at creation; `lastUsedAt` updated on successful DB-token auth; optional `AGENT_API_TOKEN` env bootstrap can be registered in DB via Admin; `pnpm agent:token` prints env-bootstrap only; external-agent workflow via token-protected `/api/agent` (GET discovery is public; GET/POST `/api/agent/applications` for list/create only; list excludes archived and accepts optional `?search=` on title, company, status, status label, URL, and applied date via `filterAgentApplicationsBySearch` in `applicationSearch.ts`); agent create-from-URL persists parsed `salaryRange` when the parser finds it; agent docs in `LEARNING_PROMPT.md`
 - Deployable to Vercel with Turso Cloud (`DATABASE_PROVIDER=turso`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`); app access via `APP_ACCESS_TOKEN` with session login for browser and Bearer auth for scripts (`pnpm app:token`); Electron is a viable desktop path with local SQLite (no hosted DB required); local logging: pino → `data/logs/` with size rotation; active symlink `current.log`; levels debug/info/warn/error; `pnpm logs:tail` runs `ensure-log-file.ts` then tails; disabled in Vitest by default unless `LOG_ENABLED=true`; use `LOG_ENABLED=false` on Vercel
 - Keyboard shortcut helpers in `src/lib/keyboardShortcut.ts`: `appKeyboardShortcuts()` catalog for the help panel; `isAdminOpenShortcut` (lowercase `a`) wired in `AdminDialog`; shared guards (`isEditableKeyboardTarget`, `consumeDoubleEscape`, mod-key labels) used across `AuthenticatedApp` and detail sheet; list card keyboard nav in `AuthenticatedApp` via `applicationCardNavigation.ts` (`stepCardIndex`, `resolveNextCardId`, `canHandleApplicationCardNavigation`) and shared hover classes in `applicationCardStyles.ts`
