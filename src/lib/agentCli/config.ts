@@ -21,7 +21,7 @@ export function resolveAgentCliConfig(
   const token = options.tokenOverride?.trim() || process.env.AGENT_API_TOKEN?.trim();
   if (!token) {
     throw new AgentCliConfigError(
-      "AGENT_API_TOKEN is required. Set it in .env.local, pass --token, or run pnpm agent:token to generate a bootstrap value.",
+      "AGENT_API_TOKEN is required. Export it in your shell (e.g. ~/.zshrc), set it in .env.local, pass --token, or run pnpm agent:token for a local bootstrap value.",
     );
   }
 

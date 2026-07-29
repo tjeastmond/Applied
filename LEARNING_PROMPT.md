@@ -2,21 +2,31 @@
 
 You have access to the Applied.dev Agent API and CLI.
 
-**Recommended:** use the CLI from the applied.dev repo with the dev server already running. Do not run `pnpm run check` or `pnpm dev` for agent writes.
+**Recommended:** use the agent CLI against any running Applied.dev host (local or deployed). The CLI is a plain HTTP client — your shell cwd does not need to be the repo.
 
 ```bash
-pnpm applied:agent applications add --url "https://example.com/job-posting"
-pnpm applied:agent applications list --search engineer
-pnpm applied:agent companies list
-pnpm applied:agent applications set-status --id <uuid> --status applied
-pnpm applied:agent applications add-note --id <uuid> --content "Follow up next week"
-pnpm applied:agent docs
+# Local dev (default base URL http://localhost:3030)
+applied-agent applications list
+
+# Production on Vercel
+export APPLIED_DEV_URL='https://your-app.vercel.app'
+export AGENT_API_TOKEN='your-token'
+applied-agent applications add --url "https://example.com/job"
 ```
 
-Environment (from `.env.local`):
+Install globally once from the repo: `pnpm build:cli && pnpm setup && pnpm add -g .` (or symlink `bin/applied-agent.js`). From inside the repo you can also use `pnpm applied:agent`.
+
+Do not run `pnpm run check` or `pnpm dev` for agent writes — only the server must be running (local or remote).
+
+## Environment
+
+Precedence (highest first): `--token` / `--base-url` → shell exports (e.g. `~/.zshrc`) → `APPLIED_DEV_DIR` checkout `.env.local` → cwd `.env.local` → defaults.
 
 - `AGENT_API_TOKEN` — **required** on every CLI invocation and HTTP request
-- `APPLIED_DEV_URL` — default `http://localhost:3030`
+- `APPLIED_DEV_URL` — target host (default `http://localhost:3030`; set to your Vercel URL for production)
+- `APPLIED_DEV_DIR` — optional; fill in keys not already exported from that checkout's `.env.local`
+
+Or pass per invocation: `--token`, `--base-url`
 
 ## Authentication
 
@@ -44,15 +54,17 @@ Fetch with the same bearer token:
 ## CLI commands
 
 ```
-pnpm applied:agent applications list [--search QUERY] [--json]
-pnpm applied:agent applications add --url URL [--status STATUS] [--json]
-pnpm applied:agent applications get --id ID [--json]
-pnpm applied:agent applications set-status --id ID --status STATUS [--json]
-pnpm applied:agent applications add-note --id ID --content "..." [--json]
-pnpm applied:agent companies list [--search QUERY] [--json]
-pnpm applied:agent posts add --url URL [--status STATUS] [--json]
-pnpm applied:agent docs [--json]
+applied-agent applications list [--search QUERY] [--json]
+applied-agent applications add --url URL [--status STATUS] [--json]
+applied-agent applications get --id ID [--json]
+applied-agent applications set-status --id ID --status STATUS [--json]
+applied-agent applications add-note --id ID --content "..." [--json]
+applied-agent companies list [--search QUERY] [--json]
+applied-agent posts add --url URL [--status STATUS] [--json]
+applied-agent docs [--json]
 ```
+
+From the repo only: prefix with `pnpm applied:agent` instead of `applied-agent`.
 
 Status aliases: `apply`, `to-apply`, `to_apply` → `to_apply`
 

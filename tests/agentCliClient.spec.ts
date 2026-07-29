@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { listApplications } from "@/lib/agentCli/client";
 import { AgentCliConfigError, normalizeAgentStatus, resolveAgentCliConfig } from "@/lib/agentCli/config";
-
-vi.mock("@/lib/server/loadEnvFile", () => ({
-  loadProjectEnvFiles: vi.fn(),
-}));
+import * as loadEnvModule from "@/lib/server/loadEnvFile";
 
 const originalEnv = { ...process.env };
 
@@ -13,11 +13,14 @@ describe("agent CLI config", () => {
     process.env = { ...originalEnv };
     delete process.env.AGENT_API_TOKEN;
     delete process.env.APPLIED_DEV_URL;
+    delete process.env.APPLIED_DEV_DIR;
     delete process.env.PORT;
+    vi.spyOn(loadEnvModule, "loadProjectEnvFiles").mockImplementation(() => {});
   });
 
   afterEach(() => {
     process.env = { ...originalEnv };
+    vi.restoreAllMocks();
   });
 
   test("resolveAgentCliConfig rejects missing token", () => {
@@ -52,6 +55,28 @@ describe("agent CLI config", () => {
       baseUrl: "https://applied.example",
       token: "override-token",
     });
+  });
+
+  test("resolveAgentCliConfig keeps shell-exported values over checkout .env.local", () => {
+    vi.restoreAllMocks();
+
+    const checkoutDir = mkdtempSync(join(tmpdir(), "applied-agent-cli-config-"));
+    writeFileSync(
+      join(checkoutDir, ".env.local"),
+      "AGENT_API_TOKEN=from-env-file\nAPPLIED_DEV_URL=https://env-file.example\n",
+      "utf8",
+    );
+
+    process.env.AGENT_API_TOKEN = "from-shell";
+    process.env.APPLIED_DEV_URL = "https://shell.example";
+    process.env.APPLIED_DEV_DIR = checkoutDir;
+
+    expect(resolveAgentCliConfig()).toEqual({
+      baseUrl: "https://shell.example",
+      token: "from-shell",
+    });
+
+    rmSync(checkoutDir, { recursive: true, force: true });
   });
 
   test("normalizeAgentStatus maps apply aliases to to_apply", () => {

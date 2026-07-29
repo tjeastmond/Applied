@@ -201,19 +201,22 @@ Authorization: Bearer <AGENT_API_TOKEN>
 
 ## CLI (recommended for agents)
 
-Run from the applied.dev repo with the dev server already running (\`applied start\` or \`pnpm dev\`):
+The CLI is an HTTP client. Run it from **any directory** against a local dev server or a deployed host (e.g. Vercel). Set \`APPLIED_DEV_URL\` for non-local targets.
 
 \`\`\`bash
-pnpm applied:agent applications add --url "https://example.com/job"
-pnpm applied:agent applications list --search engineer
-pnpm applied:agent companies list
-pnpm applied:agent applications set-status --id <uuid> --status applied
-pnpm applied:agent applications add-note --id <uuid> --content "Follow up next week"
-pnpm applied:agent docs
+# Local (default http://localhost:3030)
+applied-agent applications add --url "https://example.com/job"
+
+# Production
+APPLIED_DEV_URL=https://your-app.vercel.app AGENT_API_TOKEN=... \\
+  applied-agent applications list --search engineer
 \`\`\`
 
-Environment:
-- \`APPLIED_DEV_URL\` — default \`http://localhost:3030\`
+From the repo only: \`pnpm applied:agent …\`. Install globally: \`pnpm build:cli && pnpm setup && pnpm add -g .\`
+
+Environment (shell exports win over .env files):
+- \`APPLIED_DEV_URL\` — target host (default \`http://localhost:3030\`)
+- \`APPLIED_DEV_DIR\` — optional checkout path; fills in keys not already exported
 - \`AGENT_API_TOKEN\` — required on every CLI invocation
 
 CLI commands:

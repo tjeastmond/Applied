@@ -61,8 +61,9 @@ function printHelp(): void {
   pnpm applied:agent posts add --url URL [--status STATUS] [--json]
   pnpm applied:agent docs [--json]
 
-Environment:
-  APPLIED_DEV_URL   Base URL (default http://localhost:3030)
+Environment (precedence: CLI flags, then shell exports such as ~/.zshrc, then .env files, then defaults):
+  APPLIED_DEV_URL   Base URL (default http://localhost:3030; use your Vercel URL for production)
+  APPLIED_DEV_DIR   Optional checkout path — load missing keys from that checkout's .env.local
   AGENT_API_TOKEN   Required bearer token for every request
 
 Options:
@@ -73,11 +74,11 @@ Options:
 
 Build / install:
   pnpm build:cli        Compile bin/applied-agent.js (also runs automatically via pnpm applied:agent when stale)
-  pnpm link             From repo root — global applied-agent command via pnpm bin linking
+  pnpm setup && pnpm add -g .   Install global applied-agent (from repo root)
 
 Codex / agent workflow:
-  Run from the applied.dev repo with the dev server already running.
-  Use pnpm applied:agent (or applied-agent after pnpm link) for writes — do not run pnpm run check or pnpm dev for agent tasks.
+  The CLI is an HTTP client — run it from any directory against local or deployed hosts.
+  Set APPLIED_DEV_URL for Vercel; set AGENT_API_TOKEN (or --token). Do not run pnpm run check or pnpm dev for agent tasks.
 
 Status aliases on create/set-status:
   apply, to-apply, to_apply -> to_apply
