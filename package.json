@@ -4,6 +4,12 @@
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.12.1",
+  "bin": {
+    "applied-agent": "./bin/applied-agent.js"
+  },
+  "files": [
+    "bin/applied-agent.js"
+  ],
   "scripts": {
     "dev": "sh scripts/dev.sh",
     "dev:clean": "sh scripts/dev-clean.sh",
@@ -15,6 +21,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "agent:token": "node scripts/create-agent-token.mjs",
+    "build:cli": "node scripts/build-cli.mjs",
+    "preapplied:agent": "node scripts/ensure-cli-built.mjs",
+    "applied:agent": "node bin/applied-agent.js",
     "app:token": "node scripts/create-app-token.mjs",
     "db:push-turso": "tsx scripts/db-transfer.ts push",
     "db:pull-turso": "tsx scripts/db-transfer.ts pull",
@@ -22,7 +31,7 @@
     "logs:tail": "sh scripts/logs-tail.sh",
     "test": "vitest",
     "test:run": "vitest run",
-    "check": "pnpm run typecheck && pnpm run test:run && pnpm run lint && pnpm run format:check && pnpm run build"
+    "check": "pnpm run typecheck && pnpm run test:run && pnpm run lint && pnpm run format:check && pnpm run build:cli && pnpm run build"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -61,6 +70,7 @@
     "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.2.10",
+    "esbuild": "^0.25.12",
     "eslint-config-prettier": "^10.1.8",
     "jsdom": "^26.1.0",
     "prettier": "^3.6.2",

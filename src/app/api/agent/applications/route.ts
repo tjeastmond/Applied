@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     return badRequestResponse(parsed.error);
   }
 
-  const result = await createApplicationFromUrlForAgent(parsed.data.url);
+  const result = await createApplicationFromUrlForAgent(parsed.data.url, parsed.data.status ?? "to_apply");
   if (!result.ok) {
     return badRequestResponse(result.error);
   }

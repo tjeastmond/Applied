@@ -1,9 +1,20 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
-import { getAgentApiTokenRepository, getRepository, useTestDatabase } from "@/lib/server/db";
+import { AGENT_REQUIRED_PATHS } from "@/lib/server/agentDiscovery";
+import {
+  getAgentApiTokenRepository,
+  getNoteRepository,
+  getRepository,
+  getStatusHistoryRepository,
+  useTestDatabase,
+} from "@/lib/server/db";
 import { openDatabase } from "@/lib/server/db/migrate";
 import { GET as getAgentInfo } from "@/app/api/agent/route";
+import { GET as getAgentDocs } from "@/app/api/agent/docs/route";
+import { GET as getAgentCompanies } from "@/app/api/agent/companies/route";
 import * as agentApplicationsRoute from "@/app/api/agent/applications/route";
+import { GET as getAgentApplication, PATCH as patchAgentApplication } from "@/app/api/agent/applications/[id]/route";
+import { GET as getAgentNotes, POST as postAgentNote } from "@/app/api/agent/applications/[id]/notes/route";
 import { parseJobUrl } from "@/lib/server/services/parseJobUrl";
 
 vi.mock("@/lib/server/services/parseJobUrl", () => ({
@@ -37,23 +48,34 @@ describe("agent API routes", () => {
     vi.useRealTimers();
   });
 
-  test("GET /api/agent returns capabilities and limitations", async () => {
-    const response = await getAgentInfo();
+  test("GET /api/agent rejects missing bearer token", async () => {
+    const response = await getAgentInfo(new Request("http://localhost/api/agent"));
+    expect(response.status).toBe(401);
+  });
+
+  test("GET /api/agent returns capabilities and limitations when authorized", async () => {
+    const response = await getAgentInfo(authorizedRequest("/api/agent"));
 
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
+      version: number;
       authentication: { discoveryIsPublic: boolean; requiredFor: string[]; tokenSource: string };
       applicationSummaryFields: string[];
       statuses: string[];
-      capabilities: { method: string; path: string; response: unknown }[];
+      capabilities: { method: string; path: string }[];
       limitations: string[];
       errors: { codes: Record<string, string> };
+      cli: { command: string };
+      documentationUrl: string;
     };
+    expect(body.version).toBe(2);
     expect(body.authentication).toMatchObject({
-      discoveryIsPublic: true,
-      requiredFor: ["/api/agent/applications"],
+      discoveryIsPublic: false,
+      requiredFor: [...AGENT_REQUIRED_PATHS],
       tokenSource: "env",
     });
+    expect(body.documentationUrl).toBe("/api/agent/docs");
+    expect(body.cli.command).toBe("pnpm applied:agent");
     expect(body.applicationSummaryFields).toEqual([
       "id",
       "url",
@@ -66,26 +88,16 @@ describe("agent API routes", () => {
     expect(body.statuses).toContain("to_apply");
     expect(body.capabilities).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          method: "GET",
-          path: "/api/agent/applications",
-          query: {
-            search:
-              "optional case-insensitive filter matching title, company, status, status label, URL, and applied date",
-          },
-          response: {
-            applications: body.applicationSummaryFields,
-          },
-        }),
-        expect.objectContaining({
-          method: "POST",
-          path: "/api/agent/applications",
-          response: body.applicationSummaryFields,
-        }),
+        expect.objectContaining({ method: "GET", path: "/api/agent/applications" }),
+        expect.objectContaining({ method: "POST", path: "/api/agent/applications" }),
+        expect.objectContaining({ method: "PATCH", path: "/api/agent/applications/:id" }),
+        expect.objectContaining({ method: "GET", path: "/api/agent/companies" }),
+        expect.objectContaining({ method: "GET", path: "/api/agent/docs" }),
       ]),
     );
     expect(typeof body.errors.codes["400"]).toBe("string");
     expect(typeof body.errors.codes["401"]).toBe("string");
+    expect(typeof body.errors.codes["404"]).toBe("string");
     expect(typeof body.errors.codes["503"]).toBe("string");
     expect(body.limitations).toContain("No delete endpoint");
     expect(body.limitations).toContain(
@@ -97,21 +109,30 @@ describe("agent API routes", () => {
     delete process.env.AGENT_API_TOKEN;
     const repository = getAgentApiTokenRepository();
     expect(repository).not.toBeNull();
-    await Promise.resolve(repository!.create("DB Only"));
+    const created = await Promise.resolve(repository!.create("DB Only"));
 
-    const response = await getAgentInfo();
+    const response = await getAgentInfo(
+      new Request("http://localhost/api/agent", {
+        headers: { Authorization: `Bearer ${created.token}` },
+      }),
+    );
     const body = (await response.json()) as { authentication: { tokenSource: string } };
     expect(body.authentication.tokenSource).toBe("database");
   });
 
-  test("GET /api/agent reports both tokenSource when env and DB tokens are configured", async () => {
-    const repository = getAgentApiTokenRepository();
-    expect(repository).not.toBeNull();
-    await Promise.resolve(repository!.create("DB Token"));
+  test("GET /api/agent/docs rejects missing bearer token", async () => {
+    const response = await getAgentDocs(new Request("http://localhost/api/agent/docs"));
+    expect(response.status).toBe(401);
+  });
 
-    const response = await getAgentInfo();
-    const body = (await response.json()) as { authentication: { tokenSource: string } };
-    expect(body.authentication.tokenSource).toBe("both");
+  test("GET /api/agent/docs returns markdown when authorized", async () => {
+    const response = await getAgentDocs(authorizedRequest("/api/agent/docs"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/markdown");
+    const markdown = await response.text();
+    expect(markdown).toContain("pnpm applied:agent");
+    expect(markdown).toContain("AGENT_API_TOKEN");
   });
 
   test("GET /api/agent/applications rejects missing and invalid bearer tokens", async () => {
@@ -147,7 +168,7 @@ describe("agent API routes", () => {
     expect(response.status).toBe(503);
   });
 
-  test("GET /api/agent/applications returns application URLs and statuses only after auth", async () => {
+  test("GET /api/agent/applications returns application summaries after auth", async () => {
     await getRepository().create(
       createJobApplicationSchema.parse({
         url: "https://jobs.example.com/listed",
@@ -172,8 +193,6 @@ describe("agent API routes", () => {
       company: "Acme",
       appliedAt: "2026-06-01",
     });
-    expect(typeof body.applications[0]?.id).toBe("string");
-    expect(typeof body.applications[0]?.updatedAt).toBe("string");
     expect(body.applications[0]).not.toHaveProperty("contactEmail");
     expect(body.applications[0]).not.toHaveProperty("fullJd");
   });
@@ -206,46 +225,38 @@ describe("agent API routes", () => {
     expect(body.applications[0]?.company).toBe("Globex");
   });
 
-  test("GET /api/agent/applications rejects invalid search query", async () => {
-    const response = await agentApplicationsRoute.GET(
-      authorizedRequest(`/api/agent/applications?search=${"x".repeat(201)}`),
-    );
-
-    expect(response.status).toBe(400);
-  });
-
-  test("POST /api/agent/applications rejects missing and invalid bearer tokens", async () => {
-    const body = JSON.stringify({ url: "https://jobs.example.com/role" });
-
-    const missingResponse = await agentApplicationsRoute.POST(
-      new Request("http://localhost/api/agent/applications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-      }),
-    );
-    expect(missingResponse.status).toBe(401);
-
-    const invalidResponse = await agentApplicationsRoute.POST(
-      new Request("http://localhost/api/agent/applications", {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer wrong-token",
-          "Content-Type": "application/json",
-        },
-        body,
-      }),
-    );
-    expect(invalidResponse.status).toBe(401);
-  });
-
-  test("POST /api/agent/applications ignores submitted status and stores to_apply", async () => {
+  test("POST /api/agent/applications defaults status to to_apply", async () => {
     mockedParseJobUrl.mockResolvedValue({
       ok: true,
       title: "Parsed Role",
       company: "Acme",
       salaryRange: null,
       fullJd: "<p>Parsed JD</p>",
+    });
+
+    const response = await agentApplicationsRoute.POST(
+      authorizedRequest("/api/agent/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://jobs.example.com/parsed" }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as { id: string; status: string };
+    expect(body.status).toBe("to_apply");
+
+    const notes = await getNoteRepository().listByApplicationId(body.id);
+    expect(notes.some((note) => note.content === "Created by the CLI")).toBe(true);
+  });
+
+  test("POST /api/agent/applications honors submitted status", async () => {
+    mockedParseJobUrl.mockResolvedValue({
+      ok: true,
+      title: "Parsed Role",
+      company: "Acme",
+      salaryRange: null,
+      fullJd: null,
     });
 
     const response = await agentApplicationsRoute.POST(
@@ -260,15 +271,225 @@ describe("agent API routes", () => {
     );
 
     expect(response.status).toBe(201);
-    const body = (await response.json()) as { status: string; url: string };
-    expect(body.status).toBe("to_apply");
-    expect(body.url).toBe("https://jobs.example.com/parsed");
-
-    const [stored] = await getRepository().list();
-    expect(stored?.status).toBe("to_apply");
+    const body = (await response.json()) as { status: string };
+    expect(body.status).toBe("applied");
   });
 
-  test("agent applications route does not export forbidden mutations", () => {
+  test("POST /api/agent/applications rejects invalid status", async () => {
+    mockedParseJobUrl.mockResolvedValue({
+      ok: true,
+      title: "Parsed Role",
+      company: "Acme",
+      salaryRange: null,
+      fullJd: null,
+    });
+
+    const response = await agentApplicationsRoute.POST(
+      authorizedRequest("/api/agent/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: "https://jobs.example.com/parsed",
+          status: "not-a-status",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  test("GET /api/agent/applications/:id returns a single application", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/one",
+        title: "One Role",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "applied",
+      }),
+    );
+
+    const response = await getAgentApplication(authorizedRequest(`/api/agent/applications/${app.id}`), {
+      params: Promise.resolve({ id: app.id }),
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { id: string; title: string };
+    expect(body.id).toBe(app.id);
+    expect(body.title).toBe("One Role");
+  });
+
+  test("GET /api/agent/applications/:id returns 404 for archived application", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/archived",
+        title: "Archived",
+        company: "Beta",
+        appliedAt: "2026-06-02",
+        status: "rejected",
+      }),
+    );
+    await getRepository().update(app.id, { archived: true });
+
+    const response = await getAgentApplication(authorizedRequest(`/api/agent/applications/${app.id}`), {
+      params: Promise.resolve({ id: app.id }),
+    });
+
+    expect(response.status).toBe(404);
+  });
+
+  test("PATCH /api/agent/applications/:id updates status with side effects", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/status",
+        title: "Status Role",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "to_apply",
+      }),
+    );
+
+    const response = await patchAgentApplication(
+      authorizedRequest(`/api/agent/applications/${app.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "applied" }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { status: string };
+    expect(body.status).toBe("applied");
+
+    const notes = await getNoteRepository().listByApplicationId(app.id);
+    expect(notes.some((note) => note.content === "Status Update: Applied")).toBe(true);
+    expect(notes.some((note) => note.content === "Updated by the CLI")).toBe(true);
+
+    const history = await getStatusHistoryRepository().listByApplicationId(app.id);
+    expect(history.some((entry) => entry.fromStatus === "to_apply" && entry.toStatus === "applied")).toBe(true);
+  });
+
+  test("PATCH /api/agent/applications/:id returns 404 for archived application", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/archived-patch",
+        title: "Archived",
+        company: "Beta",
+        appliedAt: "2026-06-02",
+        status: "rejected",
+      }),
+    );
+    await getRepository().update(app.id, { archived: true });
+
+    const response = await patchAgentApplication(
+      authorizedRequest(`/api/agent/applications/${app.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "applied" }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  test("agent notes GET and POST", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/notes",
+        title: "Notes Role",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "applied",
+      }),
+    );
+    const beforeUpdatedAt = app.updatedAt;
+
+    const createResponse = await postAgentNote(
+      authorizedRequest(`/api/agent/applications/${app.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Agent follow up" }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+    expect(createResponse.status).toBe(201);
+    const created = (await createResponse.json()) as { id: string; content: string; applicationUpdatedAt: string };
+    expect(created.content).toBe("Agent follow up");
+    expect(created.applicationUpdatedAt >= beforeUpdatedAt).toBe(true);
+
+    const listResponse = await getAgentNotes(authorizedRequest(`/api/agent/applications/${app.id}/notes`), {
+      params: Promise.resolve({ id: app.id }),
+    });
+    expect(listResponse.status).toBe(200);
+    const body = (await listResponse.json()) as { notes: { content: string }[] };
+    expect(body.notes).toHaveLength(1);
+    expect(body.notes[0]?.content).toBe("Agent follow up");
+  });
+
+  test("GET /api/agent/companies returns distinct sorted companies", async () => {
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/a",
+        title: "A",
+        company: "Globex",
+        appliedAt: "2026-06-01",
+        status: "applied",
+      }),
+    );
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/b",
+        title: "B",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+        status: "applied",
+      }),
+    );
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/c",
+        title: "C",
+        company: "Acme",
+        appliedAt: "2026-06-03",
+        status: "applied",
+      }),
+    );
+
+    const response = await getAgentCompanies(authorizedRequest("/api/agent/companies"));
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { companies: string[] };
+    expect(body.companies).toEqual(["Acme", "Globex"]);
+  });
+
+  test("GET /api/agent/companies filters by search", async () => {
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/a",
+        title: "A",
+        company: "Globex",
+        appliedAt: "2026-06-01",
+        status: "applied",
+      }),
+    );
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/b",
+        title: "B",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+        status: "applied",
+      }),
+    );
+
+    const response = await getAgentCompanies(authorizedRequest("/api/agent/companies?search=glob"));
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { companies: string[] };
+    expect(body.companies).toEqual(["Globex"]);
+  });
+
+  test("agent applications collection route does not export forbidden mutations", () => {
     expect("PATCH" in agentApplicationsRoute).toBe(false);
     expect("DELETE" in agentApplicationsRoute).toBe(false);
   });

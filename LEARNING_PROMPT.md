@@ -1,83 +1,88 @@
-# Applied.dev Agent API Learning Prompt
+# Applied.dev Agent CLI and API Learning Prompt
 
-You have access to the Applied.dev Agent API.
+You have access to the Applied.dev Agent API and CLI.
 
-First, discover the API instructions by calling:
+**Recommended:** use the CLI from the applied.dev repo with the dev server already running. Do not run `pnpm run check` or `pnpm dev` for agent writes.
 
-GET http://localhost:3030/api/agent
+```bash
+pnpm applied:agent applications add --url "https://example.com/job-posting"
+pnpm applied:agent applications list --search engineer
+pnpm applied:agent companies list
+pnpm applied:agent applications set-status --id <uuid> --status applied
+pnpm applied:agent applications add-note --id <uuid> --content "Follow up next week"
+pnpm applied:agent docs
+```
 
-The discovery endpoint is public. Protected application endpoints require bearer-token authentication:
+Environment (from `.env.local`):
 
-Authorization: Bearer oTt7mU17S1wxSHjiiqsCFw5o-endARP98vjf7IgPXJo
+- `AGENT_API_TOKEN` — **required** on every CLI invocation and HTTP request
+- `APPLIED_DEV_URL` — default `http://localhost:3030`
+
+## Authentication
+
+**All** agent endpoints require bearer-token authentication. There are no public agent routes.
+
+```
+Authorization: Bearer <AGENT_API_TOKEN>
+```
 
 Authentication setup:
 
-- Preferred: sign in to the app → Admin → Agent API Tokens → create a named token → copy it immediately → use Authorization: Bearer <token>
-- Optional bootstrap: pnpm agent:token prints AGENT_API_TOKEN=... for .env.local; restart the dev server; register it in Admin to manage/revoke from the UI
-- Deployed hosts: DB tokens persist on Turso; AGENT_API_TOKEN env still works additively on Vercel
-- Do not use APP_ACCESS_TOKEN for agent endpoints
-- If no agent token is configured (no env token and no active DB tokens), protected endpoints return 503
+- Preferred: sign in to the app → Admin → Agent API Tokens → create a named token → copy it immediately
+- Bootstrap: `pnpm agent:token` prints `AGENT_API_TOKEN=...` for `.env.local`; restart the dev server; register it in Admin to manage/revoke from the UI
+- Deployed hosts: DB tokens persist on Turso; `AGENT_API_TOKEN` env still works additively on Vercel
+- Do not use `APP_ACCESS_TOKEN` for agent endpoints
+- If no agent token is configured (no env token and no active DB tokens), endpoints return 503
 
-Available actions:
+## Documentation URLs
 
-1. List applications:
-   GET http://localhost:3030/api/agent/applications
-   GET http://localhost:3030/api/agent/applications?search=engineer
-   GET http://localhost:3030/api/agent/applications?search=interviewing
+Fetch with the same bearer token:
 
-   Optional query parameter:
-   - search: case-insensitive filter for title, company, status, status label, URL, and applied date
+- `GET /api/agent/docs` — markdown reference (CLI commands, endpoints, statuses, rules)
+- `GET /api/agent` — JSON discovery document (capabilities, limitations, CLI examples)
 
-   Response:
-   {
-   "applications": [
-   {
-   "id": "uuid",
-   "url": "https://example.com/job-posting",
-   "status": "to_apply",
-   "title": "Role title",
-   "company": "Company name",
-   "appliedAt": "YYYY-MM-DD",
-   "updatedAt": "ISO timestamp"
-   }
-   ]
-   }
+## CLI commands
 
-   Status values you may see: applied, to_apply, interviewing, waiting, rejected, offer, passed.
+```
+pnpm applied:agent applications list [--search QUERY] [--json]
+pnpm applied:agent applications add --url URL [--status STATUS] [--json]
+pnpm applied:agent applications get --id ID [--json]
+pnpm applied:agent applications set-status --id ID --status STATUS [--json]
+pnpm applied:agent applications add-note --id ID --content "..." [--json]
+pnpm applied:agent companies list [--search QUERY] [--json]
+pnpm applied:agent posts add --url URL [--status STATUS] [--json]
+pnpm applied:agent docs [--json]
+```
 
-2. Create an application from a job URL:
-   POST http://localhost:3030/api/agent/applications
-   Content-Type: application/json
+Status aliases: `apply`, `to-apply`, `to_apply` → `to_apply`
 
-   Body:
-   {
-   "url": "https://example.com/job-posting"
-   }
+Default status on create: `to_apply` ("To Apply")
 
-   Only "url" is accepted. Extra fields are ignored.
+## HTTP endpoints
 
-   Response (201):
-   {
-   "id": "uuid",
-   "url": "https://example.com/job-posting",
-   "status": "to_apply",
-   "title": "Parsed title",
-   "company": "Parsed company",
-   "appliedAt": "YYYY-MM-DD",
-   "updatedAt": "ISO timestamp"
-   }
+| Method | Path                                | Purpose                                  |
+| ------ | ----------------------------------- | ---------------------------------------- |
+| GET    | `/api/agent`                        | JSON discovery                           |
+| GET    | `/api/agent/docs`                   | Markdown reference                       |
+| GET    | `/api/agent/applications`           | List applications (`?search=`)           |
+| POST   | `/api/agent/applications`           | Create from job URL (`{ url, status? }`) |
+| GET    | `/api/agent/applications/:id`       | Get one application                      |
+| PATCH  | `/api/agent/applications/:id`       | Update status only (`{ status }`)        |
+| GET    | `/api/agent/applications/:id/notes` | List notes                               |
+| POST   | `/api/agent/applications/:id/notes` | Add note (`{ content }`)                 |
+| GET    | `/api/agent/companies`              | Distinct companies (`?search=`)          |
 
-   The parser may also store salaryRange and fullJd when found, but those fields are not returned by the agent API.
+Status values: `applied`, `to_apply`, `interviewing`, `waiting`, `no_response`, `rejected`, `offer`, `passed`
 
-Rules:
+## Rules
 
-- You may only list applications and create new applications from job URLs.
-- Do not attempt to edit applications.
-- Do not attempt to change statuses.
-- Do not attempt to delete applications.
-- Do not access notes, backups, imports, raw database data, or unrelated API routes.
-- Applications created through this API are automatically assigned status to_apply.
-- If creating from a URL fails because title or company cannot be parsed, report the failure instead of retrying with invented data.
-- Errors use { "error": "message" } with status 400 (bad request), 401 (unauthorized), or 503 (agent token not configured).
+- Add applications one at a time from job URLs
+- Default status is `to_apply`; pass `--status` or `{ "status": "..." }` to override
+- Status changes create an automatic status-update note, a "Updated by the CLI" audit note, and a history entry
+- Creating an application adds a "Created by the CLI" audit note; explicit `add-note` does not add an extra audit note
+- Archived applications are hidden from list, company, and get-by-id responses
+- If creating from a URL fails because title or company cannot be parsed, report the failure — do not invent data
+- Do not access backups, imports, user management, or unrelated app routes
+- Errors use `{ "error": "message" }` with HTTP 400, 401, 404, or 503
 
-When using the API, always start with the discovery endpoint, then use only the documented agent endpoints.
+When using HTTP directly, start with `GET /api/agent/docs` or `GET /api/agent`, then use only documented agent endpoints.
