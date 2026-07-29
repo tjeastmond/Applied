@@ -57,7 +57,7 @@ function latestSourceMtime(paths) {
   return latest;
 }
 
-function needsBuild() {
+export function cliBuildIsStale() {
   if (!existsSync(outfile)) {
     return true;
   }
@@ -65,9 +65,32 @@ function needsBuild() {
   return latestSourceMtime(sourcePaths) > statSync(outfile).mtimeMs;
 }
 
-if (needsBuild()) {
-  const result = spawnSync(process.execPath, [buildScript], { cwd: root, stdio: "inherit" });
+/**
+ * @param {{ quiet?: boolean }} [options]
+ * @returns {boolean} true when a rebuild ran
+ */
+export function ensureCliBuilt(options = {}) {
+  if (!cliBuildIsStale()) {
+    return false;
+  }
+
+  const buildArgs = [buildScript];
+  if (options.quiet) {
+    buildArgs.push("--quiet");
+  }
+
+  const result = spawnSync(process.execPath, buildArgs, {
+    cwd: root,
+    stdio: options.quiet ? ["inherit", "pipe", "inherit"] : "inherit",
+  });
+
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
+
+  return true;
+}
+
+if (import.meta.url === new URL(process.argv[1], "file:").href) {
+  ensureCliBuilt();
 }

@@ -42,6 +42,8 @@ const pathAliasPlugin = {
 
 mkdirSync(dirname(outfile), { recursive: true });
 
+const quiet = process.argv.includes("--quiet");
+
 await esbuild.build({
   entryPoints: [entryPoint],
   outfile,
@@ -50,8 +52,11 @@ await esbuild.build({
   format: "esm",
   target: "node22",
   plugins: [pathAliasPlugin],
-  logLevel: "info",
+  logLevel: quiet ? "silent" : "info",
 });
 
 chmodSync(outfile, 0o755);
-process.stdout.write(`Wrote ${relative(root, outfile)}\n`);
+
+if (!quiet) {
+  process.stderr.write(`Wrote ${relative(root, outfile)}\n`);
+}
