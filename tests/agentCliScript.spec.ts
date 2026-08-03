@@ -32,11 +32,15 @@ describe("applied:agent script stdout", () => {
     expect(result.stdout).not.toMatch(/^>\s/m);
 
     if (result.status === 2) {
-      expect(() => JSON.parse(result.stdout)).toThrow();
+      expect(() => {
+        JSON.parse(result.stdout);
+      }).toThrow();
       expect(result.stderr).toContain("AGENT_API_TOKEN");
       return;
     }
 
-    expect(() => JSON.parse(result.stdout)).not.toThrow();
+    expect(() => {
+      JSON.parse(result.stdout);
+    }).not.toThrow();
   });
 });
