@@ -42,7 +42,11 @@ import {
   countArchivableApplications,
 } from "@/lib/applicationArchive";
 import { errorMessage } from "@/lib/errorMessage";
-import { isAdminOpenShortcut, isEditableKeyboardTarget } from "@/lib/keyboardShortcut";
+import {
+  isAdminBulkArchiveShortcut,
+  isAdminOpenShortcut,
+  isEditableKeyboardTarget,
+} from "@/lib/keyboardShortcut";
 import { FILTER_CONTROL_HEIGHT_CLASS } from "@/lib/filterControls";
 import { toastMessages } from "@/lib/toastMessages";
 import { cn } from "@/lib/utils";
@@ -320,6 +324,21 @@ export function AdminDialog({
       setIsBulkArchiving(false);
     }
   }
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (!isAdminBulkArchiveShortcut(event)) return;
+      if (isEditableKeyboardTarget(event.target)) return;
+      if (archivableCount === 0 || isBulkArchiving) return;
+      event.preventDefault();
+      void handleConfirmBulkArchive();
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, archivableCount, isBulkArchiving]);
 
   async function handleConfirmRevoke() {
     if (!revokeTarget) return;

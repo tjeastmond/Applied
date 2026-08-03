@@ -58,6 +58,10 @@ export function isAdminOpenShortcut(event: KeyboardEvent): boolean {
   return isUnmodifiedKey(event, "a");
 }
 
+export function isAdminBulkArchiveShortcut(event: KeyboardEvent): boolean {
+  return isUnmodifiedKey(event, "e");
+}
+
 export function isShortcutsHelpOpenShortcut(event: KeyboardEvent): boolean {
   return isUnmodifiedKey(event, "?", true);
 }
@@ -87,7 +91,7 @@ export function consumeDoubleEscape(
   return false;
 }
 
-export type KeyboardShortcutContext = "Global" | "Detail Drawer";
+export type KeyboardShortcutContext = "Global" | "Admin" | "Detail Drawer";
 
 export type KeyboardShortcutEntry = {
   keys: string;
@@ -116,6 +120,11 @@ export function appKeyboardShortcuts(): KeyboardShortcutEntry[] {
       keys: "a",
       description: "Open admin/settings",
       context: "Global",
+    },
+    {
+      keys: "e",
+      description: "Archive rejected and passed applications without confirmation",
+      context: "Admin",
     },
     {
       keys: "?",

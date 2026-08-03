@@ -14,7 +14,7 @@ import { KeyboardIcon, XIcon } from "lucide-react";
 const KBD_CLASS =
   "bg-muted text-muted-foreground pointer-events-none shrink-0 rounded px-2 py-1 font-sans text-xs font-medium tracking-wider";
 
-const SECTIONS: KeyboardShortcutContext[] = ["Global", "Detail Drawer"];
+const SECTIONS: KeyboardShortcutContext[] = ["Global", "Admin", "Detail Drawer"];
 
 const BUBBLE_FILL = "border-[#333333] bg-[#333333] text-white";
 

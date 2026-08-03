@@ -3,6 +3,7 @@ import {
   appKeyboardShortcuts,
   consumeDoubleEscape,
   DOUBLE_ESCAPE_INTERVAL_MS,
+  isAdminBulkArchiveShortcut,
   isAdminOpenShortcut,
   isModKeyChord,
   isSearchFocusSlash,
@@ -37,6 +38,24 @@ describe("isModKeyChord", () => {
   it("matches Meta+Enter and Ctrl+Enter", () => {
     expect(isModKeyChord(keyEvent({ key: "Enter", metaKey: true }), "Enter")).toBe(true);
     expect(isModKeyChord(keyEvent({ key: "Enter", ctrlKey: true }), "Enter")).toBe(true);
+  });
+});
+
+describe("isAdminBulkArchiveShortcut", () => {
+  it("matches unmodified lowercase e", () => {
+    expect(isAdminBulkArchiveShortcut(keyEvent({ key: "e" }))).toBe(true);
+  });
+
+  it("ignores e with modifiers", () => {
+    expect(isAdminBulkArchiveShortcut(keyEvent({ key: "e", metaKey: true }))).toBe(false);
+    expect(isAdminBulkArchiveShortcut(keyEvent({ key: "e", ctrlKey: true }))).toBe(false);
+    expect(isAdminBulkArchiveShortcut(keyEvent({ key: "e", altKey: true }))).toBe(false);
+    expect(isAdminBulkArchiveShortcut(keyEvent({ key: "e", shiftKey: true }))).toBe(false);
+  });
+
+  it("ignores uppercase E and other keys", () => {
+    expect(isAdminBulkArchiveShortcut(keyEvent({ key: "E" }))).toBe(false);
+    expect(isAdminBulkArchiveShortcut(keyEvent({ key: "a" }))).toBe(false);
   });
 });
 
@@ -91,7 +110,7 @@ describe("isSearchFocusSlash", () => {
 describe("appKeyboardShortcuts", () => {
   it("returns the full shortcut catalog", () => {
     const shortcuts = appKeyboardShortcuts();
-    expect(shortcuts).toHaveLength(10);
+    expect(shortcuts).toHaveLength(11);
 
     const globalKeys = shortcuts.filter((entry) => entry.context === "Global").map((entry) => entry.keys);
     expect(shortcuts.find((entry) => entry.description === modKShortcutDescription())?.keys).toMatch(/^(⌘k|Ctrl\+k)$/);
@@ -99,6 +118,9 @@ describe("appKeyboardShortcuts", () => {
     expect(globalKeys).toContain("Esc Esc");
     expect(globalKeys).toContain("a");
     expect(globalKeys).toContain("?");
+
+    const adminKeys = shortcuts.filter((entry) => entry.context === "Admin").map((entry) => entry.keys);
+    expect(adminKeys).toContain("e");
 
     const detailKeys = shortcuts.filter((entry) => entry.context === "Detail Drawer").map((entry) => entry.keys);
     expect(detailKeys).toHaveLength(3);
