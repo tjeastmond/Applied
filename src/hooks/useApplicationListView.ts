@@ -187,6 +187,14 @@ export function useApplicationListView({
     const trimmed = company.trim();
     if (!trimmed) return;
     setSelectedCompanies(new Set([trimmed]));
+    setSelectedStatuses(new Set());
+    setIncludeArchived(true);
+    persistIncludeArchived(true);
+    setViewMode((current) => {
+      if (current !== "archived") return current;
+      persistApplicationViewMode("active");
+      return "active";
+    });
   }, []);
 
   const resetListPagination = useCallback(() => {
