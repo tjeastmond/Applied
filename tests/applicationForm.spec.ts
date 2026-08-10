@@ -9,6 +9,7 @@ import {
   isStatusOnlyFormChange,
   isFormValid,
   isProbablyHttpUrl,
+  mergeParseResult,
   normalizeClipboardOnlyJobUrl,
   normalizePastedJobUrl,
   safeFormToInput,
@@ -243,6 +244,21 @@ describe("isFormPristine", () => {
     form.title = "Staff Engineer";
 
     expect(isStatusOnlyFormChange(form, application)).toBe(false);
+  });
+});
+
+describe("mergeParseResult", () => {
+  it("normalizes parsed titles before filling the form", () => {
+    const form = emptyForm();
+    const merged = mergeParseResult(form, {
+      title: "Lead Full-Stack Engineer  at Roame | Y Combinator",
+      company: "Roame",
+      salaryRange: null,
+      fullJd: null,
+    });
+
+    expect(merged.title).toBe("Lead Full-Stack Engineer");
+    expect(merged.company).toBe("Roame");
   });
 });
 

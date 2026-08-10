@@ -1,5 +1,6 @@
 import { formatZodError } from "@/lib/formatZodError";
 import { canonicalizeLinkedInJobUrl } from "@/lib/linkedinJobUrl";
+import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
 import {
   createJobApplicationSchema,
   requiredApplicationFieldsSchema,
@@ -218,9 +219,10 @@ export function mergeParseResult(
   form: FormState,
   result: Pick<ParseJobUrlSuccess, "title" | "company" | "fullJd"> & ParsedApplicationSalaryFields,
 ): FormState {
+  const parsedTitle = result.title != null ? normalizeJobTitle(result.title) : null;
   return {
     ...form,
-    title: result.title ?? form.title,
+    title: parsedTitle ?? form.title,
     company: result.company ?? form.company,
     salaryRange: result.salaryRange ?? form.salaryRange,
     fullJd: result.fullJd ?? form.fullJd,

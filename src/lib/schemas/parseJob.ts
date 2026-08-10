@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeJobTitle } from "@/lib/normalizeJobTitle";
 import { parsedSalaryRangeSchema } from "@/lib/schemas/application";
 import { requiredHttpUrlSchema } from "@/lib/schemas/common";
 
@@ -6,9 +7,13 @@ export const parseJobUrlRequestSchema = z.strictObject({
   url: requiredHttpUrlSchema,
 });
 
+const parsedJobTitleSchema = z
+  .union([z.string(), z.null()])
+  .transform((value) => normalizeJobTitle(value));
+
 export const parseJobUrlSuccessSchema = z.strictObject({
   ok: z.literal(true),
-  title: z.string().nullable(),
+  title: parsedJobTitleSchema,
   company: z.string().nullable(),
   salaryRange: parsedSalaryRangeSchema.optional().default(null),
   fullJd: z.string().nullable(),

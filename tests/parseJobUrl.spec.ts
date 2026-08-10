@@ -107,7 +107,7 @@ describe("parseJobUrl", () => {
     expect(result.fullJd).toBeNull();
   });
 
-  it("returns parsed titles without stripping board suffixes", async () => {
+  it("normalizes Y Combinator job titles from parse", async () => {
     const html = `<!doctype html><html><head><meta property="og:title" content="Founding Engineer | Y Combinator" /></head><body></body></html>`;
     vi.stubGlobal(
       "fetch",
@@ -122,7 +122,29 @@ describe("parseJobUrl", () => {
     const result = await parseJobUrl("https://www.ycombinator.com/companies/acme/jobs/abc");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.title).toBe("Founding Engineer | Y Combinator");
+    expect(result.title).toBe("Founding Engineer");
+  });
+
+  it("normalizes Y Combinator titles with at CompanyName and board suffix", async () => {
+    const html = `<!doctype html><html><head>
+      <meta content="Lead Full-Stack Engineer  at Roame" name="title" />
+      <meta content="Lead Full-Stack Engineer  at Roame | Y Combinator" property="og:title" />
+    </head><body></body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(html, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+
+    const result = await parseJobUrl("https://www.ycombinator.com/companies/roame/jobs/mqqfa38-lead-full-stack-engineer");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.title).toBe("Lead Full-Stack Engineer");
+    expect(result.company).toBe("Roame");
   });
 
   it("extracts linkedin title and company from og:title and canonicalizes fetch URL", async () => {
@@ -205,7 +227,7 @@ describe("parseJobUrl", () => {
     expect(result.salaryRange).toBe("$211K–$291K");
   });
 
-  it("returns Work at a Startup titles without normalization", async () => {
+  it("normalizes Work at a Startup titles", async () => {
     const html = `<!doctype html><html><head>
       <meta property="og:title" content="Software Engineer  at MindFort | Y Combinator's Work at a Startup" />
     </head><body></body></html>`;
@@ -222,7 +244,7 @@ describe("parseJobUrl", () => {
     const result = await parseJobUrl("https://www.workatastartup.com/jobs/84795");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.title).toBe("Software Engineer  at MindFort | Y Combinator's Work at a Startup");
+    expect(result.title).toBe("Software Engineer");
   });
 
   it("extracts the hiring company from Y Combinator job pages", async () => {

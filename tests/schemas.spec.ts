@@ -268,6 +268,17 @@ describe("parseJobUrlResultSchema", () => {
 
     expect(parsed.salaryRange).toHaveLength(100);
   });
+
+  it("normalizes board and company suffixes in parse titles", () => {
+    const parsed = parseJobUrlSuccessSchema.parse({
+      ok: true,
+      title: "Lead Full-Stack Engineer  at Roame | Y Combinator",
+      company: "Roame",
+      fullJd: null,
+    });
+
+    expect(parsed.title).toBe("Lead Full-Stack Engineer");
+  });
 });
 
 describe("backupJsonSchema", () => {
