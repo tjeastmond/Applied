@@ -67,6 +67,8 @@ describe("agent API routes", () => {
       errors: { codes: Record<string, string> };
       cli: { command: string };
       documentationUrl: string;
+      openapiUrl: string;
+      interactiveDocumentationUrl: string;
     };
     expect(body.version).toBe(2);
     expect(body.authentication).toMatchObject({
@@ -75,6 +77,8 @@ describe("agent API routes", () => {
       tokenSource: "env",
     });
     expect(body.documentationUrl).toBe("/api/agent/docs");
+    expect(body.openapiUrl).toBe("/api/agent/openapi");
+    expect(body.interactiveDocumentationUrl).toBe("/agent/docs");
     expect(body.cli.command).toBe("pnpm applied:agent");
     expect(body.applicationSummaryFields).toEqual([
       "id",
@@ -133,6 +137,8 @@ describe("agent API routes", () => {
     const markdown = await response.text();
     expect(markdown).toContain("pnpm applied:agent");
     expect(markdown).toContain("AGENT_API_TOKEN");
+    expect(markdown).toContain("/api/agent/openapi");
+    expect(markdown).toContain("/agent/docs");
   });
 
   test("GET /api/agent/applications rejects missing and invalid bearer tokens", async () => {

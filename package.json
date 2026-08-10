@@ -33,7 +33,9 @@
     "check": "pnpm run typecheck && pnpm run test:run && pnpm run lint && pnpm run format:check && pnpm run build:cli && pnpm run build"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@base-ui/react": "^1.5.0",
+    "@scalar/nextjs-api-reference": "^0.11.13",
     "@tursodatabase/serverless": "^1.2.1",
     "better-sqlite3": "^12.10.0",
     "class-variance-authority": "^0.7.1",
@@ -60,9 +62,9 @@
     "@types/react-dom": "^19.2.3",
     "@types/yazl": "^3.3.1",
     "@vitest/coverage-v8": "^3.2.4",
+    "esbuild": "^0.25.12",
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.2.10",
-    "esbuild": "^0.25.12",
     "eslint-config-prettier": "^10.1.8",
     "jsdom": "^26.1.0",
     "prettier": "^3.6.2",

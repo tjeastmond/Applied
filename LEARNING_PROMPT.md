@@ -30,7 +30,7 @@ Or pass per invocation: `--token`, `--base-url`
 
 ## Authentication
 
-**All** agent endpoints require bearer-token authentication. There are no public agent routes.
+**All** agent endpoints require bearer-token authentication. The OpenAPI document at `GET /api/agent/openapi` is public (no token). Interactive docs: `/agent/docs`.
 
 ```
 Authorization: Bearer <AGENT_API_TOKEN>
@@ -46,10 +46,15 @@ Authentication setup:
 
 ## Documentation URLs
 
-Fetch with the same bearer token:
+Fetch markdown and discovery with the same bearer token:
 
 - `GET /api/agent/docs` — markdown reference (CLI commands, endpoints, statuses, rules)
 - `GET /api/agent` — JSON discovery document (capabilities, limitations, CLI examples)
+
+Public (no token):
+
+- `GET /api/agent/openapi` — OpenAPI 3.1 JSON spec
+- `/agent/docs` — interactive Scalar API reference
 
 ## CLI commands
 
@@ -74,6 +79,7 @@ Default status on create: `to_apply` ("To Apply")
 
 | Method | Path                                | Purpose                                  |
 | ------ | ----------------------------------- | ---------------------------------------- |
+| GET    | `/api/agent/openapi`                | OpenAPI 3.1 spec (public)                |
 | GET    | `/api/agent`                        | JSON discovery                           |
 | GET    | `/api/agent/docs`                   | Markdown reference                       |
 | GET    | `/api/agent/applications`           | List applications (`?search=`)           |
@@ -97,4 +103,4 @@ Status values: `applied`, `to_apply`, `interviewing`, `waiting`, `no_response`, 
 - Do not access backups, imports, user management, or unrelated app routes
 - Errors use `{ "error": "message" }` with HTTP 400, 401, 404, or 503
 
-When using HTTP directly, start with `GET /api/agent/docs` or `GET /api/agent`, then use only documented agent endpoints.
+When using HTTP directly, start with `GET /api/agent/openapi`, `GET /api/agent/docs`, or `GET /api/agent`, then use only documented agent endpoints.

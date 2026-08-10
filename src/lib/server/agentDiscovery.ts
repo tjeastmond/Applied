@@ -164,6 +164,8 @@ export function buildAgentDiscoveryPayload(tokenSource: string) {
       examples: AGENT_CLI_COMMANDS,
     },
     documentationUrl: "/api/agent/docs",
+    openapiUrl: "/api/agent/openapi",
+    interactiveDocumentationUrl: "/agent/docs",
     errors: {
       format: { error: "string" },
       codes: {
@@ -187,7 +189,9 @@ export function buildAgentDocsMarkdown(): string {
 
   return `# Applied.dev Agent API and CLI
 
-All agent endpoints require bearer-token authentication. There are no public agent routes.
+OpenAPI spec: \`GET /api/agent/openapi\` (public). Interactive reference: \`/agent/docs\`.
+
+All agent endpoints require bearer-token authentication except the OpenAPI document itself.
 
 ## Authentication
 
@@ -228,6 +232,8 @@ ${cliLines}
 ${capabilityLines}
 
 Discovery JSON: \`GET /api/agent\`
+
+OpenAPI: \`GET /api/agent/openapi\` · Interactive docs: \`/agent/docs\`
 
 ## Status values
 
