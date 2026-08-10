@@ -31,7 +31,7 @@ describe("createJobApplicationSchema", () => {
       appliedAt: "2026-06-01",
     });
 
-    expect(parsed.title).toBe("Software Engineer at Acme");
+    expect(parsed.title).toBe("Software Engineer");
   });
 
   it("rejects unknown fields", () => {

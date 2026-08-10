@@ -7,13 +7,17 @@ describe("normalizeJobTitle", () => {
   });
 
   it("removes the Simplify suffix", () => {
-    expect(normalizeJobTitle("Software Engineer at Acme | Simplify")).toBe("Software Engineer at Acme");
+    expect(normalizeJobTitle("Software Engineer at Acme | Simplify")).toBe("Software Engineer");
   });
 
   it("removes the Work at a Startup suffix", () => {
     expect(normalizeJobTitle("Software Engineer  at MindFort | Y Combinator's Work at a Startup")).toBe(
-      "Software Engineer at MindFort",
+      "Software Engineer",
     );
+  });
+
+  it("removes the at CompanyName suffix", () => {
+    expect(normalizeJobTitle("Lead Full-Stack Engineer at Roame")).toBe("Lead Full-Stack Engineer");
   });
 
   it("trims whitespace before returning", () => {
@@ -21,7 +25,7 @@ describe("normalizeJobTitle", () => {
   });
 
   it("collapses double spaces in titles", () => {
-    expect(normalizeJobTitle("Senior  Engineer   at  Acme")).toBe("Senior Engineer at Acme");
+    expect(normalizeJobTitle("Senior  Engineer   at  Acme")).toBe("Senior Engineer");
   });
 
   it("leaves other titles unchanged", () => {
