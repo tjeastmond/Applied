@@ -11,8 +11,9 @@ import { modKShortcutDescription, modKShortcutLabel } from "@/lib/keyboardShortc
 import { PlusIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** Single column below lg (~1024px); two columns from lg when card width stays ~320–400px. */
+/** Shell: single column below lg (~1024px); two columns from lg when card width stays ~320–400px. */
 const APPLICATION_CARD_GRID_CLASSES = "grid grid-cols-1 gap-4 lg:grid-cols-2";
+const APPLICATION_CARD_GRID_SINGLE_COLUMN_CLASSES = "grid grid-cols-1 gap-4";
 const EMPTY_STATE_CARD_CLASS = "shadow-sm shadow-black/5";
 
 type ApplicationListPageProps = Pick<
@@ -56,6 +57,8 @@ type ApplicationListPageProps = Pick<
   onBackToApplications?: () => void;
   edgeBleedClassName?: string;
   showListFooter?: boolean;
+  /** Classic UI uses a single column at all breakpoints. */
+  singleColumnCards?: boolean;
 };
 
 export function ApplicationListPage({
@@ -97,7 +100,11 @@ export function ApplicationListPage({
   onBackToApplications,
   edgeBleedClassName,
   showListFooter: showListFooterProp = true,
+  singleColumnCards = false,
 }: ApplicationListPageProps) {
+  const cardGridClasses = singleColumnCards
+    ? APPLICATION_CARD_GRID_SINGLE_COLUMN_CLASSES
+    : APPLICATION_CARD_GRID_CLASSES;
   const listFooterVisible =
     applications.length > 0 && !isArchivedViewEmpty && !isBookmarksViewEmpty && !isFilteredEmpty && hasSyncedPageSize;
 
@@ -173,14 +180,14 @@ export function ApplicationListPage({
               </CardContent>
             </Card>
           ) : !hasSyncedPageSize ? (
-            <div className={APPLICATION_CARD_GRID_CLASSES} aria-busy="true" aria-label="Loading applications">
+            <div className={cardGridClasses} aria-busy="true" aria-label="Loading applications">
               {Array.from({ length: 4 }, (_, index) => (
                 <div key={index} className="bg-card ring-foreground/10 h-[10.5rem] animate-pulse rounded-xl ring-1" />
               ))}
             </div>
           ) : (
             <>
-              <div className={APPLICATION_CARD_GRID_CLASSES}>
+              <div className={cardGridClasses}>
                 {visibleApplications.map((application) => (
                   <ApplicationCard
                     key={application.id}

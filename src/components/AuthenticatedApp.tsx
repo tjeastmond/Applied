@@ -80,7 +80,7 @@ export function AuthenticatedApp({ onLogout, tursoSyncAvailable, ...controllerOp
         </div>
       </header>
 
-      <ApplicationListPage {...controller} edgeBleedClassName={CLASSIC_LIST_EDGE_BLEED_CLASS} />
+      <ApplicationListPage {...controller} edgeBleedClassName={CLASSIC_LIST_EDGE_BLEED_CLASS} singleColumnCards />
 
       <AuthenticatedAppOverlays {...controller} />
     </div>
