@@ -48,6 +48,16 @@ export function ShellAuthenticatedApp({
     router.push(appViewToPath("applications"));
   }, [controller, router]);
 
+  const handleCompanyFilterFromDetail = useCallback(
+    (company: string) => {
+      controller.handleCompanyFilterFromDetail(company);
+      if (routeAppView !== "applications") {
+        router.push(appViewToPath("applications"));
+      }
+    },
+    [controller, routeAppView, router],
+  );
+
   return (
     <SidebarProvider>
       <div className="bg-background flex h-svh overflow-hidden">
@@ -60,18 +70,19 @@ export function ShellAuthenticatedApp({
           onLogoClick={handleResetToHome}
         />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <AppHeader onAddApplication={controller.openAddForm} />
+          <AppHeader onAddApplication={controller.openAddForm} onLogoClick={handleResetToHome} />
           <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <ApplicationListPage
               {...controller}
               onBackToApplications={handleBackToApplications}
               edgeBleedClassName="-mx-4 sm:-mx-6 lg:-mx-8"
+              showListFooter={false}
             />
           </main>
         </div>
       </div>
 
-      <AuthenticatedAppOverlays {...controller} />
+      <AuthenticatedAppOverlays {...controller} handleCompanyFilterFromDetail={handleCompanyFilterFromDetail} />
 
       <SettingsDialog
         applications={controller.applications}

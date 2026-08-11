@@ -55,6 +55,7 @@ export function useApplicationListView({
   );
 
   const dedicatedArchivedView = routeAppView === "archived";
+  const pendingCompanyFilterRef = useRef<string | null>(null);
 
   const listQuery = useMemo<ApplicationListViewQuery>(
     () => ({
@@ -105,16 +106,28 @@ export function useApplicationListView({
       const query = appViewToQuery(routeAppView);
       setViewMode(query.viewMode);
       setBookmarksOnly(query.bookmarksOnly);
-      setSelectedCompanies(new Set());
-      setSelectedStatuses(new Set());
       setSearchQuery("");
-      if (routeAppView === "archived") {
-        setIncludeArchived(false);
-      } else if (routeAppView === "applications") {
-        setIncludeArchived(readStoredIncludeArchived());
+
+      const pendingCompany = pendingCompanyFilterRef.current;
+      pendingCompanyFilterRef.current = null;
+
+      if (pendingCompany && routeAppView === "applications") {
+        setSelectedCompanies(new Set([pendingCompany]));
+        setSelectedStatuses(new Set());
+        setIncludeArchived(true);
+        persistIncludeArchived(true);
       } else {
-        setIncludeArchived(false);
+        setSelectedCompanies(new Set());
+        setSelectedStatuses(new Set());
+        if (routeAppView === "archived") {
+          setIncludeArchived(false);
+        } else if (routeAppView === "applications") {
+          setIncludeArchived(readStoredIncludeArchived());
+        } else {
+          setIncludeArchived(false);
+        }
       }
+
       setCurrentPage(1);
       persistApplicationViewMode(query.viewMode);
       hasRestoredIncludeArchivedPreference = true;
@@ -217,6 +230,7 @@ export function useApplicationListView({
   const handleCompanyFilter = useCallback((company: string) => {
     const trimmed = company.trim();
     if (!trimmed) return;
+    pendingCompanyFilterRef.current = trimmed;
     setSelectedCompanies(new Set([trimmed]));
     setSelectedStatuses(new Set());
     setIncludeArchived(true);

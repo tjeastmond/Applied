@@ -258,6 +258,14 @@ export function useAuthenticatedAppController({
     }
   }, []);
 
+  const handleCompanyFilterFromDetail = useCallback(
+    (company: string) => {
+      handleCompanyFilter(company);
+      setDetailOpen(false);
+    },
+    [handleCompanyFilter],
+  );
+
   const handleDetailCloseComplete = useCallback(() => {
     const closingId = detailClosingIdRef.current;
     if (closingId === null) return;
@@ -593,6 +601,7 @@ export function useAuthenticatedAppController({
     handlePageChange,
     handlePageSizeChange,
     handleCompanyFilter,
+    handleCompanyFilterFromDetail,
     handleCardMouseEnter,
     handleCardMouseLeave,
     requestDelete,

@@ -29,6 +29,7 @@ type AuthenticatedAppOverlaysProps = Pick<
   | "handleDetailCloseComplete"
   | "handleApplicationChange"
   | "handleStatusChange"
+  | "handleCompanyFilterFromDetail"
   | "requestDelete"
   | "pendingDeleteId"
   | "pendingDeleteApplication"
@@ -51,6 +52,7 @@ export function AuthenticatedAppOverlays({
   handleDetailCloseComplete,
   handleApplicationChange,
   handleStatusChange,
+  handleCompanyFilterFromDetail,
   requestDelete,
   pendingDeleteId,
   pendingDeleteApplication,
@@ -75,6 +77,7 @@ export function AuthenticatedAppOverlays({
         onApplicationChange={handleApplicationChange}
         onStatusChange={handleStatusChange}
         onRequestDelete={requestDelete}
+        onCompanyFilter={handleCompanyFilterFromDetail}
       />
 
       <AlertDialog open={pendingDeleteId !== null} onOpenChange={handleDeleteDialogOpenChange}>
