@@ -24,7 +24,6 @@ import {
 } from "@/lib/applicationPagination";
 import type { ApplicationStatus, JobApplication } from "@/types";
 
-/** Session-scoped guards so localStorage prefs restore once per page load, not on every remount. */
 const sessionListPrefs = {
   pageSizeRestored: false,
   viewModeRestored: false,
@@ -63,7 +62,6 @@ type UseApplicationListViewOptions = {
   applications: JobApplication[];
   initialPageSize: ApplicationPageSize;
   initialPageSizeFromPreference: boolean;
-  /** When set, list view syncs to route-based navigation (shell mode). */
   routeAppView?: AppView;
 };
 

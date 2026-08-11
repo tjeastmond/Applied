@@ -10,7 +10,6 @@ export type ApplicationFiltersState = {
   searchQuery: string;
   viewMode?: ApplicationViewMode;
   includeArchived?: boolean;
-  /** Dedicated /archived route — view mode is navigation, not a clearable filter. */
   dedicatedArchivedView?: boolean;
 };
 

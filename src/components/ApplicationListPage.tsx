@@ -54,9 +54,7 @@ type ApplicationListPageProps = Pick<
   | "handleCardMouseLeave"
 > & {
   onBackToApplications?: () => void;
-  /** Cancels parent horizontal padding so the filter separator spans edge to edge. */
   edgeBleedClassName?: string;
-  /** Classic UI pins hello@swoo.io + MIT License at the list bottom; shell omits this. */
   showListFooter?: boolean;
 };
 

@@ -13,7 +13,6 @@ export type ApplicationListViewQuery = {
   selectedCompanies: ReadonlySet<string>;
   selectedStatuses: ReadonlySet<ApplicationStatus>;
   searchQuery: string;
-  /** When true, list is the dedicated /archived route (always shows archived rows). */
   dedicatedArchivedView?: boolean;
 };
 
@@ -130,7 +129,6 @@ export function shouldClearKeyboardHighlight(
   return highlightId !== null && !visibleApplicationIds.includes(highlightId);
 }
 
-/** Pending company filters apply only when landing on the home applications route. */
 export function resolvePendingCompanyOnRouteChange(
   routeAppView: AppView,
   pendingCompany: string | null,

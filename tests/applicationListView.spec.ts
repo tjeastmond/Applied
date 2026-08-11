@@ -242,7 +242,6 @@ describe("resolvePendingCompanyOnRouteChange", () => {
     const currentRoute = "applications" as const;
 
     function handleCompanyFilterOnHome(company: string) {
-      // In-place filter only; pending is queued only before cross-route navigation.
       if (currentRoute !== "applications") {
         pendingCompany = company;
       }

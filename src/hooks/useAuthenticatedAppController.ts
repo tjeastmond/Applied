@@ -32,7 +32,6 @@ export type AuthenticatedAppControllerOptions = {
   initialPageSize: ApplicationPageSize;
   initialPageSizeFromPreference: boolean;
   routeAppView?: AppView;
-  /** Shell mode: navigate home when filtering by company from the detail drawer. */
   navigateToApplications?: () => void;
 };
 

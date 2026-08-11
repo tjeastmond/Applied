@@ -35,7 +35,6 @@ export function appViewToQuery(view: AppView): AppViewQuery {
   }
 }
 
-/** Include Archived toggle is only shown on the home applications list. */
 export function shouldShowIncludeArchived(options: {
   routeAppView?: AppView;
   viewMode: ApplicationViewMode;
