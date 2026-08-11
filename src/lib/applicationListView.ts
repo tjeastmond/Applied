@@ -8,6 +8,7 @@ import type { ApplicationStatus, JobApplication } from "@/types";
 export type ApplicationListViewQuery = {
   viewMode: ApplicationViewMode;
   includeArchived: boolean;
+  bookmarksOnly: boolean;
   selectedCompanies: ReadonlySet<string>;
   selectedStatuses: ReadonlySet<ApplicationStatus>;
   searchQuery: string;
@@ -27,6 +28,7 @@ export type ApplicationListViewSnapshot = {
   visibleApplicationIds: readonly string[];
   hasActiveFilters: boolean;
   isArchivedViewEmpty: boolean;
+  isBookmarksViewEmpty: boolean;
   isFilteredEmpty: boolean;
 };
 
@@ -42,6 +44,7 @@ export function listViewQueriesEqual(left: ApplicationListViewQuery, right: Appl
   return (
     left.viewMode === right.viewMode &&
     left.includeArchived === right.includeArchived &&
+    left.bookmarksOnly === right.bookmarksOnly &&
     left.searchQuery === right.searchQuery &&
     setsEqual(left.selectedCompanies, right.selectedCompanies) &&
     setsEqual(left.selectedStatuses, right.selectedStatuses)
@@ -52,9 +55,21 @@ export function resolveApplicationListView(
   applications: readonly JobApplication[],
   params: ApplicationListViewParams,
 ): ApplicationListViewSnapshot {
-  const { viewMode, includeArchived, selectedCompanies, selectedStatuses, searchQuery, currentPage, pageSize } = params;
+  const {
+    viewMode,
+    includeArchived,
+    bookmarksOnly,
+    selectedCompanies,
+    selectedStatuses,
+    searchQuery,
+    currentPage,
+    pageSize,
+  } = params;
 
-  const viewApplications = partitionApplicationsByView(applications, viewMode, includeArchived);
+  let viewApplications = partitionApplicationsByView(applications, viewMode, includeArchived);
+  if (bookmarksOnly) {
+    viewApplications = viewApplications.filter((application) => application.pinned);
+  }
   const companyNames = uniqueCompanyNames(viewApplications);
   const filteredApplications = filterApplications(viewApplications, {
     selectedCompanies,
@@ -80,7 +95,11 @@ export function resolveApplicationListView(
       includeArchived,
     }),
     isArchivedViewEmpty: viewMode === "archived" && viewApplications.length === 0,
-    isFilteredEmpty: filteredApplications.length === 0 && !(viewMode === "archived" && viewApplications.length === 0),
+    isBookmarksViewEmpty: bookmarksOnly && viewApplications.length === 0,
+    isFilteredEmpty:
+      filteredApplications.length === 0 &&
+      !(viewMode === "archived" && viewApplications.length === 0) &&
+      !(bookmarksOnly && viewApplications.length === 0),
   };
 }
 

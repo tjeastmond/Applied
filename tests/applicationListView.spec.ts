@@ -13,6 +13,7 @@ function makeQuery(overrides: Partial<ApplicationListViewQuery> = {}): Applicati
   return {
     viewMode: "active",
     includeArchived: false,
+    bookmarksOnly: false,
     selectedCompanies: new Set(),
     selectedStatuses: new Set(),
     searchQuery: "",
@@ -88,6 +89,32 @@ describe("resolveApplicationListView", () => {
     expect(snapshot.isFilteredEmpty).toBe(false);
   });
 
+  it("filters to pinned applications when bookmarksOnly is true", () => {
+    const snapshot = resolveApplicationListView(applications, {
+      ...makeQuery({ bookmarksOnly: true }),
+      currentPage: 1,
+      pageSize: 10,
+    });
+
+    expect(snapshot.viewApplications.map((item) => item.id)).toEqual(["active-a"]);
+    expect(snapshot.isBookmarksViewEmpty).toBe(false);
+  });
+
+  it("marks bookmarks view empty when no pinned applications exist", () => {
+    const snapshot = resolveApplicationListView(
+      [makeJobApplication({ id: "active-only", archived: false, pinned: false })],
+      {
+        ...makeQuery({ bookmarksOnly: true }),
+        currentPage: 1,
+        pageSize: 10,
+      },
+    );
+
+    expect(snapshot.viewApplications).toEqual([]);
+    expect(snapshot.isBookmarksViewEmpty).toBe(true);
+    expect(snapshot.isFilteredEmpty).toBe(false);
+  });
+
   it("marks filtered empty when view has rows but filters exclude all", () => {
     const snapshot = resolveApplicationListView(applications, {
       ...makeQuery({ selectedCompanies: new Set(["Missing Co"]) }),
@@ -155,6 +182,7 @@ describe("listViewQueriesEqual", () => {
     expect(listViewQueriesEqual(base, makeQuery({ searchQuery: "engineer" }))).toBe(false);
     expect(listViewQueriesEqual(base, makeQuery({ selectedCompanies: new Set(["Acme"]) }))).toBe(false);
     expect(listViewQueriesEqual(base, makeQuery({ selectedStatuses: new Set(["applied"]) }))).toBe(false);
+    expect(listViewQueriesEqual(base, makeQuery({ bookmarksOnly: true }))).toBe(false);
   });
 });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { appViewToQuery, type AppView } from "@/lib/appView";
 import {
   nextViewMode,
   persistApplicationViewMode,
@@ -23,24 +24,29 @@ import {
 } from "@/lib/applicationPagination";
 import type { ApplicationStatus, JobApplication } from "@/types";
 
+let hasRestoredApplicationPageSizePreference = false;
+let hasRestoredApplicationViewModePreference = false;
+let hasRestoredIncludeArchivedPreference = false;
+
 type UseApplicationListViewOptions = {
   applications: JobApplication[];
   initialPageSize: ApplicationPageSize;
   initialPageSizeFromPreference: boolean;
+  /** When set, list view syncs to route-based navigation (shell mode). */
+  routeAppView?: AppView;
 };
-
-let hasRestoredApplicationPageSizePreference = false;
-let hasRestoredApplicationViewModePreference = false;
-let hasRestoredIncludeArchivedPreference = false;
 
 export function useApplicationListView({
   applications,
   initialPageSize,
   initialPageSizeFromPreference,
+  routeAppView,
 }: UseApplicationListViewOptions) {
+  const routeQuery = routeAppView ? appViewToQuery(routeAppView) : null;
   const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(() => new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<ApplicationStatus>>(() => new Set());
-  const [viewMode, setViewMode] = useState<ApplicationViewMode>("active");
+  const [viewMode, setViewMode] = useState<ApplicationViewMode>(() => routeQuery?.viewMode ?? "active");
+  const [bookmarksOnly, setBookmarksOnly] = useState(() => routeQuery?.bookmarksOnly ?? false);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -53,11 +59,12 @@ export function useApplicationListView({
     () => ({
       viewMode,
       includeArchived,
+      bookmarksOnly,
       selectedCompanies,
       selectedStatuses,
       searchQuery,
     }),
-    [viewMode, includeArchived, selectedCompanies, selectedStatuses, searchQuery],
+    [viewMode, includeArchived, bookmarksOnly, selectedCompanies, selectedStatuses, searchQuery],
   );
 
   const previousListQueryRef = useRef(listQuery);
@@ -92,6 +99,15 @@ export function useApplicationListView({
   }, [initialPageSizeFromPreference]);
 
   useLayoutEffect(() => {
+    if (routeAppView) {
+      const query = appViewToQuery(routeAppView);
+      setViewMode(query.viewMode);
+      setBookmarksOnly(query.bookmarksOnly);
+      setSelectedStatuses(statusFiltersForViewMode(query.viewMode));
+      setCurrentPage(1);
+      return;
+    }
+
     if (hasRestoredApplicationViewModePreference) {
       return;
     }
@@ -103,7 +119,7 @@ export function useApplicationListView({
     }
 
     hasRestoredApplicationViewModePreference = true;
-  }, []);
+  }, [routeAppView]);
 
   useLayoutEffect(() => {
     if (hasRestoredIncludeArchivedPreference) {
@@ -204,6 +220,7 @@ export function useApplicationListView({
   return {
     snapshot,
     viewMode,
+    bookmarksOnly,
     includeArchived,
     selectedCompanies,
     selectedStatuses,

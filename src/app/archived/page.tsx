@@ -4,8 +4,8 @@ import { loadAuthenticatedAppPageProps } from "@/lib/server/loadAuthenticatedApp
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export default async function Page() {
-  const props = await loadAuthenticatedAppPageProps("applications");
+export default async function ArchivedPage() {
+  const props = await loadAuthenticatedAppPageProps("archived");
 
   return <AppPage {...props} />;
 }
