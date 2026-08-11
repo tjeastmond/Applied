@@ -8,9 +8,10 @@ import { useSidebar } from "./SidebarProvider";
 
 type AppHeaderProps = {
   onAddApplication: () => void;
+  onLogoClick: () => void;
 };
 
-export function AppHeader({ onAddApplication }: AppHeaderProps) {
+export function AppHeader({ onAddApplication, onLogoClick }: AppHeaderProps) {
   const { collapsed, toggleCollapsed, setMobileOpen } = useSidebar();
 
   return (
@@ -25,6 +26,22 @@ export function AppHeader({ onAddApplication }: AppHeaderProps) {
       >
         <MenuIcon />
       </Button>
+
+      <div
+        className={cn(
+          "overflow-hidden transition-[max-width,opacity] duration-200 ease-out motion-reduce:transition-none lg:pointer-events-none",
+          "max-w-24 opacity-100 lg:max-w-0 lg:opacity-0",
+        )}
+      >
+        <button
+          type="button"
+          onClick={onLogoClick}
+          className="text-foreground shrink-0 cursor-pointer py-2 text-base font-bold tracking-tight whitespace-nowrap outline-none select-none"
+          aria-label="Clear filters and go to applications"
+        >
+          APPLIED.
+        </button>
+      </div>
 
       <div
         aria-hidden={!collapsed}
