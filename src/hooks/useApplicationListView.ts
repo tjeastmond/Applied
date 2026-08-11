@@ -14,6 +14,7 @@ import {
   listViewQueriesEqual,
   pruneCompanySelection,
   resolveApplicationListView,
+  resolvePendingCompanyOnRouteChange,
   type ApplicationListViewQuery,
 } from "@/lib/applicationListView";
 import {
@@ -135,7 +136,7 @@ export function useApplicationListView({
   useLayoutEffect(() => {
     if (routeAppView) {
       const query = appViewToQuery(routeAppView);
-      const pendingCompany = pendingCompanyFilterRef.current;
+      const pendingCompany = resolvePendingCompanyOnRouteChange(routeAppView, pendingCompanyFilterRef.current);
       pendingCompanyFilterRef.current = null;
       const filter = pendingCompany ? companyFilterSelection(pendingCompany) : null;
 
@@ -197,6 +198,7 @@ export function useApplicationListView({
   }, [selectedCompanies, snapshot.companyNames]);
 
   const clearFilters = useCallback(() => {
+    pendingCompanyFilterRef.current = null;
     setSelectedCompanies(new Set());
     setSelectedStatuses(new Set());
     setSearchQuery("");
@@ -247,10 +249,15 @@ export function useApplicationListView({
     setCurrentPage(1);
   }, []);
 
-  const handleCompanyFilter = useCallback((company: string) => {
+  const queuePendingCompanyFilterForNavigation = useCallback((company: string) => {
     const trimmed = company.trim();
     if (!trimmed) return;
     pendingCompanyFilterRef.current = trimmed;
+  }, []);
+
+  const handleCompanyFilter = useCallback((company: string) => {
+    const trimmed = company.trim();
+    if (!trimmed) return;
     const filter = companyFilterSelection(trimmed);
     setSelectedCompanies(filter.selectedCompanies);
     setSelectedStatuses(filter.selectedStatuses);
@@ -285,6 +292,7 @@ export function useApplicationListView({
     handlePageChange,
     handlePageSizeChange,
     handleCompanyFilter,
+    queuePendingCompanyFilterForNavigation,
     resetListPagination,
   };
 }

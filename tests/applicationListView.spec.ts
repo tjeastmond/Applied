@@ -4,6 +4,7 @@ import {
   listViewQueriesEqual,
   pruneCompanySelection,
   resolveApplicationListView,
+  resolvePendingCompanyOnRouteChange,
   shouldClearKeyboardHighlight,
   type ApplicationListViewQuery,
 } from "@/lib/applicationListView";
@@ -225,6 +226,40 @@ describe("pruneCompanySelection", () => {
 
   it("drops companies that are no longer available in the view", () => {
     expect(pruneCompanySelection(new Set(["Acme", "Removed"]), ["Acme"])).toEqual(new Set(["Acme"]));
+  });
+});
+
+describe("resolvePendingCompanyOnRouteChange", () => {
+  it("applies pending company only when landing on applications", () => {
+    expect(resolvePendingCompanyOnRouteChange("applications", "Acme")).toBe("Acme");
+    expect(resolvePendingCompanyOnRouteChange("applications", null)).toBeNull();
+    expect(resolvePendingCompanyOnRouteChange("bookmarks", "Acme")).toBeNull();
+    expect(resolvePendingCompanyOnRouteChange("archived", "Acme")).toBeNull();
+  });
+
+  it("does not reapply stale company after filter on home, clear, and route change", () => {
+    let pendingCompany: string | null = null;
+    const currentRoute = "applications" as const;
+
+    function handleCompanyFilterOnHome(company: string) {
+      // In-place filter only; pending is queued only before cross-route navigation.
+      if (currentRoute !== "applications") {
+        pendingCompany = company;
+      }
+    }
+
+    function clearFilters() {
+      pendingCompany = null;
+    }
+
+    handleCompanyFilterOnHome("Acme");
+    expect(pendingCompany).toBeNull();
+
+    clearFilters();
+    expect(pendingCompany).toBeNull();
+
+    const reapplied = resolvePendingCompanyOnRouteChange("bookmarks", pendingCompany);
+    expect(reapplied).toBeNull();
   });
 });
 

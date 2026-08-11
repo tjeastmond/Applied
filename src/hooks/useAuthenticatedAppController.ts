@@ -85,6 +85,7 @@ export function useAuthenticatedAppController({
     handlePageChange: setListPage,
     handlePageSizeChange: setListPageSize,
     handleCompanyFilter,
+    queuePendingCompanyFilterForNavigation,
     resetListPagination,
   } = listView;
 
@@ -263,11 +264,14 @@ export function useAuthenticatedAppController({
 
   const handleCompanyFilterFromDetail = useCallback(
     (company: string) => {
+      if (routeAppView && routeAppView !== "applications") {
+        queuePendingCompanyFilterForNavigation(company);
+      }
       handleCompanyFilter(company);
       setDetailOpen(false);
       navigateToApplications?.();
     },
-    [handleCompanyFilter, navigateToApplications],
+    [handleCompanyFilter, navigateToApplications, queuePendingCompanyFilterForNavigation, routeAppView],
   );
 
   const handleDetailCloseComplete = useCallback(() => {

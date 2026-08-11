@@ -1,3 +1,4 @@
+import type { AppView } from "@/lib/appView";
 import type { ApplicationViewMode } from "@/lib/applicationArchive";
 import { partitionApplicationsByView } from "@/lib/applicationArchive";
 import { filterApplications, hasActiveApplicationFilters } from "@/lib/applicationFilters";
@@ -127,4 +128,12 @@ export function shouldClearKeyboardHighlight(
   visibleApplicationIds: readonly string[],
 ): boolean {
   return highlightId !== null && !visibleApplicationIds.includes(highlightId);
+}
+
+/** Pending company filters apply only when landing on the home applications route. */
+export function resolvePendingCompanyOnRouteChange(
+  routeAppView: AppView,
+  pendingCompany: string | null,
+): string | null {
+  return routeAppView === "applications" ? pendingCompany : null;
 }
