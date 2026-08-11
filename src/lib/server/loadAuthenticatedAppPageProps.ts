@@ -16,12 +16,13 @@ export async function loadAuthenticatedAppPageProps(routeAppView?: AppView) {
     .map((cookie) => `${cookie.name}=${cookie.value}`)
     .join("; ");
   const authStatus = await getAuthStatus(requestFromCookieHeader(cookieHeader || undefined));
-  const { applications, notesByApplicationId } = await loadPageDataForAuth(authStatus.authenticated);
+  const { applications, notesByApplicationId, currentUser } = await loadPageDataForAuth(authStatus.authenticated);
   const storedPageSize = parseApplicationPageSize(cookieStore.get(APPLICATION_PAGE_SIZE_STORAGE_KEY)?.value);
 
   return {
     initialApplications: applications,
     initialNotesByApplicationId: notesByApplicationId,
+    initialCurrentUser: currentUser,
     initialPageSize: storedPageSize ?? DEFAULT_APPLICATION_PAGE_SIZE,
     initialPageSizeFromPreference: storedPageSize !== null,
     tursoSyncAvailable: isTursoSyncAvailable(),

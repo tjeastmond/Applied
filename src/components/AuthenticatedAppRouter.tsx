@@ -6,11 +6,12 @@ import { useUiShellMode } from "@/hooks/useUiShellMode";
 import type { AppView } from "@/lib/appView";
 import type { AuthStatus } from "@/lib/authTypes";
 import type { ApplicationPageSize } from "@/lib/applicationPagination";
-import type { ApplicationNote, JobApplication } from "@/types";
+import type { ApplicationNote, JobApplication, User } from "@/types";
 
 type AppPageProps = {
   initialApplications: JobApplication[];
   initialNotesByApplicationId: Record<string, ApplicationNote[]>;
+  initialCurrentUser: User;
   initialPageSize: ApplicationPageSize;
   initialPageSizeFromPreference: boolean;
   tursoSyncAvailable: boolean;
@@ -29,6 +30,7 @@ export function AuthenticatedAppRouter(props: AppPageProps) {
   const sharedProps = {
     initialApplications: props.initialApplications,
     initialNotesByApplicationId: props.initialNotesByApplicationId,
+    initialCurrentUser: props.initialCurrentUser,
     initialPageSize: props.initialPageSize,
     initialPageSizeFromPreference: props.initialPageSizeFromPreference,
     tursoSyncAvailable: props.tursoSyncAvailable,

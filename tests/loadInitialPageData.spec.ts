@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
+import { DEFAULT_USER_DISPLAY_NAME } from "@/lib/server/defaultUser";
 import { loadInitialPageData } from "@/lib/server/loadInitialPageData";
 import { getNoteRepository, getRepository, useTestDatabase } from "@/lib/server/db";
 import { openDatabase } from "@/lib/server/db/migrate";
@@ -44,5 +45,6 @@ describe("loadInitialPageData", () => {
       earlierNote.id,
     ]);
     expect(data.notesByApplicationId[firstApplication.id]).toEqual([]);
+    expect(data.currentUser.displayName).toBe(DEFAULT_USER_DISPLAY_NAME);
   });
 });

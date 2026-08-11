@@ -12,6 +12,7 @@ export type UserRow = {
 
 export const GET_USER_BY_ID_SQL = `SELECT id, display_name, email, created_at, updated_at FROM users WHERE id = ?`;
 export const INSERT_DEFAULT_USER_SQL = `INSERT OR IGNORE INTO users (id, display_name, email, created_at, updated_at) VALUES (?, ?, NULL, ?, ?)`;
+export const UPDATE_USER_PROFILE_SQL = `UPDATE users SET display_name = ?, email = ?, updated_at = ? WHERE id = ?`;
 
 export function rowToUser(row: UserRow): User {
   return {

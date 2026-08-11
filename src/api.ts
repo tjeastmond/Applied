@@ -8,7 +8,9 @@ import type {
   ImportAgentApiTokenResult,
   JobApplication,
   ParseJobUrlResult,
+  User,
 } from "./types";
+import type { UpdateUserProfileInput } from "@/lib/schemas/user";
 import { notifyUnauthorized, UnauthorizedError } from "./lib/apiUnauthorized";
 
 async function readApiError(response: Response, fallback: string): Promise<string> {
@@ -263,5 +265,16 @@ export function renameAgentToken(id: string, name: string): Promise<AgentApiToke
 export function revokeAgentToken(id: string): Promise<void> {
   return request<void>(`/api/admin/agent-tokens/${id}`, {
     method: "DELETE",
+  });
+}
+
+export function getCurrentUserProfile(): Promise<User> {
+  return request<User>("/api/user/profile");
+}
+
+export function updateCurrentUserProfile(input: UpdateUserProfileInput): Promise<User> {
+  return request<User>("/api/user/profile", {
+    method: "PATCH",
+    body: JSON.stringify(input),
   });
 }

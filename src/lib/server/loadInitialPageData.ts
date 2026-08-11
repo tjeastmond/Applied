@@ -1,10 +1,11 @@
 import { sortApplications } from "@/lib/applicationsList";
-import { getNoteRepository, getRepository } from "@/lib/server/db";
-import type { ApplicationNote, JobApplication } from "@/types";
+import { getNoteRepository, getRepository, getUserRepository } from "@/lib/server/db";
+import type { ApplicationNote, JobApplication, User } from "@/types";
 
 export type InitialPageData = {
   applications: JobApplication[];
   notesByApplicationId: Record<string, ApplicationNote[]>;
+  currentUser: User;
 };
 
 function groupNotesByApplicationId(notes: ApplicationNote[]): Record<string, ApplicationNote[]> {
@@ -23,7 +24,11 @@ function groupNotesByApplicationId(notes: ApplicationNote[]): Record<string, App
 }
 
 export async function loadInitialPageData(): Promise<InitialPageData> {
-  const [applications, notes] = await Promise.all([getRepository().list(), getNoteRepository().listAll()]);
+  const [applications, notes, currentUser] = await Promise.all([
+    getRepository().list(),
+    getNoteRepository().listAll(),
+    getUserRepository().ensureDefaultUser(),
+  ]);
   const sortedApplications = sortApplications(applications);
   const groupedNotes = groupNotesByApplicationId(notes);
 
@@ -32,5 +37,6 @@ export async function loadInitialPageData(): Promise<InitialPageData> {
     notesByApplicationId: Object.fromEntries(
       sortedApplications.map((application) => [application.id, groupedNotes[application.id] ?? []]),
     ),
+    currentUser,
   };
 }

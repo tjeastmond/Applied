@@ -8,6 +8,7 @@ import type { SettingsSection } from "@/components/shell/SettingsDialog";
 import { appViewToPath, pathToAppView, type NavCounts } from "@/lib/appView";
 import type { UiShellMode } from "@/hooks/useUiShellMode";
 import { cn } from "@/lib/utils";
+import type { User } from "@/types";
 import {
   Archive,
   BarChart3,
@@ -35,17 +36,14 @@ type NavSection = {
 };
 
 type AppSidebarProps = {
+  currentUser: User;
   navCounts: NavCounts;
   uiShellMode: UiShellMode;
   onToggleUiShellMode: () => void;
   onLogout: () => void;
+  onOpenProfile: () => void;
   onOpenSettings: (section?: SettingsSection) => void;
   onLogoClick: () => void;
-};
-
-const PLACEHOLDER_USER = {
-  name: "You",
-  email: "hello@swoo.io",
 };
 
 function buildSections(counts: NavCounts): NavSection[] {
@@ -73,10 +71,12 @@ function buildSections(counts: NavCounts): NavSection[] {
 }
 
 export function AppSidebar({
+  currentUser,
   navCounts,
   uiShellMode,
   onToggleUiShellMode,
   onLogout,
+  onOpenProfile,
   onOpenSettings,
   onLogoClick,
 }: AppSidebarProps) {
@@ -230,11 +230,12 @@ export function AppSidebar({
 
         <div className="border-sidebar-border shrink-0 border-t p-2">
           <ProfileMenu
-            name={PLACEHOLDER_USER.name}
-            email={PLACEHOLDER_USER.email}
+            name={currentUser.displayName}
+            email={currentUser.email}
             collapsed={collapsed}
             uiShellMode={uiShellMode}
             onToggleUiShellMode={onToggleUiShellMode}
+            onOpenProfile={onOpenProfile}
             onLogout={onLogout}
           />
         </div>

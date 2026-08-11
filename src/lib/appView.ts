@@ -3,6 +3,8 @@ import type { JobApplication } from "@/types";
 
 export type AppView = "applications" | "bookmarks" | "archived";
 
+export const PROFILE_PATH = "/profile";
+
 export const APP_VIEW_PATHS: Record<AppView, string> = {
   applications: "/",
   bookmarks: "/bookmarks",
@@ -17,6 +19,10 @@ export function pathToAppView(pathname: string): AppView {
 
 export function appViewToPath(view: AppView): string {
   return APP_VIEW_PATHS[view];
+}
+
+export function isProfileRoute(pathname: string): boolean {
+  return pathname === PROFILE_PATH;
 }
 
 export type AppViewQuery = {

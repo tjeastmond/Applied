@@ -58,4 +58,6 @@ export const toastMessages = {
   bulkArchiveSuccess: (count: number) => (count === 1 ? "Archived 1 application." : `Archived ${count} applications.`),
   bulkArchiveNothing: "Nothing to archive.",
   bulkArchiveFailed: "Failed to archive applications",
+  profileUpdated: "Profile updated.",
+  profileUpdateFailed: "Failed to update profile.",
 } as const;

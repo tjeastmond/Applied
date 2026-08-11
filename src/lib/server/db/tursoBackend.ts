@@ -1,5 +1,6 @@
 import { createClient, type Client, type InStatement, type Row } from "@tursodatabase/serverless/compat";
 import { applicationStatusSchema } from "@/lib/schemas/common";
+import type { UpdateUserProfileInput } from "@/lib/schemas/user";
 import type { BackupJson, ImportMode } from "@/lib/schemas/backup";
 import type { ApplicationNote, JobApplication, ParsedCreateJobApplicationInput } from "@/types";
 import type { ApplicationStatus } from "@/lib/applicationStatus";
@@ -64,6 +65,7 @@ import {
   GET_USER_BY_ID_SQL,
   INSERT_DEFAULT_USER_SQL,
   rowToUser,
+  UPDATE_USER_PROFILE_SQL,
   type UserRow,
 } from "./userRepositoryShared";
 import { DEFAULT_USER_ID } from "@/lib/server/defaultUser";
@@ -316,6 +318,21 @@ class TursoUserRepository implements UserRepository {
     }
     return user;
   }
+
+  async updateProfile(id: string, input: UpdateUserProfileInput): Promise<User | null> {
+    await this.ready;
+    const updatedAt = nowIso();
+    const result = await this.client.execute({
+      sql: UPDATE_USER_PROFILE_SQL,
+      args: [input.displayName, input.email, updatedAt, id],
+    });
+
+    if (result.rowsAffected === 0) {
+      return null;
+    }
+
+    return this.getById(id);
+  }
 }
 
 class TursoApplicationStatusHistoryRepository implements ApplicationStatusHistoryRepository {
@@ -534,7 +551,6 @@ export class TursoDatabaseBackend implements DatabaseBackend {
   readonly provider = "turso";
   readonly applications: JobApplicationRepository;
   readonly notes: ApplicationNoteRepository;
-  readonly users: UserRepository;
   readonly statusHistory: ApplicationStatusHistoryRepository;
   readonly agentApiTokens;
 
@@ -547,11 +563,14 @@ export class TursoDatabaseBackend implements DatabaseBackend {
       authToken: config.authToken,
     });
     this.ready = migrateTurso(this.client);
-    this.users = new TursoUserRepository(this.client, this.ready);
     this.applications = new TursoJobApplicationRepository(this.client, this.ready);
     this.notes = new TursoApplicationNoteRepository(this.client, this.ready);
     this.statusHistory = new TursoApplicationStatusHistoryRepository(this.client, this.ready, this.users);
     this.agentApiTokens = new TursoAgentApiTokenRepository(this.client, this.ready);
+  }
+
+  get users(): UserRepository {
+    return new TursoUserRepository(this.client, this.ready);
   }
 
   async exportJson(): Promise<BackupJson> {

@@ -4,14 +4,15 @@ import { Menu } from "@base-ui/react/menu";
 import { useTheme } from "@/components/ThemeProvider";
 import type { UiShellMode } from "@/hooks/useUiShellMode";
 import { cn } from "@/lib/utils";
-import { ChevronsUpDown, LayoutTemplate, LogOut, Moon, Sun } from "lucide-react";
+import { ChevronsUpDown, LayoutTemplate, LogOut, Moon, Sun, UserRound } from "lucide-react";
 
 type ProfileMenuProps = {
   name: string;
-  email: string;
+  email: string | null;
   collapsed?: boolean;
   uiShellMode: UiShellMode;
   onToggleUiShellMode: () => void;
+  onOpenProfile: () => void;
   onLogout: () => void;
 };
 
@@ -28,10 +29,12 @@ export function ProfileMenu({
   collapsed = false,
   uiShellMode,
   onToggleUiShellMode,
+  onOpenProfile,
   onLogout,
 }: ProfileMenuProps) {
   const initials = initialsFrom(name);
   const { theme, toggleTheme } = useTheme();
+  const emailLabel = email?.trim() || "No email set";
 
   return (
     <Menu.Root>
@@ -53,7 +56,7 @@ export function ProfileMenu({
           <>
             <span className="min-w-0 flex-1">
               <span className="text-foreground block truncate text-xs font-medium">{name}</span>
-              <span className="text-muted-foreground block truncate text-[0.7rem]">{email}</span>
+              <span className="text-muted-foreground block truncate text-[0.7rem]">{emailLabel}</span>
             </span>
             <ChevronsUpDown className="text-muted-foreground size-4 shrink-0" />
           </>
@@ -72,11 +75,26 @@ export function ProfileMenu({
               </span>
               <div className="min-w-0">
                 <p className="truncate text-xs font-medium">{name}</p>
-                <p className="text-muted-foreground truncate text-[0.7rem]">{email}</p>
+                <p
+                  className={cn(
+                    "truncate text-[0.7rem]",
+                    email?.trim() ? "text-muted-foreground" : "text-muted-foreground/70",
+                  )}
+                >
+                  {emailLabel}
+                </p>
               </div>
             </div>
 
             <div className="bg-border my-1 h-px" />
+
+            <Menu.Item
+              className="data-[highlighted]:bg-accent data-[highlighted]:text-foreground flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none"
+              onClick={onOpenProfile}
+            >
+              <UserRound className="text-muted-foreground size-4" />
+              Profile
+            </Menu.Item>
 
             <Menu.Item
               closeOnClick={false}
