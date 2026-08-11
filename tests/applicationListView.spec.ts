@@ -135,11 +135,18 @@ describe("resolveApplicationListView", () => {
     const snapshot = resolveApplicationListView(many, {
       ...makeQuery(),
       currentPage: 99,
-      pageSize: 5,
+      pageSize: 6,
     });
 
-    expect(snapshot.pagination.page).toBe(3);
-    expect(snapshot.visibleApplications.map((item) => item.id)).toEqual(["item-11", "item-12"]);
+    expect(snapshot.pagination.page).toBe(2);
+    expect(snapshot.visibleApplications.map((item) => item.id)).toEqual([
+      "item-7",
+      "item-8",
+      "item-9",
+      "item-10",
+      "item-11",
+      "item-12",
+    ]);
   });
 
   it("paginates view-all as a single page", () => {
