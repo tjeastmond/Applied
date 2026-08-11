@@ -3,6 +3,7 @@
 import { logoutApp } from "@/api";
 import { AuthenticatedAppRouter } from "@/components/AuthenticatedAppRouter";
 import { LoginGate } from "@/components/login/LoginGate";
+import { UiShellModeProvider } from "@/components/UiShellModeProvider";
 import { errorMessage } from "@/lib/errorMessage";
 import { setUnauthorizedHandler } from "@/lib/apiUnauthorized";
 import { toastMessages } from "@/lib/toastMessages";
@@ -74,5 +75,9 @@ export function AppPage(props: AppPageProps) {
     return <LoginGate mode={loginMode} onAuthenticated={handleAuthenticated} isLoading={isBootstrapping} />;
   }
 
-  return <AuthenticatedAppRouter {...props} onLogout={() => void handleLogout()} />;
+  return (
+    <UiShellModeProvider>
+      <AuthenticatedAppRouter {...props} onLogout={() => void handleLogout()} />
+    </UiShellModeProvider>
+  );
 }

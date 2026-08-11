@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useUiShellModeContext } from "@/components/UiShellModeProvider";
 
 export type UiShellMode = "classic" | "shell";
 
@@ -24,26 +24,5 @@ export function persistUiShellMode(mode: UiShellMode): void {
 }
 
 export function useUiShellMode() {
-  const [mode, setModeState] = useState<UiShellMode>("shell");
-  const [hasHydrated, setHasHydrated] = useState(false);
-
-  useEffect(() => {
-    setModeState(readStoredUiShellMode());
-    setHasHydrated(true);
-  }, []);
-
-  const setMode = useCallback((next: UiShellMode) => {
-    setModeState(next);
-    persistUiShellMode(next);
-  }, []);
-
-  const toggleMode = useCallback(() => {
-    setModeState((current) => {
-      const next: UiShellMode = current === "shell" ? "classic" : "shell";
-      persistUiShellMode(next);
-      return next;
-    });
-  }, []);
-
-  return { mode, setMode, toggleMode, hasHydrated };
+  return useUiShellModeContext();
 }

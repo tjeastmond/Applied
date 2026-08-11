@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ApplicationListPage } from "@/components/ApplicationListPage";
 import { AuthenticatedAppOverlays } from "@/components/AuthenticatedAppOverlays";
 import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
@@ -12,9 +12,9 @@ import { SidebarProvider } from "@/components/shell/SidebarProvider";
 import type { AuthenticatedAppControllerOptions } from "@/hooks/useAuthenticatedAppController";
 import { useAuthenticatedAppController } from "@/hooks/useAuthenticatedAppController";
 import { useUiShellMode } from "@/hooks/useUiShellMode";
-import { appViewToPath, computeNavCounts } from "@/lib/appView";
+import { appViewToPath, computeNavCounts, pathToAppView } from "@/lib/appView";
 
-type ShellAuthenticatedAppProps = AuthenticatedAppControllerOptions & {
+type ShellAuthenticatedAppProps = Omit<AuthenticatedAppControllerOptions, "routeAppView"> & {
   onLogout: () => void;
   tursoSyncAvailable: boolean;
 };
@@ -22,10 +22,11 @@ type ShellAuthenticatedAppProps = AuthenticatedAppControllerOptions & {
 export function ShellAuthenticatedApp({
   onLogout,
   tursoSyncAvailable,
-  routeAppView,
   ...controllerOptions
 }: ShellAuthenticatedAppProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const routeAppView = useMemo(() => pathToAppView(pathname), [pathname]);
   const controller = useAuthenticatedAppController({ ...controllerOptions, routeAppView });
   const { mode: uiShellMode, toggleMode: toggleUiShellMode } = useUiShellMode();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -50,7 +51,7 @@ export function ShellAuthenticatedApp({
 
   return (
     <SidebarProvider>
-      <div className="bg-background flex min-h-svh">
+      <div className="bg-background flex h-svh overflow-hidden">
         <AppSidebar
           navCounts={navCounts}
           uiShellMode={uiShellMode}
@@ -59,9 +60,9 @@ export function ShellAuthenticatedApp({
           onOpenSettings={handleOpenSettings}
           onLogoClick={handleResetToHome}
         />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <AppHeader onAddApplication={controller.openAddForm} />
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <ApplicationListPage {...controller} onBackToApplications={handleBackToApplications} />
           </main>
         </div>

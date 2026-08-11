@@ -103,8 +103,13 @@ export function useApplicationListView({
       const query = appViewToQuery(routeAppView);
       setViewMode(query.viewMode);
       setBookmarksOnly(query.bookmarksOnly);
+      setSelectedCompanies(new Set());
       setSelectedStatuses(statusFiltersForViewMode(query.viewMode));
+      setSearchQuery("");
+      setIncludeArchived(false);
       setCurrentPage(1);
+      persistApplicationViewMode(query.viewMode);
+      persistIncludeArchived(false);
       return;
     }
 

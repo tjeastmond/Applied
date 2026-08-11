@@ -97,6 +97,16 @@ export function AppSidebar({
     return pathToAppView(item.href) === activeView && item.label !== "Analytics";
   }
 
+  function navItemClassName(active: boolean) {
+    return cn(
+      "group flex w-full cursor-pointer items-center gap-3 rounded-md px-2.5 py-2 text-xs transition-colors outline-none",
+      active
+        ? "bg-sidebar-accent text-foreground"
+        : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent focus-visible:text-foreground",
+      collapsed && "lg:justify-center lg:px-0",
+    );
+  }
+
   return (
     <>
       {mobileOpen ? (
@@ -110,7 +120,7 @@ export function AppSidebar({
 
       <aside
         className={cn(
-          "bg-sidebar border-sidebar-border fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r transition-[transform,width] duration-200 ease-out",
+          "bg-sidebar border-sidebar-border fixed inset-y-0 left-0 z-50 flex h-svh w-64 shrink-0 flex-col border-r transition-[transform,width] duration-200 ease-out",
           "lg:static lg:z-auto lg:translate-x-0",
           collapsed ? "lg:w-16" : "lg:w-60",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
@@ -118,7 +128,7 @@ export function AppSidebar({
       >
         <div
           className={cn(
-            "border-sidebar-border flex h-14 items-center gap-2 border-b px-3",
+            "border-sidebar-border flex h-14 shrink-0 items-center gap-2 border-b px-3",
             collapsed && "lg:justify-center lg:px-0",
           )}
         >
@@ -152,7 +162,7 @@ export function AppSidebar({
           <button
             type="button"
             onClick={toggleCollapsed}
-            className="text-muted-foreground hover:bg-sidebar-accent hover:text-foreground mx-auto mt-2 hidden size-8 items-center justify-center rounded-md transition-colors lg:flex"
+            className="text-muted-foreground hover:bg-sidebar-accent hover:text-foreground mx-auto mt-2 hidden size-8 shrink-0 items-center justify-center rounded-md transition-colors lg:flex"
             aria-label="Expand sidebar"
             title="Expand Sidebar"
           >
@@ -160,7 +170,7 @@ export function AppSidebar({
           </button>
         ) : null}
 
-        <nav className="flex-1 overflow-y-auto p-2">
+        <nav className="min-h-0 flex-1 overflow-y-auto p-2">
           {sections.map((section) => (
             <div key={section.heading} className="mb-3 last:mb-0">
               <p
@@ -176,13 +186,7 @@ export function AppSidebar({
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   const active = isItemActive(item);
-                  const className = cn(
-                    "group flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-xs transition-colors outline-none",
-                    active
-                      ? "bg-sidebar-accent text-foreground"
-                      : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-                    collapsed && "lg:justify-center lg:px-0",
-                  );
+                  const className = navItemClassName(active);
 
                   if (item.opensSettings) {
                     return (
@@ -209,7 +213,8 @@ export function AppSidebar({
                         href={item.href}
                         onClick={handleNavigate}
                         title={collapsed ? item.label : undefined}
-                        className={className}
+                        aria-current={active ? "page" : undefined}
+                        className={cn("link-plain", className)}
                       >
                         <Icon className="size-4 shrink-0" />
                         <span className={cn("flex-1 text-left", collapsed && "lg:hidden")}>{item.label}</span>
@@ -217,7 +222,7 @@ export function AppSidebar({
                           <span
                             className={cn(
                               "text-muted-foreground rounded px-1.5 py-0.5 text-[0.65rem] tabular-nums",
-                              active ? "bg-background/60" : "bg-sidebar-accent",
+                              active ? "bg-background/60" : "bg-sidebar-accent group-hover:bg-background/60",
                               collapsed && "lg:hidden",
                             )}
                           >
@@ -233,7 +238,7 @@ export function AppSidebar({
           ))}
         </nav>
 
-        <div className="border-sidebar-border border-t p-2">
+        <div className="border-sidebar-border shrink-0 border-t p-2">
           <ProfileMenu
             name={PLACEHOLDER_USER.name}
             email={PLACEHOLDER_USER.email}

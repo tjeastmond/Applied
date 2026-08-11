@@ -37,7 +37,7 @@ export function AuthenticatedAppRouter(props: AppPageProps) {
   };
 
   if (mode === "classic") {
-    return <AuthenticatedApp {...sharedProps} />;
+    return <AuthenticatedApp {...sharedProps} routeAppView={undefined} />;
   }
 
   return <ShellAuthenticatedApp {...sharedProps} />;
