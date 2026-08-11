@@ -1,6 +1,7 @@
 node_modules/
 bin/
 dist/
+next-env.d.ts
 data/*.db
 data/logs/
 .DS_Store
