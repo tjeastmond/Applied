@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { AppPage } from "@/components/AppPage";
+import type { AppView } from "@/lib/appView";
 import {
   APPLICATION_PAGE_SIZE_STORAGE_KEY,
   DEFAULT_APPLICATION_PAGE_SIZE,
@@ -9,10 +9,7 @@ import { getAuthStatus, requestFromCookieHeader } from "@/lib/server/authStatus"
 import { loadPageDataForAuth } from "@/lib/server/loadPageDataForAuth";
 import { isTursoSyncAvailable } from "@/lib/server/services/databaseTransferService";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-export default async function Page() {
+export async function loadAuthenticatedAppPageProps(routeAppView?: AppView) {
   const cookieStore = await cookies();
   const cookieHeader = cookieStore
     .getAll()
@@ -22,14 +19,13 @@ export default async function Page() {
   const { applications, notesByApplicationId } = await loadPageDataForAuth(authStatus.authenticated);
   const storedPageSize = parseApplicationPageSize(cookieStore.get(APPLICATION_PAGE_SIZE_STORAGE_KEY)?.value);
 
-  return (
-    <AppPage
-      initialApplications={applications}
-      initialNotesByApplicationId={notesByApplicationId}
-      initialPageSize={storedPageSize ?? DEFAULT_APPLICATION_PAGE_SIZE}
-      initialPageSizeFromPreference={storedPageSize !== null}
-      tursoSyncAvailable={isTursoSyncAvailable()}
-      authStatus={authStatus}
-    />
-  );
+  return {
+    initialApplications: applications,
+    initialNotesByApplicationId: notesByApplicationId,
+    initialPageSize: storedPageSize ?? DEFAULT_APPLICATION_PAGE_SIZE,
+    initialPageSizeFromPreference: storedPageSize !== null,
+    tursoSyncAvailable: isTursoSyncAvailable(),
+    authStatus,
+    routeAppView,
+  };
 }

@@ -1,8 +1,5 @@
-import type { ApplicationStatus } from "@/lib/applicationStatus";
-import { ARCHIVABLE_STATUSES, isArchivableStatus } from "@/lib/archivableStatuses";
+import { isArchivableStatus } from "@/lib/archivableStatuses";
 import type { JobApplication } from "@/types";
-
-export const ARCHIVED_VIEW_DEFAULT_STATUSES = new Set<ApplicationStatus>(ARCHIVABLE_STATUSES);
 
 export const APPLICATION_VIEW_MODE_STORAGE_KEY = "applied-dev-view-mode";
 export const INCLUDE_ARCHIVED_STORAGE_KEY = "applied-dev-include-archived";
@@ -44,10 +41,6 @@ export function persistIncludeArchived(includeArchived: boolean): void {
 
 export function nextViewMode(current: ApplicationViewMode): ApplicationViewMode {
   return current === "active" ? "archived" : "active";
-}
-
-export function statusFiltersForViewMode(viewMode: ApplicationViewMode): Set<ApplicationStatus> {
-  return viewMode === "archived" ? new Set(ARCHIVED_VIEW_DEFAULT_STATUSES) : new Set();
 }
 
 export function archiveViewToggleLabel(viewMode: ApplicationViewMode): string {

@@ -1,14 +1,16 @@
 "use client";
 
 import { logoutApp } from "@/api";
-import { AuthenticatedApp } from "@/components/AuthenticatedApp";
+import { AuthenticatedAppRouter } from "@/components/AuthenticatedAppRouter";
 import { LoginGate } from "@/components/login/LoginGate";
+import { UiShellModeProvider } from "@/components/UiShellModeProvider";
 import { errorMessage } from "@/lib/errorMessage";
 import { setUnauthorizedHandler } from "@/lib/apiUnauthorized";
 import { toastMessages } from "@/lib/toastMessages";
+import type { AppView } from "@/lib/appView";
 import type { AuthStatus } from "@/lib/authTypes";
-import type { ApplicationNote, JobApplication } from "@/types";
 import type { ApplicationPageSize } from "@/lib/applicationPagination";
+import type { ApplicationNote, JobApplication } from "@/types";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -20,6 +22,7 @@ type AppPageProps = {
   initialPageSizeFromPreference: boolean;
   tursoSyncAvailable: boolean;
   authStatus: AuthStatus;
+  routeAppView?: AppView;
 };
 
 export function AppPage(props: AppPageProps) {
@@ -72,5 +75,9 @@ export function AppPage(props: AppPageProps) {
     return <LoginGate mode={loginMode} onAuthenticated={handleAuthenticated} isLoading={isBootstrapping} />;
   }
 
-  return <AuthenticatedApp {...props} onLogout={() => void handleLogout()} />;
+  return (
+    <UiShellModeProvider>
+      <AuthenticatedAppRouter {...props} onLogout={() => void handleLogout()} />
+    </UiShellModeProvider>
+  );
 }

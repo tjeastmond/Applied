@@ -4,6 +4,7 @@ import {
   listViewQueriesEqual,
   pruneCompanySelection,
   resolveApplicationListView,
+  resolvePendingCompanyOnRouteChange,
   shouldClearKeyboardHighlight,
   type ApplicationListViewQuery,
 } from "@/lib/applicationListView";
@@ -13,6 +14,7 @@ function makeQuery(overrides: Partial<ApplicationListViewQuery> = {}): Applicati
   return {
     viewMode: "active",
     includeArchived: false,
+    bookmarksOnly: false,
     selectedCompanies: new Set(),
     selectedStatuses: new Set(),
     searchQuery: "",
@@ -88,6 +90,32 @@ describe("resolveApplicationListView", () => {
     expect(snapshot.isFilteredEmpty).toBe(false);
   });
 
+  it("filters to pinned applications when bookmarksOnly is true", () => {
+    const snapshot = resolveApplicationListView(applications, {
+      ...makeQuery({ bookmarksOnly: true }),
+      currentPage: 1,
+      pageSize: 10,
+    });
+
+    expect(snapshot.viewApplications.map((item) => item.id)).toEqual(["active-a"]);
+    expect(snapshot.isBookmarksViewEmpty).toBe(false);
+  });
+
+  it("marks bookmarks view empty when no pinned applications exist", () => {
+    const snapshot = resolveApplicationListView(
+      [makeJobApplication({ id: "active-only", archived: false, pinned: false })],
+      {
+        ...makeQuery({ bookmarksOnly: true }),
+        currentPage: 1,
+        pageSize: 10,
+      },
+    );
+
+    expect(snapshot.viewApplications).toEqual([]);
+    expect(snapshot.isBookmarksViewEmpty).toBe(true);
+    expect(snapshot.isFilteredEmpty).toBe(false);
+  });
+
   it("marks filtered empty when view has rows but filters exclude all", () => {
     const snapshot = resolveApplicationListView(applications, {
       ...makeQuery({ selectedCompanies: new Set(["Missing Co"]) }),
@@ -108,11 +136,18 @@ describe("resolveApplicationListView", () => {
     const snapshot = resolveApplicationListView(many, {
       ...makeQuery(),
       currentPage: 99,
-      pageSize: 5,
+      pageSize: 6,
     });
 
-    expect(snapshot.pagination.page).toBe(3);
-    expect(snapshot.visibleApplications.map((item) => item.id)).toEqual(["item-11", "item-12"]);
+    expect(snapshot.pagination.page).toBe(2);
+    expect(snapshot.visibleApplications.map((item) => item.id)).toEqual([
+      "item-7",
+      "item-8",
+      "item-9",
+      "item-10",
+      "item-11",
+      "item-12",
+    ]);
   });
 
   it("paginates view-all as a single page", () => {
@@ -138,11 +173,34 @@ describe("resolveApplicationListView", () => {
 
     expect(
       resolveApplicationListView(applications, {
+        ...makeQuery({ viewMode: "archived", dedicatedArchivedView: true }),
+        currentPage: 1,
+        pageSize: 10,
+      }).hasActiveFilters,
+    ).toBe(false);
+
+    expect(
+      resolveApplicationListView(applications, {
         ...makeQuery({ includeArchived: true }),
         currentPage: 1,
         pageSize: 10,
       }).hasActiveFilters,
     ).toBe(true);
+  });
+
+  it("shows archived applications on dedicated archived route even when view mode desyncs", () => {
+    const applications = [
+      makeJobApplication({ id: "active-a", archived: false }),
+      makeJobApplication({ id: "archived-a", archived: true }),
+    ];
+
+    const snapshot = resolveApplicationListView(applications, {
+      ...makeQuery({ viewMode: "active", dedicatedArchivedView: true }),
+      currentPage: 1,
+      pageSize: 10,
+    });
+
+    expect(snapshot.viewApplications.map((item) => item.id)).toEqual(["archived-a"]);
   });
 });
 
@@ -155,6 +213,8 @@ describe("listViewQueriesEqual", () => {
     expect(listViewQueriesEqual(base, makeQuery({ searchQuery: "engineer" }))).toBe(false);
     expect(listViewQueriesEqual(base, makeQuery({ selectedCompanies: new Set(["Acme"]) }))).toBe(false);
     expect(listViewQueriesEqual(base, makeQuery({ selectedStatuses: new Set(["applied"]) }))).toBe(false);
+    expect(listViewQueriesEqual(base, makeQuery({ bookmarksOnly: true }))).toBe(false);
+    expect(listViewQueriesEqual(base, makeQuery({ dedicatedArchivedView: true }))).toBe(false);
   });
 });
 
@@ -166,6 +226,40 @@ describe("pruneCompanySelection", () => {
 
   it("drops companies that are no longer available in the view", () => {
     expect(pruneCompanySelection(new Set(["Acme", "Removed"]), ["Acme"])).toEqual(new Set(["Acme"]));
+  });
+});
+
+describe("resolvePendingCompanyOnRouteChange", () => {
+  it("applies pending company only when landing on applications", () => {
+    expect(resolvePendingCompanyOnRouteChange("applications", "Acme")).toBe("Acme");
+    expect(resolvePendingCompanyOnRouteChange("applications", null)).toBeNull();
+    expect(resolvePendingCompanyOnRouteChange("bookmarks", "Acme")).toBeNull();
+    expect(resolvePendingCompanyOnRouteChange("archived", "Acme")).toBeNull();
+  });
+
+  it("does not reapply stale company after filter on home, clear, and route change", () => {
+    let pendingCompany: string | null = null;
+    const currentRoute = "applications" as const;
+
+    function handleCompanyFilterOnHome(company: string) {
+      // In-place filter only; pending is queued only before cross-route navigation.
+      if (currentRoute !== "applications") {
+        pendingCompany = company;
+      }
+    }
+
+    function clearFilters() {
+      pendingCompany = null;
+    }
+
+    handleCompanyFilterOnHome("Acme");
+    expect(pendingCompany).toBeNull();
+
+    clearFilters();
+    expect(pendingCompany).toBeNull();
+
+    const reapplied = resolvePendingCompanyOnRouteChange("bookmarks", pendingCompany);
+    expect(reapplied).toBeNull();
   });
 });
 
@@ -183,7 +277,7 @@ describe("keyboard highlight visibility", () => {
 });
 
 describe("composed pipeline golden cases", () => {
-  it("matches archived view defaults with status filters applied", () => {
+  it("shows all archived applications regardless of status", () => {
     const applications = [
       makeJobApplication({ id: "open", status: "applied", archived: false }),
       makeJobApplication({ id: "passed", status: "passed", archived: true }),
@@ -194,13 +288,12 @@ describe("composed pipeline golden cases", () => {
     const snapshot = resolveApplicationListView(applications, {
       ...makeQuery({
         viewMode: "archived",
-        selectedStatuses: new Set(["rejected", "passed"]),
       }),
       currentPage: 1,
       pageSize: 10,
     });
 
-    expect(snapshot.filteredApplications.map((item) => item.id)).toEqual(["passed", "rejected"]);
+    expect(snapshot.filteredApplications.map((item) => item.id)).toEqual(["passed", "rejected", "offer"]);
   });
 
   it("resets highlight validity when search narrows visible cards", () => {

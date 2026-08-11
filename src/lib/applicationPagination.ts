@@ -1,4 +1,4 @@
-export const APPLICATION_PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
+export const APPLICATION_PAGE_SIZE_OPTIONS = [6, 10, 20, 50] as const;
 
 export type ApplicationNumericPageSize = (typeof APPLICATION_PAGE_SIZE_OPTIONS)[number];
 

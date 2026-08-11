@@ -21,7 +21,7 @@ export const ApplicationFilters = memo(function ApplicationFilters({
   onSearchQueryChange,
   includeArchived,
   onIncludeArchivedChange,
-  includeArchivedDisabled = false,
+  showIncludeArchived = true,
   onClearFilters,
   hasActiveFilters,
   searchInputRef,
@@ -36,7 +36,7 @@ export const ApplicationFilters = memo(function ApplicationFilters({
   onSearchQueryChange: (query: string) => void;
   includeArchived: boolean;
   onIncludeArchivedChange: (includeArchived: boolean) => void;
-  includeArchivedDisabled?: boolean;
+  showIncludeArchived?: boolean;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
   searchInputRef?: RefObject<HTMLInputElement | null>;
@@ -64,11 +64,9 @@ export const ApplicationFilters = memo(function ApplicationFilters({
           disabled={companies.length === 0}
         />
         <StatusFilter selectedStatuses={selectedStatuses} onSelectedStatusesChange={onSelectedStatusesChange} />
-        <ArchivedViewToggle
-          includeArchived={includeArchived}
-          onIncludeArchivedChange={onIncludeArchivedChange}
-          disabled={includeArchivedDisabled}
-        />
+        {showIncludeArchived ? (
+          <ArchivedViewToggle includeArchived={includeArchived} onIncludeArchivedChange={onIncludeArchivedChange} />
+        ) : null}
         <span
           className={cn("inline-flex shrink-0", !hasActiveFilters && "cursor-not-allowed")}
           title={hasActiveFilters ? "Clear filters" : "No active filters"}

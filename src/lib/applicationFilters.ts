@@ -10,6 +10,8 @@ export type ApplicationFiltersState = {
   searchQuery: string;
   viewMode?: ApplicationViewMode;
   includeArchived?: boolean;
+  /** Dedicated /archived route — view mode is navigation, not a clearable filter. */
+  dedicatedArchivedView?: boolean;
 };
 
 export function hasActiveApplicationFilters({
@@ -18,10 +20,11 @@ export function hasActiveApplicationFilters({
   searchQuery,
   viewMode = "active",
   includeArchived = false,
+  dedicatedArchivedView = false,
 }: ApplicationFiltersState): boolean {
   return (
-    viewMode === "archived" ||
-    includeArchived ||
+    (viewMode === "archived" && !dedicatedArchivedView) ||
+    (includeArchived && !dedicatedArchivedView) ||
     selectedCompanies.size > 0 ||
     selectedStatuses.size > 0 ||
     searchQuery.trim().length > 0

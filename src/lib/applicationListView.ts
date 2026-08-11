@@ -1,3 +1,4 @@
+import type { AppView } from "@/lib/appView";
 import type { ApplicationViewMode } from "@/lib/applicationArchive";
 import { partitionApplicationsByView } from "@/lib/applicationArchive";
 import { filterApplications, hasActiveApplicationFilters } from "@/lib/applicationFilters";
@@ -8,9 +9,12 @@ import type { ApplicationStatus, JobApplication } from "@/types";
 export type ApplicationListViewQuery = {
   viewMode: ApplicationViewMode;
   includeArchived: boolean;
+  bookmarksOnly: boolean;
   selectedCompanies: ReadonlySet<string>;
   selectedStatuses: ReadonlySet<ApplicationStatus>;
   searchQuery: string;
+  /** When true, list is the dedicated /archived route (always shows archived rows). */
+  dedicatedArchivedView?: boolean;
 };
 
 export type ApplicationListViewParams = ApplicationListViewQuery & {
@@ -27,6 +31,7 @@ export type ApplicationListViewSnapshot = {
   visibleApplicationIds: readonly string[];
   hasActiveFilters: boolean;
   isArchivedViewEmpty: boolean;
+  isBookmarksViewEmpty: boolean;
   isFilteredEmpty: boolean;
 };
 
@@ -42,6 +47,8 @@ export function listViewQueriesEqual(left: ApplicationListViewQuery, right: Appl
   return (
     left.viewMode === right.viewMode &&
     left.includeArchived === right.includeArchived &&
+    left.bookmarksOnly === right.bookmarksOnly &&
+    left.dedicatedArchivedView === right.dedicatedArchivedView &&
     left.searchQuery === right.searchQuery &&
     setsEqual(left.selectedCompanies, right.selectedCompanies) &&
     setsEqual(left.selectedStatuses, right.selectedStatuses)
@@ -52,9 +59,25 @@ export function resolveApplicationListView(
   applications: readonly JobApplication[],
   params: ApplicationListViewParams,
 ): ApplicationListViewSnapshot {
-  const { viewMode, includeArchived, selectedCompanies, selectedStatuses, searchQuery, currentPage, pageSize } = params;
+  const {
+    viewMode,
+    includeArchived,
+    bookmarksOnly,
+    selectedCompanies,
+    selectedStatuses,
+    searchQuery,
+    currentPage,
+    pageSize,
+    dedicatedArchivedView = false,
+  } = params;
 
-  const viewApplications = partitionApplicationsByView(applications, viewMode, includeArchived);
+  const effectiveViewMode = dedicatedArchivedView ? "archived" : viewMode;
+  const effectiveIncludeArchived = dedicatedArchivedView ? false : includeArchived;
+
+  let viewApplications = partitionApplicationsByView(applications, effectiveViewMode, effectiveIncludeArchived);
+  if (bookmarksOnly) {
+    viewApplications = viewApplications.filter((application) => application.pinned);
+  }
   const companyNames = uniqueCompanyNames(viewApplications);
   const filteredApplications = filterApplications(viewApplications, {
     selectedCompanies,
@@ -76,11 +99,16 @@ export function resolveApplicationListView(
       selectedCompanies,
       selectedStatuses,
       searchQuery,
-      viewMode,
-      includeArchived,
+      viewMode: effectiveViewMode,
+      includeArchived: effectiveIncludeArchived,
+      dedicatedArchivedView,
     }),
-    isArchivedViewEmpty: viewMode === "archived" && viewApplications.length === 0,
-    isFilteredEmpty: filteredApplications.length === 0 && !(viewMode === "archived" && viewApplications.length === 0),
+    isArchivedViewEmpty: effectiveViewMode === "archived" && viewApplications.length === 0,
+    isBookmarksViewEmpty: bookmarksOnly && viewApplications.length === 0,
+    isFilteredEmpty:
+      filteredApplications.length === 0 &&
+      !(effectiveViewMode === "archived" && viewApplications.length === 0) &&
+      !(bookmarksOnly && viewApplications.length === 0),
   };
 }
 
@@ -100,4 +128,12 @@ export function shouldClearKeyboardHighlight(
   visibleApplicationIds: readonly string[],
 ): boolean {
   return highlightId !== null && !visibleApplicationIds.includes(highlightId);
+}
+
+/** Pending company filters apply only when landing on the home applications route. */
+export function resolvePendingCompanyOnRouteChange(
+  routeAppView: AppView,
+  pendingCompany: string | null,
+): string | null {
+  return routeAppView === "applications" ? pendingCompany : null;
 }

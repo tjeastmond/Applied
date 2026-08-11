@@ -7,9 +7,7 @@ export const parseJobUrlRequestSchema = z.strictObject({
   url: requiredHttpUrlSchema,
 });
 
-const parsedJobTitleSchema = z
-  .union([z.string(), z.null()])
-  .transform((value) => normalizeJobTitle(value));
+const parsedJobTitleSchema = z.union([z.string(), z.null()]).transform((value) => normalizeJobTitle(value));
 
 export const parseJobUrlSuccessSchema = z.strictObject({
   ok: z.literal(true),

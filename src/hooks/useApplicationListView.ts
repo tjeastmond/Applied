@@ -1,19 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { appViewToQuery, type AppView } from "@/lib/appView";
 import {
   nextViewMode,
   persistApplicationViewMode,
   persistIncludeArchived,
   readStoredApplicationViewMode,
   readStoredIncludeArchived,
-  statusFiltersForViewMode,
   type ApplicationViewMode,
 } from "@/lib/applicationArchive";
 import {
   listViewQueriesEqual,
   pruneCompanySelection,
   resolveApplicationListView,
+  resolvePendingCompanyOnRouteChange,
   type ApplicationListViewQuery,
 } from "@/lib/applicationListView";
 import {
@@ -23,41 +24,82 @@ import {
 } from "@/lib/applicationPagination";
 import type { ApplicationStatus, JobApplication } from "@/types";
 
+/** Session-scoped guards so localStorage prefs restore once per page load, not on every remount. */
+const sessionListPrefs = {
+  pageSizeRestored: false,
+  viewModeRestored: false,
+  includeArchivedRestored: false,
+};
+
+function companyFilterSelection(company: string) {
+  return {
+    selectedCompanies: new Set([company]),
+    selectedStatuses: new Set<ApplicationStatus>(),
+  };
+}
+
+function exitArchivedViewIfNeeded(current: ApplicationViewMode): ApplicationViewMode {
+  if (current !== "archived") return current;
+  persistApplicationViewMode("active");
+  return "active";
+}
+
+function includeArchivedForRoute(routeAppView: AppView, pendingCompany: string | null): boolean {
+  if (pendingCompany !== null && routeAppView === "applications") {
+    return true;
+  }
+
+  switch (routeAppView) {
+    case "archived":
+      return false;
+    case "applications":
+      return readStoredIncludeArchived();
+    case "bookmarks":
+      return false;
+  }
+}
+
 type UseApplicationListViewOptions = {
   applications: JobApplication[];
   initialPageSize: ApplicationPageSize;
   initialPageSizeFromPreference: boolean;
+  /** When set, list view syncs to route-based navigation (shell mode). */
+  routeAppView?: AppView;
 };
-
-let hasRestoredApplicationPageSizePreference = false;
-let hasRestoredApplicationViewModePreference = false;
-let hasRestoredIncludeArchivedPreference = false;
 
 export function useApplicationListView({
   applications,
   initialPageSize,
   initialPageSizeFromPreference,
+  routeAppView,
 }: UseApplicationListViewOptions) {
+  const routeQuery = routeAppView ? appViewToQuery(routeAppView) : null;
   const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(() => new Set());
   const [selectedStatuses, setSelectedStatuses] = useState<Set<ApplicationStatus>>(() => new Set());
-  const [viewMode, setViewMode] = useState<ApplicationViewMode>("active");
+  const [viewMode, setViewMode] = useState<ApplicationViewMode>(() => routeQuery?.viewMode ?? "active");
+  const [bookmarksOnly, setBookmarksOnly] = useState(() => routeQuery?.bookmarksOnly ?? false);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<ApplicationPageSize>(initialPageSize);
   const [hasSyncedPageSize, setHasSyncedPageSize] = useState(
-    () => initialPageSizeFromPreference || hasRestoredApplicationPageSizePreference,
+    () => initialPageSizeFromPreference || sessionListPrefs.pageSizeRestored,
   );
+
+  const dedicatedArchivedView = routeAppView === "archived";
+  const pendingCompanyFilterRef = useRef<string | null>(null);
 
   const listQuery = useMemo<ApplicationListViewQuery>(
     () => ({
       viewMode,
       includeArchived,
+      bookmarksOnly,
       selectedCompanies,
       selectedStatuses,
       searchQuery,
+      dedicatedArchivedView,
     }),
-    [viewMode, includeArchived, selectedCompanies, selectedStatuses, searchQuery],
+    [viewMode, includeArchived, bookmarksOnly, selectedCompanies, selectedStatuses, searchQuery, dedicatedArchivedView],
   );
 
   const previousListQueryRef = useRef(listQuery);
@@ -73,13 +115,13 @@ export function useApplicationListView({
   );
 
   useLayoutEffect(() => {
-    if (hasRestoredApplicationPageSizePreference) {
+    if (sessionListPrefs.pageSizeRestored) {
       setHasSyncedPageSize(true);
       return;
     }
 
     if (initialPageSizeFromPreference) {
-      hasRestoredApplicationPageSizePreference = true;
+      sessionListPrefs.pageSizeRestored = true;
       setHasSyncedPageSize(true);
       return;
     }
@@ -87,31 +129,51 @@ export function useApplicationListView({
     const storedPageSize = readStoredApplicationPageSize();
     setPageSize(storedPageSize);
     persistApplicationPageSize(storedPageSize);
-    hasRestoredApplicationPageSizePreference = true;
+    sessionListPrefs.pageSizeRestored = true;
     setHasSyncedPageSize(true);
   }, [initialPageSizeFromPreference]);
 
   useLayoutEffect(() => {
-    if (hasRestoredApplicationViewModePreference) {
+    if (routeAppView) {
+      const query = appViewToQuery(routeAppView);
+      const pendingCompany = resolvePendingCompanyOnRouteChange(routeAppView, pendingCompanyFilterRef.current);
+      pendingCompanyFilterRef.current = null;
+      const filter = pendingCompany ? companyFilterSelection(pendingCompany) : null;
+
+      setViewMode(query.viewMode);
+      setBookmarksOnly(query.bookmarksOnly);
+      setSearchQuery("");
+      setSelectedCompanies(filter?.selectedCompanies ?? new Set());
+      setSelectedStatuses(filter?.selectedStatuses ?? new Set());
+      setIncludeArchived(includeArchivedForRoute(routeAppView, pendingCompany));
+      if (filter) {
+        persistIncludeArchived(true);
+      }
+      setCurrentPage(1);
+      persistApplicationViewMode(query.viewMode);
+      sessionListPrefs.includeArchivedRestored = true;
+      return;
+    }
+
+    if (sessionListPrefs.viewModeRestored) {
       return;
     }
 
     const storedViewMode = readStoredApplicationViewMode();
     if (storedViewMode === "archived") {
       setViewMode("archived");
-      setSelectedStatuses(statusFiltersForViewMode("archived"));
     }
 
-    hasRestoredApplicationViewModePreference = true;
-  }, []);
+    sessionListPrefs.viewModeRestored = true;
+  }, [routeAppView]);
 
   useLayoutEffect(() => {
-    if (hasRestoredIncludeArchivedPreference) {
+    if (sessionListPrefs.includeArchivedRestored) {
       return;
     }
 
     setIncludeArchived(readStoredIncludeArchived());
-    hasRestoredIncludeArchivedPreference = true;
+    sessionListPrefs.includeArchivedRestored = true;
   }, []);
 
   useEffect(() => {
@@ -136,9 +198,13 @@ export function useApplicationListView({
   }, [selectedCompanies, snapshot.companyNames]);
 
   const clearFilters = useCallback(() => {
+    pendingCompanyFilterRef.current = null;
     setSelectedCompanies(new Set());
     setSelectedStatuses(new Set());
     setSearchQuery("");
+    if (routeAppView === "archived") {
+      return;
+    }
     setIncludeArchived(false);
     persistIncludeArchived(false);
     setViewMode((current) => {
@@ -146,7 +212,7 @@ export function useApplicationListView({
       persistApplicationViewMode("active");
       return "active";
     });
-  }, []);
+  }, [routeAppView]);
 
   const resetToHome = useCallback(() => {
     clearFilters();
@@ -157,7 +223,7 @@ export function useApplicationListView({
     setViewMode((current) => {
       if (current === next) return current;
       persistApplicationViewMode(next);
-      setSelectedStatuses(statusFiltersForViewMode(next));
+      setSelectedStatuses(new Set());
       setCurrentPage(1);
       return next;
     });
@@ -183,18 +249,21 @@ export function useApplicationListView({
     setCurrentPage(1);
   }, []);
 
+  const queuePendingCompanyFilterForNavigation = useCallback((company: string) => {
+    const trimmed = company.trim();
+    if (!trimmed) return;
+    pendingCompanyFilterRef.current = trimmed;
+  }, []);
+
   const handleCompanyFilter = useCallback((company: string) => {
     const trimmed = company.trim();
     if (!trimmed) return;
-    setSelectedCompanies(new Set([trimmed]));
-    setSelectedStatuses(new Set());
+    const filter = companyFilterSelection(trimmed);
+    setSelectedCompanies(filter.selectedCompanies);
+    setSelectedStatuses(filter.selectedStatuses);
     setIncludeArchived(true);
     persistIncludeArchived(true);
-    setViewMode((current) => {
-      if (current !== "archived") return current;
-      persistApplicationViewMode("active");
-      return "active";
-    });
+    setViewMode(exitArchivedViewIfNeeded);
   }, []);
 
   const resetListPagination = useCallback(() => {
@@ -204,6 +273,7 @@ export function useApplicationListView({
   return {
     snapshot,
     viewMode,
+    bookmarksOnly,
     includeArchived,
     selectedCompanies,
     selectedStatuses,
@@ -222,6 +292,7 @@ export function useApplicationListView({
     handlePageChange,
     handlePageSizeChange,
     handleCompanyFilter,
+    queuePendingCompanyFilterForNavigation,
     resetListPagination,
   };
 }

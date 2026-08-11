@@ -49,21 +49,22 @@ describe("applicationPagination", () => {
   });
 
   it("parses stored page size values", () => {
-    expect(parseApplicationPageSize("5")).toBe(5);
+    expect(parseApplicationPageSize("6")).toBe(6);
+    expect(parseApplicationPageSize("5")).toBeNull();
     expect(parseApplicationPageSize("all")).toBe(APPLICATION_VIEW_ALL_PAGE_SIZE);
     expect(parseApplicationPageSize("10")).toBe(10);
     expect(parseApplicationPageSize("invalid")).toBeNull();
     expect(parseApplicationPageSize(undefined)).toBeNull();
   });
 
-  it("supports five per page and view all", () => {
+  it("supports six per page and view all", () => {
     const items = Array.from({ length: 12 }, (_, index) => index + 1);
 
-    expect(paginateItems(items, 1, 5)).toMatchObject({
-      items: [1, 2, 3, 4, 5],
-      totalPages: 3,
+    expect(paginateItems(items, 1, 6)).toMatchObject({
+      items: [1, 2, 3, 4, 5, 6],
+      totalPages: 2,
       rangeStart: 1,
-      rangeEnd: 5,
+      rangeEnd: 6,
     });
 
     expect(paginateItems(items, 2, APPLICATION_VIEW_ALL_PAGE_SIZE)).toMatchObject({
@@ -75,6 +76,6 @@ describe("applicationPagination", () => {
     });
 
     expect(applicationPageSizeTriggerLabel(APPLICATION_VIEW_ALL_PAGE_SIZE)).toBe("View all");
-    expect(applicationPageSizeTriggerLabel(5)).toBe("5 per page");
+    expect(applicationPageSizeTriggerLabel(6)).toBe("6 per page");
   });
 });
