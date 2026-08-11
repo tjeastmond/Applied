@@ -11,11 +11,13 @@ import {
   resolveRedirectUrl,
   UnsafeFetchUrlError,
 } from "@/lib/server/urlSafety";
+import { extractAshbyRole, isAshbyHost, isGenericAshbyTitle } from "./extractAshbyRole";
 import { buildFullJd } from "./extractFullJd";
 import { extractJobCompany } from "./extractJobCompany";
 import { extractLinkedInRole, isLinkedInHost } from "./extractLinkedInRole";
 import { extractJobSalary } from "./extractJobSalary";
 import { extractParaformRole, isParaformHost } from "./extractParaformRole";
+import { fetchAshbyJobPostingFallback } from "./fetchAshbyJobPosting";
 
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -120,17 +122,24 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
 
     const paraformRole = isParaformHost(currentUrl.hostname) ? extractParaformRole(document) : null;
     const linkedInRole = isLinkedInHost(currentUrl.hostname) ? extractLinkedInRole(document) : null;
+    const ashbyRole = isAshbyHost(currentUrl.hostname) ? extractAshbyRole(document, html) : null;
 
-    const title =
+    let title =
       linkedInRole?.title ??
       paraformRole?.title ??
+      ashbyRole?.title ??
       getMetaContent(document, "og:title") ??
       document.querySelector("title")?.textContent?.trim() ??
       document.querySelector("h1")?.textContent?.trim() ??
       null;
 
-    const company =
+    if (isAshbyHost(currentUrl.hostname) && isGenericAshbyTitle(title)) {
+      title = ashbyRole?.title ?? null;
+    }
+
+    let company =
       linkedInRole?.company ??
+      ashbyRole?.company ??
       extractJobCompany(currentUrl, document, {
         siteName: getMetaContent(document, "og:site_name"),
         applicationName: getMetaContent(document, "application-name"),
@@ -140,8 +149,31 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
     const metaDescription =
       getMetaContent(document, "og:description") ?? getMetaContent(document, "description") ?? null;
 
-    const fullJd = buildFullJd(document, metaDescription);
-    const { salaryRange } = parseParsedApplicationSalaryFields(extractJobSalary(currentUrl, document, html));
+    const ashbySparseShell =
+      isAshbyHost(currentUrl.hostname) &&
+      isGenericAshbyTitle(document.querySelector("title")?.textContent?.trim() ?? null) &&
+      !ashbyRole?.descriptionHtml;
+
+    let fullJd = ashbySparseShell
+      ? null
+      : (buildFullJd(document, metaDescription) ?? ashbyRole?.descriptionHtml ?? null);
+    let { salaryRange } = parseParsedApplicationSalaryFields(extractJobSalary(currentUrl, document, html));
+
+    if (isAshbyHost(currentUrl.hostname) && !title) {
+      const ashbyFallback = await fetchAshbyJobPostingFallback(currentUrl);
+      if (ashbyFallback) {
+        title = ashbyFallback.role.title;
+        if (!company && ashbyFallback.role.company) {
+          company = ashbyFallback.role.company;
+        }
+        if (ashbyFallback.role.descriptionHtml) {
+          fullJd = ashbyFallback.role.descriptionHtml;
+        }
+        if (!salaryRange && ashbyFallback.salaryRange) {
+          salaryRange = ashbyFallback.salaryRange;
+        }
+      }
+    }
 
     log.debug("job metadata extracted", {
       host: currentUrl.hostname,

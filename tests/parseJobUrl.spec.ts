@@ -140,7 +140,9 @@ describe("parseJobUrl", () => {
       ),
     );
 
-    const result = await parseJobUrl("https://www.ycombinator.com/companies/roame/jobs/mqqfa38-lead-full-stack-engineer");
+    const result = await parseJobUrl(
+      "https://www.ycombinator.com/companies/roame/jobs/mqqfa38-lead-full-stack-engineer",
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.title).toBe("Lead Full-Stack Engineer");
@@ -319,7 +321,96 @@ describe("parseJobUrl", () => {
     const result = await parseJobUrl("https://jobs.ashbyhq.com/ramp/34413f8d-26bf-4bbc-8ade-eb309a0e2245");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
+    expect(result.title).toBe("Security Engineer, Cloud");
     expect(result.company).toBe("Ramp");
+  });
+
+  it("falls back to Ashby GraphQL when the HTML shell only exposes Jobs", async () => {
+    const html = `<!doctype html><html><head>
+      <title>Jobs</title><meta name="title" content="Jobs" />
+    </head><body><script>window.__appData = {"organization":null,"posting":null};</script></body></html>`;
+    const graphqlResponse = {
+      data: {
+        jobPosting: {
+          title: "Founding Engineer",
+          descriptionHtml: "<p>Build the future</p>",
+          scrapeableCompensationSalarySummary: "$180K - $220K",
+          compensationTierSummary: null,
+        },
+      },
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        if (url.includes("/api/non-user-graphql")) {
+          return Promise.resolve(
+            new Response(JSON.stringify(graphqlResponse), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          );
+        }
+
+        return Promise.resolve(
+          new Response(html, {
+            status: 200,
+            headers: { "content-type": "text/html" },
+          }),
+        );
+      }),
+    );
+
+    const result = await parseJobUrl("https://jobs.ashbyhq.com/acme/11111111-1111-4111-8111-111111111111");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.title).toBe("Founding Engineer");
+    expect(result.company).toBe("Acme");
+    expect(result.salaryRange).toBe("$180K - $220K");
+    expect(result.fullJd).toBe("<p>Build the future</p>");
+  });
+
+  it("returns no title for Ashby shells when fallback data is unavailable", async () => {
+    const html = `<!doctype html><html><head>
+      <title>Jobs</title><meta name="title" content="Jobs" />
+    </head><body><script>window.__appData = {"organization":null,"posting":null};</script></body></html>`;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        if (url.includes("/api/non-user-graphql")) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ data: { jobPosting: null } }), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          );
+        }
+        if (url.includes("/posting-api/job-board/")) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ jobs: [] }), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          );
+        }
+
+        return Promise.resolve(
+          new Response(html, {
+            status: 200,
+            headers: { "content-type": "text/html" },
+          }),
+        );
+      }),
+    );
+
+    const result = await parseJobUrl("https://jobs.ashbyhq.com/Clera/82edc68f-40a8-4623-a5e0-028ec0ee8c51");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.title).toBeNull();
+    expect(result.company).toBe("Clera");
   });
 
   it("extracts title and company from Paraform /share/ job pages", async () => {
