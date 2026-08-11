@@ -8,7 +8,6 @@ import {
   partitionApplicationsByView,
   persistIncludeArchived,
   readStoredIncludeArchived,
-  statusFiltersForViewMode,
 } from "@/lib/applicationArchive";
 import { makeJobApplication } from "./fixtures/jobApplication";
 
@@ -69,11 +68,9 @@ describe("countArchivableApplications", () => {
 });
 
 describe("archive view helpers", () => {
-  it("toggles view mode and status filters consistently", () => {
+  it("toggles view mode labels consistently", () => {
     expect(nextViewMode("active")).toBe("archived");
     expect(nextViewMode("archived")).toBe("active");
-    expect(statusFiltersForViewMode("archived")).toEqual(new Set(["rejected", "passed"]));
-    expect(statusFiltersForViewMode("active").size).toBe(0);
     expect(archiveViewToggleLabel("active")).toBe("View Archived Applications");
     expect(archiveViewToggleLabel("archived")).toBe("Back To Active Applications");
   });

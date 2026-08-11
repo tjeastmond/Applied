@@ -551,6 +551,7 @@ export function useAuthenticatedAppController({
     viewMode,
     bookmarksOnly,
     includeArchived,
+    showIncludeArchived: routeAppView !== "archived" && viewMode !== "archived",
     selectedCompanies,
     selectedStatuses,
     searchQuery,

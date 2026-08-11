@@ -165,11 +165,34 @@ describe("resolveApplicationListView", () => {
 
     expect(
       resolveApplicationListView(applications, {
+        ...makeQuery({ viewMode: "archived", dedicatedArchivedView: true }),
+        currentPage: 1,
+        pageSize: 10,
+      }).hasActiveFilters,
+    ).toBe(false);
+
+    expect(
+      resolveApplicationListView(applications, {
         ...makeQuery({ includeArchived: true }),
         currentPage: 1,
         pageSize: 10,
       }).hasActiveFilters,
     ).toBe(true);
+  });
+
+  it("shows archived applications on dedicated archived route even when view mode desyncs", () => {
+    const applications = [
+      makeJobApplication({ id: "active-a", archived: false }),
+      makeJobApplication({ id: "archived-a", archived: true }),
+    ];
+
+    const snapshot = resolveApplicationListView(applications, {
+      ...makeQuery({ viewMode: "active", dedicatedArchivedView: true }),
+      currentPage: 1,
+      pageSize: 10,
+    });
+
+    expect(snapshot.viewApplications.map((item) => item.id)).toEqual(["archived-a"]);
   });
 });
 
@@ -183,6 +206,7 @@ describe("listViewQueriesEqual", () => {
     expect(listViewQueriesEqual(base, makeQuery({ selectedCompanies: new Set(["Acme"]) }))).toBe(false);
     expect(listViewQueriesEqual(base, makeQuery({ selectedStatuses: new Set(["applied"]) }))).toBe(false);
     expect(listViewQueriesEqual(base, makeQuery({ bookmarksOnly: true }))).toBe(false);
+    expect(listViewQueriesEqual(base, makeQuery({ dedicatedArchivedView: true }))).toBe(false);
   });
 });
 
@@ -211,7 +235,7 @@ describe("keyboard highlight visibility", () => {
 });
 
 describe("composed pipeline golden cases", () => {
-  it("matches archived view defaults with status filters applied", () => {
+  it("shows all archived applications regardless of status", () => {
     const applications = [
       makeJobApplication({ id: "open", status: "applied", archived: false }),
       makeJobApplication({ id: "passed", status: "passed", archived: true }),
@@ -222,13 +246,12 @@ describe("composed pipeline golden cases", () => {
     const snapshot = resolveApplicationListView(applications, {
       ...makeQuery({
         viewMode: "archived",
-        selectedStatuses: new Set(["rejected", "passed"]),
       }),
       currentPage: 1,
       pageSize: 10,
     });
 
-    expect(snapshot.filteredApplications.map((item) => item.id)).toEqual(["passed", "rejected"]);
+    expect(snapshot.filteredApplications.map((item) => item.id)).toEqual(["passed", "rejected", "offer"]);
   });
 
   it("resets highlight validity when search narrows visible cards", () => {

@@ -8,7 +8,6 @@ import {
   persistIncludeArchived,
   readStoredApplicationViewMode,
   readStoredIncludeArchived,
-  statusFiltersForViewMode,
   type ApplicationViewMode,
 } from "@/lib/applicationArchive";
 import {
@@ -55,6 +54,8 @@ export function useApplicationListView({
     () => initialPageSizeFromPreference || hasRestoredApplicationPageSizePreference,
   );
 
+  const dedicatedArchivedView = routeAppView === "archived";
+
   const listQuery = useMemo<ApplicationListViewQuery>(
     () => ({
       viewMode,
@@ -63,8 +64,9 @@ export function useApplicationListView({
       selectedCompanies,
       selectedStatuses,
       searchQuery,
+      dedicatedArchivedView,
     }),
-    [viewMode, includeArchived, bookmarksOnly, selectedCompanies, selectedStatuses, searchQuery],
+    [viewMode, includeArchived, bookmarksOnly, selectedCompanies, selectedStatuses, searchQuery, dedicatedArchivedView],
   );
 
   const previousListQueryRef = useRef(listQuery);
@@ -104,12 +106,18 @@ export function useApplicationListView({
       setViewMode(query.viewMode);
       setBookmarksOnly(query.bookmarksOnly);
       setSelectedCompanies(new Set());
-      setSelectedStatuses(statusFiltersForViewMode(query.viewMode));
+      setSelectedStatuses(new Set());
       setSearchQuery("");
-      setIncludeArchived(false);
+      if (routeAppView === "archived") {
+        setIncludeArchived(false);
+      } else if (routeAppView === "applications") {
+        setIncludeArchived(readStoredIncludeArchived());
+      } else {
+        setIncludeArchived(false);
+      }
       setCurrentPage(1);
       persistApplicationViewMode(query.viewMode);
-      persistIncludeArchived(false);
+      hasRestoredIncludeArchivedPreference = true;
       return;
     }
 
@@ -120,7 +128,6 @@ export function useApplicationListView({
     const storedViewMode = readStoredApplicationViewMode();
     if (storedViewMode === "archived") {
       setViewMode("archived");
-      setSelectedStatuses(statusFiltersForViewMode("archived"));
     }
 
     hasRestoredApplicationViewModePreference = true;
@@ -160,6 +167,9 @@ export function useApplicationListView({
     setSelectedCompanies(new Set());
     setSelectedStatuses(new Set());
     setSearchQuery("");
+    if (routeAppView === "archived") {
+      return;
+    }
     setIncludeArchived(false);
     persistIncludeArchived(false);
     setViewMode((current) => {
@@ -167,7 +177,7 @@ export function useApplicationListView({
       persistApplicationViewMode("active");
       return "active";
     });
-  }, []);
+  }, [routeAppView]);
 
   const resetToHome = useCallback(() => {
     clearFilters();
@@ -178,7 +188,7 @@ export function useApplicationListView({
     setViewMode((current) => {
       if (current === next) return current;
       persistApplicationViewMode(next);
-      setSelectedStatuses(statusFiltersForViewMode(next));
+      setSelectedStatuses(new Set());
       setCurrentPage(1);
       return next;
     });

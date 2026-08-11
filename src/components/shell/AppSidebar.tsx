@@ -82,7 +82,7 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const pathname = usePathname();
   const activeView = pathToAppView(pathname);
-  const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar();
+  const { collapsed, transitionsEnabled, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar();
   const sections = buildSections(navCounts);
 
   function handleNavigate() {
@@ -119,7 +119,8 @@ export function AppSidebar({
 
       <aside
         className={cn(
-          "bg-sidebar border-sidebar-border fixed inset-y-0 left-0 z-50 flex h-svh w-64 shrink-0 flex-col border-r transition-[transform,width] duration-200 ease-out",
+          "bg-sidebar border-sidebar-border fixed inset-y-0 left-0 z-50 flex h-svh w-64 shrink-0 flex-col border-r",
+          transitionsEnabled ? "transition-[transform,width] duration-200 ease-out" : "transition-none",
           "lg:static lg:z-auto lg:translate-x-0",
           collapsed ? "lg:w-16" : "lg:w-60",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",

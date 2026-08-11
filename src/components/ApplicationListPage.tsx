@@ -22,8 +22,8 @@ type ApplicationListPageProps = Pick<
   | "isBookmarksViewEmpty"
   | "isFilteredEmpty"
   | "hasSyncedPageSize"
-  | "viewMode"
   | "includeArchived"
+  | "showIncludeArchived"
   | "selectedCompanies"
   | "selectedStatuses"
   | "searchQuery"
@@ -64,8 +64,8 @@ export function ApplicationListPage({
   isBookmarksViewEmpty,
   isFilteredEmpty,
   hasSyncedPageSize,
-  viewMode,
   includeArchived,
+  showIncludeArchived,
   selectedCompanies,
   selectedStatuses,
   searchQuery,
@@ -107,7 +107,7 @@ export function ApplicationListPage({
             onSearchQueryChange={setSearchQuery}
             includeArchived={includeArchived}
             onIncludeArchivedChange={handleIncludeArchivedChange}
-            includeArchivedDisabled={viewMode === "archived"}
+            showIncludeArchived={showIncludeArchived}
             onClearFilters={clearFilters}
             hasActiveFilters={hasActiveFilters}
             searchInputRef={searchInputRef}

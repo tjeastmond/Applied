@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 type SidebarContextValue = {
   collapsed: boolean;
+  transitionsEnabled: boolean;
   toggleCollapsed: () => void;
   setCollapsed: (value: boolean) => void;
   mobileOpen: boolean;
@@ -14,13 +15,27 @@ const SidebarContext = createContext<SidebarContextValue | null>(null);
 
 export const SIDEBAR_COLLAPSED_STORAGE_KEY = "applied-dev-sidebar-collapsed";
 
+export function readStoredSidebarCollapsed(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
+}
+
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsedState] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [transitionsEnabled, setTransitionsEnabled] = useState(false);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
-    if (stored === "true") setCollapsedState(true);
+    setCollapsedState(readStoredSidebarCollapsed());
+
+    const frame = requestAnimationFrame(() => {
+      setTransitionsEnabled(true);
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const setCollapsed = useCallback((value: boolean) => {
@@ -37,8 +52,8 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ collapsed, toggleCollapsed, setCollapsed, mobileOpen, setMobileOpen }),
-    [collapsed, toggleCollapsed, setCollapsed, mobileOpen],
+    () => ({ collapsed, transitionsEnabled, toggleCollapsed, setCollapsed, mobileOpen, setMobileOpen }),
+    [collapsed, transitionsEnabled, toggleCollapsed, setCollapsed, mobileOpen],
   );
 
   return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
