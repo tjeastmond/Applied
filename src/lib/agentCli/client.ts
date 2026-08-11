@@ -1,5 +1,6 @@
 import type { AgentApplicationSummary, AgentNoteSummary } from "@/lib/schemas/agent";
 import type { AgentCliConfig } from "@/lib/agentCli/config";
+import { APPLIED_DEV_CLIENT_HEADER, APPLIED_DEV_CLI_CLIENT_VALUE } from "@/lib/agentClientHeaders";
 
 export class AgentCliRequestError extends Error {
   readonly exitCode = 1;
@@ -33,6 +34,7 @@ async function request<T>(config: AgentCliConfig, path: string, init: RequestIni
       headers: {
         Authorization: `Bearer ${config.token}`,
         Accept: "application/json",
+        [APPLIED_DEV_CLIENT_HEADER]: APPLIED_DEV_CLI_CLIENT_VALUE,
         ...init.headers,
       },
     });

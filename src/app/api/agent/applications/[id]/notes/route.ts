@@ -10,10 +10,10 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function GET(request: Request, context: ApplicationIdRouteContext) {
-  const authError = await requireAgentAuth(request);
-  if (authError) {
+  const auth = await requireAgentAuth(request);
+  if (auth instanceof Response) {
     log.warn("agent auth rejected", { route: "/api/agent/applications/[id]/notes", method: "GET" });
-    return authError;
+    return auth;
   }
 
   const routeContext = await requireAgentApplicationRouteContext(context);
@@ -30,10 +30,10 @@ export async function GET(request: Request, context: ApplicationIdRouteContext) 
 }
 
 export async function POST(request: Request, context: ApplicationIdRouteContext) {
-  const authError = await requireAgentAuth(request);
-  if (authError) {
+  const auth = await requireAgentAuth(request);
+  if (auth instanceof Response) {
     log.warn("agent auth rejected", { route: "/api/agent/applications/[id]/notes", method: "POST" });
-    return authError;
+    return auth;
   }
 
   const routeContext = await requireAgentApplicationRouteContext(context);

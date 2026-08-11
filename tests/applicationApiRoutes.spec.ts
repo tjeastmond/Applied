@@ -145,6 +145,9 @@ describe("application API routes", () => {
     expect(history).toHaveLength(1);
     expect(history[0]?.fromStatus).toBeNull();
     expect(history[0]?.toStatus).toBe("applied");
+
+    const notes = await getNoteRepository().listByApplicationId(application.id);
+    expect(notes.some((note) => note.content === "Created by You, via app")).toBe(true);
   });
 
   test("PATCH status change creates a status update note", async () => {

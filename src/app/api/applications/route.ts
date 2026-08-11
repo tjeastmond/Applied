@@ -1,8 +1,10 @@
-import { getRepository } from "@/lib/server/db";
+import { formatApplicationAuditNote } from "@/lib/applicationAuditNote";
+import { getRepository, getNoteRepository, getUserRepository } from "@/lib/server/db";
 import { withAppAccess } from "@/lib/server/appAuth";
 import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
+import { touchApplicationUpdatedAt } from "@/lib/server/touchApplicationUpdatedAt";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { NextResponse } from "next/server";
 
@@ -21,6 +23,9 @@ export const POST = withAppAccess(async (request: Request) => {
   }
 
   const application = await getRepository().create(sanitizeApplicationInput(data));
+  const user = await getUserRepository().ensureDefaultUser();
+  await getNoteRepository().create(application.id, formatApplicationAuditNote("created", user.displayName, "app"));
+  await touchApplicationUpdatedAt(application.id);
   log.info("application created", {
     route: "/api/applications",
     method: "POST",

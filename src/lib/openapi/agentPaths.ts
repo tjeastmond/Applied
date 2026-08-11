@@ -53,7 +53,7 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
     tags: ["Applications"],
     summary: "Create application from job URL",
     description:
-      'Parses title, company, salaryRange, and fullJd from the URL when available. Adds audit note "Created by the CLI".',
+      'Parses title, company, salaryRange, and fullJd from the URL when available. Adds audit note "Created by {token name}, via api|cli".',
     security: agentSecurity,
     request: {
       body: {
@@ -104,7 +104,8 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
     path: "/api/agent/applications/{id}",
     tags: ["Applications"],
     summary: "Update status only",
-    description: 'Creates a status-update note, status history entry, and audit note "Updated by the CLI".',
+    description:
+      'Creates a status-update note, status history entry, and audit note "Updated by {token name}, via api|cli".',
     security: agentSecurity,
     request: {
       params: applicationIdParamsSchema,

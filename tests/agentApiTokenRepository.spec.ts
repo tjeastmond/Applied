@@ -59,6 +59,15 @@ describe("SqliteAgentApiTokenRepository", () => {
     expect(listed[1]?.id).toBe(newer.record.id);
   });
 
+  test("resolveNameByToken returns the registered token name", () => {
+    const db = openDatabase(":memory:");
+    const repository = new SqliteAgentApiTokenRepository(db);
+    const created = repository.create("Codex");
+
+    expect(repository.resolveNameByToken(created.token)).toBe("Codex");
+    expect(repository.resolveNameByToken("missing-token")).toBeNull();
+  });
+
   test("updateName changes display name for active token", () => {
     const db = openDatabase(":memory:");
     const repository = new SqliteAgentApiTokenRepository(db);

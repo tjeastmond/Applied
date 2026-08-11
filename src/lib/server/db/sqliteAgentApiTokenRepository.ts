@@ -10,6 +10,7 @@ import {
   INSERT_TOKEN_SQL,
   IS_VALID_SQL,
   LIST_ACTIVE_SQL,
+  RESOLVE_NAME_BY_HASH_SQL,
   REVOKE_SQL,
   TOUCH_LAST_USED_SQL,
   UPDATE_NAME_SQL,
@@ -66,6 +67,11 @@ export class SqliteAgentApiTokenRepository implements AgentApiTokenRepository {
 
   isValidToken(rawToken: string): boolean {
     return this.hasActiveTokenWithHash(rawToken);
+  }
+
+  resolveNameByToken(rawToken: string): string | null {
+    const row = this.db.prepare(RESOLVE_NAME_BY_HASH_SQL).get(hashAgentToken(rawToken)) as { name: string } | undefined;
+    return row?.name ?? null;
   }
 
   hasActiveTokens(): boolean {

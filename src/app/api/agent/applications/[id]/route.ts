@@ -10,10 +10,10 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function GET(request: Request, context: ApplicationIdRouteContext) {
-  const authError = await requireAgentAuth(request);
-  if (authError) {
+  const auth = await requireAgentAuth(request);
+  if (auth instanceof Response) {
     log.warn("agent auth rejected", { route: "/api/agent/applications/[id]", method: "GET" });
-    return authError;
+    return auth;
   }
 
   const routeContext = await requireAgentApplicationRouteContext(context);
@@ -25,10 +25,10 @@ export async function GET(request: Request, context: ApplicationIdRouteContext) 
 }
 
 export async function PATCH(request: Request, context: ApplicationIdRouteContext) {
-  const authError = await requireAgentAuth(request);
-  if (authError) {
+  const auth = await requireAgentAuth(request);
+  if (auth instanceof Response) {
     log.warn("agent auth rejected", { route: "/api/agent/applications/[id]", method: "PATCH" });
-    return authError;
+    return auth;
   }
 
   const routeContext = await requireAgentApplicationRouteContext(context);
@@ -42,7 +42,7 @@ export async function PATCH(request: Request, context: ApplicationIdRouteContext
     return data;
   }
 
-  const updated = await updateApplicationStatusForAgent(routeContext.id, data.status);
+  const updated = await updateApplicationStatusForAgent(routeContext.id, data.status, auth);
   if (!updated) {
     return applicationNotFoundResponse();
   }

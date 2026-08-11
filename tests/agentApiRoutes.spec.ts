@@ -16,6 +16,7 @@ import * as agentApplicationsRoute from "@/app/api/agent/applications/route";
 import { GET as getAgentApplication, PATCH as patchAgentApplication } from "@/app/api/agent/applications/[id]/route";
 import { GET as getAgentNotes, POST as postAgentNote } from "@/app/api/agent/applications/[id]/notes/route";
 import { parseJobUrl } from "@/lib/server/services/parseJobUrl";
+import { APPLIED_DEV_CLIENT_HEADER, APPLIED_DEV_CLI_CLIENT_VALUE } from "@/lib/agentClientHeaders";
 
 vi.mock("@/lib/server/services/parseJobUrl", () => ({
   parseJobUrl: vi.fn(),
@@ -253,7 +254,63 @@ describe("agent API routes", () => {
     expect(body.status).toBe("to_apply");
 
     const notes = await getNoteRepository().listByApplicationId(body.id);
-    expect(notes.some((note) => note.content === "Created by the CLI")).toBe(true);
+    expect(notes.some((note) => note.content === "Created by Environment, via API")).toBe(true);
+  });
+
+  test("POST /api/agent/applications uses CLI channel when client header is set", async () => {
+    mockedParseJobUrl.mockResolvedValue({
+      ok: true,
+      title: "Parsed Role",
+      company: "Acme",
+      salaryRange: null,
+      fullJd: null,
+    });
+
+    const response = await agentApplicationsRoute.POST(
+      authorizedRequest("/api/agent/applications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [APPLIED_DEV_CLIENT_HEADER]: APPLIED_DEV_CLI_CLIENT_VALUE,
+        },
+        body: JSON.stringify({ url: "https://jobs.example.com/parsed" }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as { id: string };
+    const notes = await getNoteRepository().listByApplicationId(body.id);
+    expect(notes.some((note) => note.content === "Created by Environment, via CLI")).toBe(true);
+  });
+
+  test("POST /api/agent/applications uses registered token name for audit notes", async () => {
+    mockedParseJobUrl.mockResolvedValue({
+      ok: true,
+      title: "Parsed Role",
+      company: "Acme",
+      salaryRange: null,
+      fullJd: null,
+    });
+
+    const repository = getAgentApiTokenRepository();
+    if (!repository) throw new Error("Agent token repository unavailable");
+    const created = await Promise.resolve(repository.create("Codex"));
+
+    const response = await agentApplicationsRoute.POST(
+      new Request("http://localhost/api/agent/applications", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${created.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: "https://jobs.example.com/parsed" }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as { id: string };
+    const notes = await getNoteRepository().listByApplicationId(body.id);
+    expect(notes.some((note) => note.content === "Created by Codex, via API")).toBe(true);
   });
 
   test("POST /api/agent/applications honors submitted status", async () => {
@@ -370,7 +427,7 @@ describe("agent API routes", () => {
 
     const notes = await getNoteRepository().listByApplicationId(app.id);
     expect(notes.some((note) => note.content === "Status Update: Applied")).toBe(true);
-    expect(notes.some((note) => note.content === "Updated by the CLI")).toBe(true);
+    expect(notes.some((note) => note.content === "Updated by Environment, via API")).toBe(true);
 
     const history = await getStatusHistoryRepository().listByApplicationId(app.id);
     expect(history.some((entry) => entry.fromStatus === "to_apply" && entry.toStatus === "applied")).toBe(true);

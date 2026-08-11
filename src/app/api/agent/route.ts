@@ -9,10 +9,10 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const authError = await requireAgentAuth(request);
-  if (authError) {
+  const auth = await requireAgentAuth(request);
+  if (auth instanceof Response) {
     log.warn("agent auth rejected", { route: "/api/agent", method: "GET" });
-    return authError;
+    return auth;
   }
 
   const repository = getAgentApiTokenRepository();

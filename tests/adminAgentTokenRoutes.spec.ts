@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { MAX_ACTIVE_AGENT_API_TOKENS } from "@/lib/agentTokenLimits";
 import { openDatabase } from "@/lib/server/db/migrate";
 import { getAgentApiTokenRepository, resetDatabaseBackend, useTestDatabase } from "@/lib/server/db";
 import { GET as listAgentTokensRoute, POST as createAgentTokenRoute } from "@/app/api/admin/agent-tokens/route";
@@ -143,13 +144,14 @@ describe("admin agent token routes", () => {
   test("POST returns 409 when active token limit is reached", async () => {
     const repository = getAgentApiTokenRepository();
     expect(repository).not.toBeNull();
-    await Promise.resolve(repository!.create("First"));
-    await Promise.resolve(repository!.create("Second"));
+    for (let index = 0; index < MAX_ACTIVE_AGENT_API_TOKENS; index += 1) {
+      await Promise.resolve(repository!.create(`Token ${index + 1}`));
+    }
 
     const response = await createAgentTokenRoute(
       authorizedAppRequest("/api/admin/agent-tokens", {
         method: "POST",
-        body: JSON.stringify({ name: "Third" }),
+        body: JSON.stringify({ name: "Over Limit" }),
       }),
       emptyRouteContext,
     );
@@ -161,8 +163,9 @@ describe("admin agent token routes", () => {
     process.env.AGENT_API_TOKEN = "env-bootstrap-token";
     const repository = getAgentApiTokenRepository();
     expect(repository).not.toBeNull();
-    await Promise.resolve(repository!.create("First"));
-    await Promise.resolve(repository!.create("Second"));
+    for (let index = 0; index < MAX_ACTIVE_AGENT_API_TOKENS; index += 1) {
+      await Promise.resolve(repository!.create(`Token ${index + 1}`));
+    }
 
     const response = await importAgentTokenFromEnvRoute(
       authorizedAppRequest("/api/admin/agent-tokens/from-env", {

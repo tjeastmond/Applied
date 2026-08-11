@@ -11,11 +11,12 @@ import {
   INSERT_TOKEN_SQL,
   IS_VALID_SQL,
   LIST_ACTIVE_SQL,
+  RESOLVE_NAME_BY_HASH_SQL,
   REVOKE_SQL,
   TOUCH_LAST_USED_SQL,
   UPDATE_NAME_SQL,
 } from "./agentTokenRepositoryShared";
-import { tursoFirstRow, tursoRows } from "./tursoRowHelpers";
+import { requiredString, tursoFirstRow, tursoRows } from "./tursoRowHelpers";
 
 export class TursoAgentApiTokenRepository implements AgentApiTokenRepository {
   constructor(
@@ -85,6 +86,12 @@ export class TursoAgentApiTokenRepository implements AgentApiTokenRepository {
 
   async isValidToken(rawToken: string): Promise<boolean> {
     return this.hasActiveTokenWithHash(rawToken);
+  }
+
+  async resolveNameByToken(rawToken: string): Promise<string | null> {
+    await this.ready;
+    const row = await tursoFirstRow(this.client, RESOLVE_NAME_BY_HASH_SQL, [hashAgentToken(rawToken)]);
+    return row ? requiredString(row, "name") : null;
   }
 
   async hasActiveTokens(): Promise<boolean> {

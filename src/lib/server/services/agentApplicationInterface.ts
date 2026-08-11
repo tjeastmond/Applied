@@ -1,4 +1,5 @@
 import { filterAgentApplicationsBySearch, normalizeSearchQuery } from "@/lib/applicationSearch";
+import { formatApplicationAuditNote } from "@/lib/applicationAuditNote";
 import type { ApplicationStatus } from "@/lib/applicationStatus";
 import { normalizePastedJobUrl, today } from "@/lib/applicationForm";
 import { formatZodError } from "@/lib/formatZodError";
@@ -13,8 +14,14 @@ import { parseJobUrl } from "./parseJobUrl";
 
 type CreateApplicationFromUrlResult = { ok: true; application: AgentApplicationSummary } | { ok: false; error: string };
 
-const AGENT_CREATE_AUDIT_NOTE = "Created by the CLI";
-const AGENT_UPDATE_AUDIT_NOTE = "Updated by the CLI";
+export type AgentAuditContext = {
+  actorName: string;
+  channel: "cli" | "api";
+};
+
+function agentAuditNote(action: "created" | "updated", context: AgentAuditContext): string {
+  return formatApplicationAuditNote(action, context.actorName, context.channel);
+}
 
 function toAgentApplicationSummary(application: JobApplication): AgentApplicationSummary {
   return {
@@ -100,6 +107,7 @@ export async function createNoteForAgent(
 export async function updateApplicationStatusForAgent(
   id: string,
   status: ApplicationStatus,
+  auditContext: AgentAuditContext,
 ): Promise<AgentApplicationSummary | null> {
   const existing = await getVisibleApplicationForAgent(id);
   if (!existing) {
@@ -115,7 +123,7 @@ export async function updateApplicationStatusForAgent(
     return null;
   }
 
-  await getNoteRepository().create(id, AGENT_UPDATE_AUDIT_NOTE);
+  await getNoteRepository().create(id, agentAuditNote("updated", auditContext));
   const applicationUpdatedAt = await touchApplicationUpdatedAt(id);
   return toAgentApplicationSummary({
     ...updated,
@@ -126,6 +134,7 @@ export async function updateApplicationStatusForAgent(
 export async function createApplicationFromUrlForAgent(
   rawUrl: string,
   status: ApplicationStatus = "to_apply",
+  auditContext: AgentAuditContext,
 ): Promise<CreateApplicationFromUrlResult> {
   const url = normalizePastedJobUrl(rawUrl);
   if (!url) {
@@ -156,7 +165,7 @@ export async function createApplicationFromUrlForAgent(
   }
 
   const application = await getRepository().create(sanitizeApplicationInput(input.data));
-  await getNoteRepository().create(application.id, AGENT_CREATE_AUDIT_NOTE);
+  await getNoteRepository().create(application.id, agentAuditNote("created", auditContext));
   const applicationUpdatedAt = await touchApplicationUpdatedAt(application.id);
   return {
     ok: true,

@@ -7,6 +7,7 @@ export interface AgentApiTokenRepository {
   revoke(id: string): Promise<boolean> | boolean;
   updateName(id: string, name: string): Promise<AgentApiTokenSummary | null> | AgentApiTokenSummary | null;
   isValidToken(rawToken: string): Promise<boolean> | boolean;
+  resolveNameByToken(rawToken: string): Promise<string | null> | string | null;
   hasActiveTokens(): Promise<boolean> | boolean;
   hasActiveTokenWithHash(rawToken: string): Promise<boolean> | boolean;
   touchLastUsed(rawToken: string): Promise<void> | void;

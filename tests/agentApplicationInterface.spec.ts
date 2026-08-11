@@ -19,6 +19,8 @@ vi.mock("@/lib/server/services/parseJobUrl", () => ({
 
 const mockedParseJobUrl = vi.mocked(parseJobUrl);
 
+const TEST_AGENT_AUDIT = { actorName: "Codex", channel: "api" as const };
+
 describe("agent application interface", () => {
   beforeEach(() => {
     useTestDatabase(openDatabase(":memory:"));
@@ -120,7 +122,7 @@ describe("agent application interface", () => {
       fullJd: "<p>Build things.</p>",
     });
 
-    const result = await createApplicationFromUrlForAgent("jobs.example.com/role");
+    const result = await createApplicationFromUrlForAgent("jobs.example.com/role", "to_apply", TEST_AGENT_AUDIT);
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error(result.error);
@@ -137,7 +139,7 @@ describe("agent application interface", () => {
     expect(stored?.fullJd).toBe("<p>Build things.</p>");
 
     const notes = await getNoteRepository().listByApplicationId(result.application.id);
-    expect(notes.some((note) => note.content === "Created by the CLI")).toBe(true);
+    expect(notes.some((note) => note.content === "Created by Codex, via API")).toBe(true);
   });
 
   test("creates an application with an explicit status override", async () => {
@@ -149,7 +151,7 @@ describe("agent application interface", () => {
       fullJd: null,
     });
 
-    const result = await createApplicationFromUrlForAgent("https://jobs.example.com/role", "applied");
+    const result = await createApplicationFromUrlForAgent("https://jobs.example.com/role", "applied", TEST_AGENT_AUDIT);
 
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error(result.error);
@@ -165,7 +167,11 @@ describe("agent application interface", () => {
       fullJd: null,
     });
 
-    const result = await createApplicationFromUrlForAgent("https://jobs.example.com/role");
+    const result = await createApplicationFromUrlForAgent(
+      "https://jobs.example.com/role",
+      "to_apply",
+      TEST_AGENT_AUDIT,
+    );
 
     expect(result).toEqual({
       ok: false,
@@ -200,12 +206,12 @@ describe("agent application interface", () => {
       }),
     );
 
-    const updated = await updateApplicationStatusForAgent(app.id, "applied");
+    const updated = await updateApplicationStatusForAgent(app.id, "applied", TEST_AGENT_AUDIT);
     expect(updated?.status).toBe("applied");
 
     const notes = await getNoteRepository().listByApplicationId(app.id);
     expect(notes.some((note) => note.content === "Status Update: Applied")).toBe(true);
-    expect(notes.some((note) => note.content === "Updated by the CLI")).toBe(true);
+    expect(notes.some((note) => note.content === "Updated by Codex, via API")).toBe(true);
 
     const history = await getStatusHistoryRepository().listByApplicationId(app.id);
     expect(history.some((entry) => entry.fromStatus === "to_apply" && entry.toStatus === "applied")).toBe(true);
@@ -254,6 +260,6 @@ describe("agent application interface", () => {
     const notes = await listNotesForAgent(app.id);
     expect(notes).toHaveLength(1);
     expect(notes?.[0]?.content).toBe("Agent note");
-    expect(notes?.some((note) => note.content === "Updated by the CLI")).toBe(false);
+    expect(notes?.some((note) => note.content === "Updated by Codex, via API")).toBe(false);
   });
 });

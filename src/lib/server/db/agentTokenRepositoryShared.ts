@@ -41,6 +41,13 @@ export const IS_VALID_SQL = `
   LIMIT 1
 `;
 
+export const RESOLVE_NAME_BY_HASH_SQL = `
+  SELECT name
+  FROM agent_api_tokens
+  WHERE token_hash = ? AND revoked_at IS NULL
+  LIMIT 1
+`;
+
 export const HAS_ACTIVE_SQL = `
   SELECT 1 AS found
   FROM agent_api_tokens

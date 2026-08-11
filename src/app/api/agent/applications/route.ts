@@ -13,10 +13,10 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const authError = await requireAgentAuth(request);
-  if (authError) {
+  const auth = await requireAgentAuth(request);
+  if (auth instanceof Response) {
     log.warn("agent auth rejected", { route: "/api/agent/applications", method: "GET" });
-    return authError;
+    return auth;
   }
 
   const { searchParams } = new URL(request.url);
@@ -32,10 +32,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authError = await requireAgentAuth(request);
-  if (authError) {
+  const auth = await requireAgentAuth(request);
+  if (auth instanceof Response) {
     log.warn("agent auth rejected", { route: "/api/agent/applications", method: "POST" });
-    return authError;
+    return auth;
   }
 
   const parsed = await parseRequestBody(request, agentCreateApplicationSchema);
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     return badRequestResponse(parsed.error);
   }
 
-  const result = await createApplicationFromUrlForAgent(parsed.data.url, parsed.data.status ?? "to_apply");
+  const result = await createApplicationFromUrlForAgent(parsed.data.url, parsed.data.status ?? "to_apply", auth);
   if (!result.ok) {
     return badRequestResponse(result.error);
   }

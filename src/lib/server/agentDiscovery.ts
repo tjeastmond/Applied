@@ -69,7 +69,7 @@ export const AGENT_CAPABILITIES = [
       "Default status is to_apply when status is omitted",
       "Title, company, salaryRange, and fullJd are parsed from the URL when available",
       "Parsed salaryRange and fullJd are stored but not returned in the agent response",
-      'Adds audit note "Created by the CLI"',
+      'Adds audit note "Created by {token name}, via api|cli" (CLI sends x-applied-dev-client: cli)',
     ],
   },
   {
@@ -81,7 +81,10 @@ export const AGENT_CAPABILITIES = [
       status: "application status (required)",
     },
     response: APPLICATION_SUMMARY_FIELDS,
-    behavior: ["Creates a status-update note and status history entry", 'Adds audit note "Updated by the CLI"'],
+    behavior: [
+      "Creates a status-update note and status history entry",
+      'Adds audit note "Updated by {token name}, via api|cli"',
+    ],
   },
   {
     name: "list_notes",
@@ -245,8 +248,8 @@ Default status on create: \`to_apply\` ("To Apply")
 
 - Add applications one at a time from job URLs
 - If parsing fails because title or company is missing, report the failure — do not invent data
-- Agent create adds audit note "Created by the CLI"
-- Agent status changes create a status-update note, history entry, and audit note "Updated by the CLI"
+- Agent create adds audit note "Created by {token name}, via api|cli"
+- Agent status changes create a status-update note, history entry, and audit note "Updated by {token name}, via api|cli"
 - Explicit add-note requests do not add an extra audit note
 - Archived applications are hidden from list, company, and get-by-id responses
 
