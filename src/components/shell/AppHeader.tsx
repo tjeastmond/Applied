@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { modKShortcutDescription, modKShortcutLabel } from "@/lib/keyboardShortcut";
-import { MenuIcon, PlusIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { MenuIcon, PanelLeftOpen, PlusIcon } from "lucide-react";
 import { useSidebar } from "./SidebarProvider";
 
 type AppHeaderProps = {
@@ -10,7 +11,7 @@ type AppHeaderProps = {
 };
 
 export function AppHeader({ onAddApplication }: AppHeaderProps) {
-  const { setMobileOpen } = useSidebar();
+  const { collapsed, toggleCollapsed, setMobileOpen } = useSidebar();
 
   return (
     <header className="border-border bg-background/80 sticky top-0 z-30 flex h-14 items-center gap-2 border-b px-3 backdrop-blur sm:px-4">
@@ -24,6 +25,27 @@ export function AppHeader({ onAddApplication }: AppHeaderProps) {
       >
         <MenuIcon />
       </Button>
+
+      <div
+        aria-hidden={!collapsed}
+        className={cn(
+          "hidden overflow-hidden transition-[max-width,opacity] duration-200 ease-out motion-reduce:transition-none lg:block",
+          collapsed ? "max-w-8 opacity-100" : "max-w-0 opacity-0",
+        )}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={cn("text-muted-foreground shrink-0", !collapsed && "pointer-events-none")}
+          onClick={toggleCollapsed}
+          aria-label="Expand sidebar"
+          title="Expand Sidebar"
+          tabIndex={collapsed ? 0 : -1}
+        >
+          <PanelLeftOpen />
+        </Button>
+      </div>
 
       <div className="flex-1" />
 

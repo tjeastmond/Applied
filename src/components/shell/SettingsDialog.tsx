@@ -408,7 +408,7 @@ export function SettingsDialog({
                     type="button"
                     onClick={() => setSection(item.id)}
                     className={cn(
-                      "flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition-colors",
+                      "flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition-colors",
                       active
                         ? "bg-accent text-foreground"
                         : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",

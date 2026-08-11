@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ApplicationListPage } from "@/components/ApplicationListPage";
 import { AuthenticatedAppOverlays } from "@/components/AuthenticatedAppOverlays";
-import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { AppSidebar } from "@/components/shell/AppSidebar";
 import { SettingsDialog, type SettingsSection } from "@/components/shell/SettingsDialog";
@@ -63,7 +62,11 @@ export function ShellAuthenticatedApp({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <AppHeader onAddApplication={controller.openAddForm} />
           <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            <ApplicationListPage {...controller} onBackToApplications={handleBackToApplications} />
+            <ApplicationListPage
+              {...controller}
+              onBackToApplications={handleBackToApplications}
+              edgeBleedClassName="-mx-4 sm:-mx-6 lg:-mx-8"
+            />
           </main>
         </div>
       </div>
@@ -81,8 +84,6 @@ export function ShellAuthenticatedApp({
         uiShellMode={uiShellMode}
         onToggleUiShellMode={toggleUiShellMode}
       />
-
-      <KeyboardShortcutsHelp detailDrawerActive={controller.detailOpen || controller.selectedApplication !== null} />
     </SidebarProvider>
   );
 }

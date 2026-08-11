@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import type { AuthenticatedAppController } from "@/hooks/useAuthenticatedAppController";
 import { modKShortcutDescription, modKShortcutLabel } from "@/lib/keyboardShortcut";
 import { PlusIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type ApplicationListPageProps = Pick<
   AuthenticatedAppController,
@@ -49,6 +50,8 @@ type ApplicationListPageProps = Pick<
   | "handleCardMouseLeave"
 > & {
   onBackToApplications?: () => void;
+  /** Cancels parent horizontal padding so the filter separator spans edge to edge. */
+  edgeBleedClassName?: string;
 };
 
 export function ApplicationListPage({
@@ -88,6 +91,7 @@ export function ApplicationListPage({
   handleCardMouseEnter,
   handleCardMouseLeave,
   onBackToApplications,
+  edgeBleedClassName,
 }: ApplicationListPageProps) {
   return (
     <section className="space-y-4">
@@ -108,7 +112,7 @@ export function ApplicationListPage({
             hasActiveFilters={hasActiveFilters}
             searchInputRef={searchInputRef}
           />
-          <div className="py-3">
+          <div className={cn("py-3", edgeBleedClassName)}>
             <Separator />
           </div>
         </>

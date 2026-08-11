@@ -15,7 +15,6 @@ import {
   Briefcase,
   DatabaseBackup,
   PanelLeftClose,
-  PanelLeftOpen,
   RefreshCw,
   Settings,
   UserMinus,
@@ -126,49 +125,37 @@ export function AppSidebar({
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
-        <div
-          className={cn(
-            "border-sidebar-border flex h-14 shrink-0 items-center gap-2 border-b px-3",
-            collapsed && "lg:justify-center lg:px-0",
-          )}
-        >
-          <button
-            type="button"
-            onClick={onLogoClick}
-            className={cn(
-              "text-foreground text-base font-bold tracking-tight select-none hover:opacity-80",
-              collapsed ? "lg:text-base" : "flex-1 text-left",
-            )}
-            aria-label="Clear filters and go to applications"
-          >
-            {collapsed ? <span className="hidden lg:inline">A</span> : null}
-            <span className={cn(collapsed && "lg:hidden")}>APPLIED.</span>
-          </button>
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            className={cn(
-              "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground hidden size-8 items-center justify-center rounded-md transition-colors lg:flex",
-              collapsed && "lg:hidden",
-            )}
-            aria-label="Collapse sidebar"
-            title="Collapse Sidebar"
-          >
-            <PanelLeftClose className="size-4" />
-          </button>
+        <div className="border-sidebar-border flex h-14 shrink-0 items-stretch border-b">
+          <div className="hover:bg-sidebar-accent focus-within:bg-sidebar-accent flex min-h-14 w-full min-w-0 items-stretch transition-colors">
+            <button
+              type="button"
+              onClick={() => {
+                onLogoClick();
+                handleNavigate();
+              }}
+              className={cn(
+                "text-foreground flex min-h-14 flex-1 cursor-pointer items-center text-base font-bold tracking-tight outline-none select-none",
+                collapsed ? "lg:justify-center lg:px-0" : "justify-start pl-4.5",
+              )}
+              aria-label="Clear filters and go to applications"
+            >
+              {collapsed ? <span className="hidden lg:inline">A</span> : null}
+              <span className={cn(collapsed && "lg:hidden")}>APPLIED.</span>
+            </button>
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              className={cn(
+                "text-muted-foreground hover:text-foreground hidden w-10 shrink-0 cursor-pointer items-center justify-center self-stretch outline-none lg:flex",
+                collapsed && "lg:hidden",
+              )}
+              aria-label="Collapse sidebar"
+              title="Collapse Sidebar"
+            >
+              <PanelLeftClose className="size-4" />
+            </button>
+          </div>
         </div>
-
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            className="text-muted-foreground hover:bg-sidebar-accent hover:text-foreground mx-auto mt-2 hidden size-8 shrink-0 items-center justify-center rounded-md transition-colors lg:flex"
-            aria-label="Expand sidebar"
-            title="Expand Sidebar"
-          >
-            <PanelLeftOpen className="size-4" />
-          </button>
-        ) : null}
 
         <nav className="min-h-0 flex-1 overflow-y-auto p-2">
           {sections.map((section) => (

@@ -3,7 +3,6 @@
 import { ApplicationListPage } from "@/components/ApplicationListPage";
 import { AuthenticatedAppOverlays } from "@/components/AuthenticatedAppOverlays";
 import { AdminDialog } from "@/components/AdminDialog";
-import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import type { AuthenticatedAppControllerOptions } from "@/hooks/useAuthenticatedAppController";
@@ -80,11 +79,9 @@ export function AuthenticatedApp({ onLogout, tursoSyncAvailable, ...controllerOp
         </div>
       </header>
 
-      <ApplicationListPage {...controller} />
+      <ApplicationListPage {...controller} edgeBleedClassName="-mx-4 sm:-mx-6" />
 
       <AuthenticatedAppOverlays {...controller} />
-
-      <KeyboardShortcutsHelp detailDrawerActive={controller.detailOpen || controller.selectedApplication !== null} />
     </div>
   );
 }

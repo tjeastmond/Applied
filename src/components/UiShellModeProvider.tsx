@@ -1,11 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  persistUiShellMode,
-  readStoredUiShellMode,
-  type UiShellMode,
-} from "@/hooks/useUiShellMode";
+import { persistUiShellMode, readStoredUiShellMode, type UiShellMode } from "@/hooks/useUiShellMode";
 
 type UiShellModeContextValue = {
   mode: UiShellMode;
@@ -38,10 +34,7 @@ export function UiShellModeProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const value = useMemo(
-    () => ({ mode, setMode, toggleMode, hasHydrated }),
-    [mode, setMode, toggleMode, hasHydrated],
-  );
+  const value = useMemo(() => ({ mode, setMode, toggleMode, hasHydrated }), [mode, setMode, toggleMode, hasHydrated]);
 
   return <UiShellModeContext.Provider value={value}>{children}</UiShellModeContext.Provider>;
 }

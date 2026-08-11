@@ -37,7 +37,7 @@ export function ProfileMenu({
     <Menu.Root>
       <Menu.Trigger
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-lg border border-transparent p-1.5 text-left transition-colors outline-none",
+          "flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-transparent p-1.5 text-left transition-colors outline-none",
           "hover:border-border hover:bg-accent focus-visible:border-border focus-visible:bg-accent",
           collapsed && "justify-center",
         )}
@@ -80,7 +80,7 @@ export function ProfileMenu({
 
             <Menu.Item
               closeOnClick={false}
-              className="data-[highlighted]:bg-accent data-[highlighted]:text-foreground flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none"
+              className="data-[highlighted]:bg-accent data-[highlighted]:text-foreground flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none"
               onClick={toggleTheme}
             >
               {theme === "dark" ? (
@@ -94,7 +94,7 @@ export function ProfileMenu({
 
             <Menu.Item
               closeOnClick={false}
-              className="data-[highlighted]:bg-accent data-[highlighted]:text-foreground flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none"
+              className="data-[highlighted]:bg-accent data-[highlighted]:text-foreground flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none"
               onClick={onToggleUiShellMode}
             >
               <LayoutTemplate className="text-muted-foreground size-4" />
@@ -104,7 +104,7 @@ export function ProfileMenu({
             <div className="bg-border my-1 h-px" />
 
             <Menu.Item
-              className="text-destructive data-[highlighted]:bg-destructive/10 flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none"
+              className="text-destructive data-[highlighted]:bg-destructive/10 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none"
               onClick={onLogout}
             >
               <LogOut className="size-4" />
