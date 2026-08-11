@@ -159,7 +159,7 @@ export function AppSidebar({
         </div>
 
         <nav className="min-h-0 flex-1 overflow-y-auto p-2">
-          {sections.map((section) => (
+          {sections.map((section, sectionIndex) => (
             <div key={section.heading} className="mb-3 last:mb-0">
               <p
                 className={cn(
@@ -169,7 +169,9 @@ export function AppSidebar({
               >
                 {section.heading}
               </p>
-              {collapsed ? <div className="bg-sidebar-border mx-2 mb-1 hidden h-px lg:block" /> : null}
+              {collapsed && sectionIndex > 0 ? (
+                <div className="bg-sidebar-border mx-2 mb-1 hidden h-px lg:block" />
+              ) : null}
               <ul className="flex flex-col gap-1">
                 {section.items.map((item) => {
                   const Icon = item.icon;
