@@ -94,7 +94,9 @@ export const ApplicationCard = memo(function ApplicationCard({
         />
         <CardHeader className="pointer-events-none relative z-10 flex flex-row items-start justify-between gap-3 space-y-0 py-4">
           <div className="min-w-0 flex-1 space-y-1 text-left">
-            <CardTitle className="text-base">{title}</CardTitle>
+            <CardTitle className="truncate text-base" title={title}>
+              {title}
+            </CardTitle>
             <div className="flex items-center gap-1">
               {!application.archived ? (
                 <Button
