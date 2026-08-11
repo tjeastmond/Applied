@@ -35,6 +35,19 @@ export function appViewToQuery(view: AppView): AppViewQuery {
   }
 }
 
+/** Include Archived toggle is only shown on the home applications list. */
+export function shouldShowIncludeArchived(options: {
+  routeAppView?: AppView;
+  viewMode: ApplicationViewMode;
+  bookmarksOnly: boolean;
+}): boolean {
+  if (options.routeAppView !== undefined) {
+    return options.routeAppView === "applications";
+  }
+
+  return options.viewMode === "active" && !options.bookmarksOnly;
+}
+
 export type NavCounts = {
   applications: number;
   bookmarked: number;

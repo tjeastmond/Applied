@@ -5,7 +5,7 @@ import { deleteApplication, updateApplication } from "@/api";
 import { useApplicationListView } from "@/hooks/useApplicationListView";
 import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
 import { useApplicationStatusHistoryCache } from "@/hooks/useApplicationStatusHistoryCache";
-import type { AppView } from "@/lib/appView";
+import { shouldShowIncludeArchived, type AppView } from "@/lib/appView";
 import { removeApplication, sortApplications, upsertApplication } from "@/lib/applicationsList";
 import { applicationMatchesViewMode } from "@/lib/applicationArchive";
 import {
@@ -551,7 +551,7 @@ export function useAuthenticatedAppController({
     viewMode,
     bookmarksOnly,
     includeArchived,
-    showIncludeArchived: routeAppView !== "archived" && viewMode !== "archived",
+    showIncludeArchived: shouldShowIncludeArchived({ routeAppView, viewMode, bookmarksOnly }),
     selectedCompanies,
     selectedStatuses,
     searchQuery,

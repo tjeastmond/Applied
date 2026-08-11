@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { appViewToPath, appViewToQuery, computeNavCounts, pathToAppView } from "@/lib/appView";
+import {
+  appViewToPath,
+  appViewToQuery,
+  computeNavCounts,
+  pathToAppView,
+  shouldShowIncludeArchived,
+} from "@/lib/appView";
 import { makeJobApplication } from "./fixtures/jobApplication";
 
 describe("appView", () => {
@@ -19,6 +25,48 @@ describe("appView", () => {
     expect(appViewToQuery("applications")).toEqual({ viewMode: "active", bookmarksOnly: false });
     expect(appViewToQuery("bookmarks")).toEqual({ viewMode: "active", bookmarksOnly: true });
     expect(appViewToQuery("archived")).toEqual({ viewMode: "archived", bookmarksOnly: false });
+  });
+
+  it("shows Include Archived only on the home applications list", () => {
+    expect(
+      shouldShowIncludeArchived({
+        routeAppView: "applications",
+        viewMode: "active",
+        bookmarksOnly: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldShowIncludeArchived({
+        routeAppView: "bookmarks",
+        viewMode: "active",
+        bookmarksOnly: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowIncludeArchived({
+        routeAppView: "archived",
+        viewMode: "archived",
+        bookmarksOnly: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowIncludeArchived({
+        viewMode: "active",
+        bookmarksOnly: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldShowIncludeArchived({
+        viewMode: "archived",
+        bookmarksOnly: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowIncludeArchived({
+        viewMode: "active",
+        bookmarksOnly: true,
+      }),
+    ).toBe(false);
   });
 
   it("computes nav counts", () => {
