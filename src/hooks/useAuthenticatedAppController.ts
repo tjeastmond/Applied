@@ -32,6 +32,8 @@ export type AuthenticatedAppControllerOptions = {
   initialPageSize: ApplicationPageSize;
   initialPageSizeFromPreference: boolean;
   routeAppView?: AppView;
+  /** Shell mode: navigate home when filtering by company from the detail drawer. */
+  navigateToApplications?: () => void;
 };
 
 export function useAuthenticatedAppController({
@@ -40,6 +42,7 @@ export function useAuthenticatedAppController({
   initialPageSize,
   initialPageSizeFromPreference,
   routeAppView,
+  navigateToApplications,
 }: AuthenticatedAppControllerOptions) {
   const [formOpen, setFormOpen] = useState(false);
   const [applications, setApplications] = useState<JobApplication[]>(() => initialApplications);
@@ -262,8 +265,9 @@ export function useAuthenticatedAppController({
     (company: string) => {
       handleCompanyFilter(company);
       setDetailOpen(false);
+      navigateToApplications?.();
     },
-    [handleCompanyFilter],
+    [handleCompanyFilter, navigateToApplications],
   );
 
   const handleDetailCloseComplete = useCallback(() => {

@@ -23,9 +23,40 @@ import {
 } from "@/lib/applicationPagination";
 import type { ApplicationStatus, JobApplication } from "@/types";
 
-let hasRestoredApplicationPageSizePreference = false;
-let hasRestoredApplicationViewModePreference = false;
-let hasRestoredIncludeArchivedPreference = false;
+/** Session-scoped guards so localStorage prefs restore once per page load, not on every remount. */
+const sessionListPrefs = {
+  pageSizeRestored: false,
+  viewModeRestored: false,
+  includeArchivedRestored: false,
+};
+
+function companyFilterSelection(company: string) {
+  return {
+    selectedCompanies: new Set([company]),
+    selectedStatuses: new Set<ApplicationStatus>(),
+  };
+}
+
+function exitArchivedViewIfNeeded(current: ApplicationViewMode): ApplicationViewMode {
+  if (current !== "archived") return current;
+  persistApplicationViewMode("active");
+  return "active";
+}
+
+function includeArchivedForRoute(routeAppView: AppView, pendingCompany: string | null): boolean {
+  if (pendingCompany !== null && routeAppView === "applications") {
+    return true;
+  }
+
+  switch (routeAppView) {
+    case "archived":
+      return false;
+    case "applications":
+      return readStoredIncludeArchived();
+    case "bookmarks":
+      return false;
+  }
+}
 
 type UseApplicationListViewOptions = {
   applications: JobApplication[];
@@ -51,7 +82,7 @@ export function useApplicationListView({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<ApplicationPageSize>(initialPageSize);
   const [hasSyncedPageSize, setHasSyncedPageSize] = useState(
-    () => initialPageSizeFromPreference || hasRestoredApplicationPageSizePreference,
+    () => initialPageSizeFromPreference || sessionListPrefs.pageSizeRestored,
   );
 
   const dedicatedArchivedView = routeAppView === "archived";
@@ -83,13 +114,13 @@ export function useApplicationListView({
   );
 
   useLayoutEffect(() => {
-    if (hasRestoredApplicationPageSizePreference) {
+    if (sessionListPrefs.pageSizeRestored) {
       setHasSyncedPageSize(true);
       return;
     }
 
     if (initialPageSizeFromPreference) {
-      hasRestoredApplicationPageSizePreference = true;
+      sessionListPrefs.pageSizeRestored = true;
       setHasSyncedPageSize(true);
       return;
     }
@@ -97,44 +128,33 @@ export function useApplicationListView({
     const storedPageSize = readStoredApplicationPageSize();
     setPageSize(storedPageSize);
     persistApplicationPageSize(storedPageSize);
-    hasRestoredApplicationPageSizePreference = true;
+    sessionListPrefs.pageSizeRestored = true;
     setHasSyncedPageSize(true);
   }, [initialPageSizeFromPreference]);
 
   useLayoutEffect(() => {
     if (routeAppView) {
       const query = appViewToQuery(routeAppView);
+      const pendingCompany = pendingCompanyFilterRef.current;
+      pendingCompanyFilterRef.current = null;
+      const filter = pendingCompany ? companyFilterSelection(pendingCompany) : null;
+
       setViewMode(query.viewMode);
       setBookmarksOnly(query.bookmarksOnly);
       setSearchQuery("");
-
-      const pendingCompany = pendingCompanyFilterRef.current;
-      pendingCompanyFilterRef.current = null;
-
-      if (pendingCompany && routeAppView === "applications") {
-        setSelectedCompanies(new Set([pendingCompany]));
-        setSelectedStatuses(new Set());
-        setIncludeArchived(true);
+      setSelectedCompanies(filter?.selectedCompanies ?? new Set());
+      setSelectedStatuses(filter?.selectedStatuses ?? new Set());
+      setIncludeArchived(includeArchivedForRoute(routeAppView, pendingCompany));
+      if (filter) {
         persistIncludeArchived(true);
-      } else {
-        setSelectedCompanies(new Set());
-        setSelectedStatuses(new Set());
-        if (routeAppView === "archived") {
-          setIncludeArchived(false);
-        } else if (routeAppView === "applications") {
-          setIncludeArchived(readStoredIncludeArchived());
-        } else {
-          setIncludeArchived(false);
-        }
       }
-
       setCurrentPage(1);
       persistApplicationViewMode(query.viewMode);
-      hasRestoredIncludeArchivedPreference = true;
+      sessionListPrefs.includeArchivedRestored = true;
       return;
     }
 
-    if (hasRestoredApplicationViewModePreference) {
+    if (sessionListPrefs.viewModeRestored) {
       return;
     }
 
@@ -143,16 +163,16 @@ export function useApplicationListView({
       setViewMode("archived");
     }
 
-    hasRestoredApplicationViewModePreference = true;
+    sessionListPrefs.viewModeRestored = true;
   }, [routeAppView]);
 
   useLayoutEffect(() => {
-    if (hasRestoredIncludeArchivedPreference) {
+    if (sessionListPrefs.includeArchivedRestored) {
       return;
     }
 
     setIncludeArchived(readStoredIncludeArchived());
-    hasRestoredIncludeArchivedPreference = true;
+    sessionListPrefs.includeArchivedRestored = true;
   }, []);
 
   useEffect(() => {
@@ -231,15 +251,12 @@ export function useApplicationListView({
     const trimmed = company.trim();
     if (!trimmed) return;
     pendingCompanyFilterRef.current = trimmed;
-    setSelectedCompanies(new Set([trimmed]));
-    setSelectedStatuses(new Set());
+    const filter = companyFilterSelection(trimmed);
+    setSelectedCompanies(filter.selectedCompanies);
+    setSelectedStatuses(filter.selectedStatuses);
     setIncludeArchived(true);
     persistIncludeArchived(true);
-    setViewMode((current) => {
-      if (current !== "archived") return current;
-      persistApplicationViewMode("active");
-      return "active";
-    });
+    setViewMode(exitArchivedViewIfNeeded);
   }, []);
 
   const resetListPagination = useCallback(() => {

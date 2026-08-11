@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 /** Single column below lg (~1024px); two columns from lg when card width stays ~320–400px. */
 const APPLICATION_CARD_GRID_CLASSES = "grid grid-cols-1 gap-4 lg:grid-cols-2";
+const EMPTY_STATE_CARD_CLASS = "shadow-sm shadow-black/5";
 
 type ApplicationListPageProps = Pick<
   AuthenticatedAppController,
@@ -129,7 +130,7 @@ export function ApplicationListPage({
         ) : null}
         <div ref={applicationsListRef} className="group/list space-y-4">
           {applications.length === 0 ? (
-            <Card className="shadow-sm shadow-black/5">
+            <Card className={EMPTY_STATE_CARD_CLASS}>
               <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
                 <p className="text-muted-foreground text-sm">No applications yet.</p>
                 <Button type="button" variant="outline" onClick={openAddForm} title={modKShortcutDescription()}>
@@ -142,7 +143,7 @@ export function ApplicationListPage({
               </CardContent>
             </Card>
           ) : isArchivedViewEmpty ? (
-            <Card className="shadow-sm shadow-black/5">
+            <Card className={EMPTY_STATE_CARD_CLASS}>
               <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
                 <p className="text-muted-foreground text-sm">No archived applications.</p>
                 <Button
@@ -156,7 +157,7 @@ export function ApplicationListPage({
               </CardContent>
             </Card>
           ) : isBookmarksViewEmpty ? (
-            <Card className="shadow-sm shadow-black/5">
+            <Card className={EMPTY_STATE_CARD_CLASS}>
               <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
                 <p className="text-muted-foreground text-sm">No bookmarked applications.</p>
                 <Button type="button" variant="outline" size="sm" onClick={onBackToApplications ?? clearFilters}>
@@ -165,7 +166,7 @@ export function ApplicationListPage({
               </CardContent>
             </Card>
           ) : isFilteredEmpty ? (
-            <Card className="shadow-sm shadow-black/5">
+            <Card className={EMPTY_STATE_CARD_CLASS}>
               <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
                 <p className="text-muted-foreground text-sm">No applications match the current filters.</p>
                 <Button type="button" variant="outline" size="sm" onClick={clearFilters}>

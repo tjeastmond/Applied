@@ -12,8 +12,9 @@ import type { AuthenticatedAppControllerOptions } from "@/hooks/useAuthenticated
 import { useAuthenticatedAppController } from "@/hooks/useAuthenticatedAppController";
 import { useUiShellMode } from "@/hooks/useUiShellMode";
 import { appViewToPath, computeNavCounts, pathToAppView } from "@/lib/appView";
+import { SHELL_LIST_EDGE_BLEED_CLASS } from "@/lib/listPageLayout";
 
-type ShellAuthenticatedAppProps = Omit<AuthenticatedAppControllerOptions, "routeAppView"> & {
+type ShellAuthenticatedAppProps = Omit<AuthenticatedAppControllerOptions, "routeAppView" | "navigateToApplications"> & {
   onLogout: () => void;
   tursoSyncAvailable: boolean;
 };
@@ -26,7 +27,18 @@ export function ShellAuthenticatedApp({
   const router = useRouter();
   const pathname = usePathname();
   const routeAppView = useMemo(() => pathToAppView(pathname), [pathname]);
-  const controller = useAuthenticatedAppController({ ...controllerOptions, routeAppView });
+
+  const navigateToApplications = useCallback(() => {
+    if (routeAppView !== "applications") {
+      router.push(appViewToPath("applications"));
+    }
+  }, [routeAppView, router]);
+
+  const controller = useAuthenticatedAppController({
+    ...controllerOptions,
+    routeAppView,
+    navigateToApplications,
+  });
   const { mode: uiShellMode, toggleMode: toggleUiShellMode } = useUiShellMode();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
@@ -48,16 +60,6 @@ export function ShellAuthenticatedApp({
     router.push(appViewToPath("applications"));
   }, [controller, router]);
 
-  const handleCompanyFilterFromDetail = useCallback(
-    (company: string) => {
-      controller.handleCompanyFilterFromDetail(company);
-      if (routeAppView !== "applications") {
-        router.push(appViewToPath("applications"));
-      }
-    },
-    [controller, routeAppView, router],
-  );
-
   return (
     <SidebarProvider>
       <div className="bg-background flex h-svh overflow-hidden">
@@ -75,14 +77,14 @@ export function ShellAuthenticatedApp({
             <ApplicationListPage
               {...controller}
               onBackToApplications={handleBackToApplications}
-              edgeBleedClassName="-mx-4 sm:-mx-6 lg:-mx-8"
+              edgeBleedClassName={SHELL_LIST_EDGE_BLEED_CLASS}
               showListFooter={false}
             />
           </main>
         </div>
       </div>
 
-      <AuthenticatedAppOverlays {...controller} handleCompanyFilterFromDetail={handleCompanyFilterFromDetail} />
+      <AuthenticatedAppOverlays {...controller} />
 
       <SettingsDialog
         applications={controller.applications}

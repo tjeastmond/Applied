@@ -9,6 +9,7 @@ import type { AuthenticatedAppControllerOptions } from "@/hooks/useAuthenticated
 import { useAuthenticatedAppController } from "@/hooks/useAuthenticatedAppController";
 import { useUiShellMode } from "@/hooks/useUiShellMode";
 import { archiveViewToggleLabel } from "@/lib/applicationArchive";
+import { CLASSIC_LIST_EDGE_BLEED_CLASS } from "@/lib/listPageLayout";
 import { modKShortcutDescription, modKShortcutLabel } from "@/lib/keyboardShortcut";
 import { ArchiveIcon, ArchiveRestoreIcon, LogOutIcon, PlusIcon } from "lucide-react";
 
@@ -79,7 +80,7 @@ export function AuthenticatedApp({ onLogout, tursoSyncAvailable, ...controllerOp
         </div>
       </header>
 
-      <ApplicationListPage {...controller} edgeBleedClassName="-mx-4 sm:-mx-6" />
+      <ApplicationListPage {...controller} edgeBleedClassName={CLASSIC_LIST_EDGE_BLEED_CLASS} />
 
       <AuthenticatedAppOverlays {...controller} />
     </div>

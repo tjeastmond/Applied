@@ -334,7 +334,7 @@ export function SettingsDialog({
     }
   }
 
-  async function handleConfirmBulkArchive() {
+  const handleConfirmBulkArchive = useCallback(async () => {
     setIsBulkArchiving(true);
     try {
       const result = await bulkArchiveApplications();
@@ -350,7 +350,7 @@ export function SettingsDialog({
     } finally {
       setIsBulkArchiving(false);
     }
-  }
+  }, [onApplicationsUpdated]);
 
   useEffect(() => {
     if (!open) return;
@@ -365,7 +365,7 @@ export function SettingsDialog({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, archivableCount, isBulkArchiving]);
+  }, [open, archivableCount, isBulkArchiving, handleConfirmBulkArchive]);
 
   async function handleConfirmRevoke() {
     if (!revokeTarget) return;
