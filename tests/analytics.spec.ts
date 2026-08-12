@@ -15,6 +15,7 @@ import {
   isAnalyticsRoute,
   isInvalidAnalyticsDateRange,
   parseAnalyticsFilters,
+  toggleAnalyticsStatusFromPane,
 } from "@/lib/analytics";
 
 describe("analytics filters", () => {
@@ -63,6 +64,31 @@ describe("analytics filters", () => {
         new URLSearchParams("range=unexpected&status=unknown&company=%20&from=2026-01-01&to=2026-02-01"),
       ),
     ).toEqual(defaultAnalyticsFilters());
+  });
+
+  it("selects an unselected status, then deselects it", () => {
+    const selected = toggleAnalyticsStatusFromPane([], "interviewing");
+
+    expect(selected).toEqual(["interviewing"]);
+    expect(toggleAnalyticsStatusFromPane(selected, "interviewing")).toEqual([]);
+  });
+
+  it("removes only the activated status when multiple statuses are selected", () => {
+    expect(toggleAnalyticsStatusFromPane(["applied", "interviewing", "offer"], "interviewing")).toEqual([
+      "applied",
+      "offer",
+    ]);
+  });
+
+  it("keeps pane single-select behavior when activating an unselected status", () => {
+    expect(toggleAnalyticsStatusFromPane(["applied", "offer"], "waiting")).toEqual(["waiting"]);
+  });
+
+  it("serializes a cleared status filter without empty params while preserving other filters", () => {
+    const filters = parseAnalyticsFilters(new URLSearchParams("range=6m&company=Acme&status=offer&archived=0"));
+    const statuses = toggleAnalyticsStatusFromPane(filters.statuses, "offer");
+
+    expect(analyticsFiltersToUrl({ ...filters, statuses })).toBe("/analytics?range=6m&company=Acme&archived=0");
   });
 });
 

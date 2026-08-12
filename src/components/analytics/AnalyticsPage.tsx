@@ -10,6 +10,7 @@ import { CompanyPerformanceTable } from "@/components/analytics/CompanyPerforman
 import { CurrentStatusCard } from "@/components/analytics/CurrentStatusCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   analyticsFiltersToUrl,
   analyticsFiltersToSearchParams,
@@ -19,12 +20,15 @@ import {
   isIncompleteAnalyticsDateRange,
   isInvalidAnalyticsDateRange,
   parseAnalyticsFilters,
+  toggleAnalyticsStatusFromPane,
   type AnalyticsFilters as AnalyticsFilterState,
   type AnalyticsRange,
   type AnalyticsResponse,
 } from "@/lib/analytics";
 import { errorMessage } from "@/lib/errorMessage";
+import { SHELL_LIST_EDGE_BLEED_CLASS } from "@/lib/listPageLayout";
 import { toastMessages } from "@/lib/toastMessages";
+import { cn } from "@/lib/utils";
 import type { ApplicationStatus, JobApplication } from "@/types";
 import { ActivityIcon, BriefcaseBusinessIcon, MessageSquareMoreIcon, TrophyIcon } from "lucide-react";
 
@@ -258,16 +262,14 @@ export function AnalyticsPage({ applications, onAddApplication }: AnalyticsPageP
   const data = requestState.data;
   const values = data ? kpiValues(data) : null;
   const isRefreshing = requestState.status === "refreshing";
-  const hasRefreshError = requestState.status === "error" && data !== null;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6">
-      <header>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">Analytics</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Track application volume, pipeline health, and outcomes.</p>
-      </header>
+    <div className="w-full space-y-4">
+      <div className="space-y-2">
+        <header className="flex h-8 items-center">
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">Analytics</h1>
+        </header>
 
-      <div className="space-y-1">
         <AnalyticsFilters
           companies={companyOptions}
           filters={filters}
@@ -280,21 +282,10 @@ export function AnalyticsPage({ applications, onAddApplication }: AnalyticsPageP
           onDateChange={handleDateChange}
           onClearFilters={handleClearFilters}
         />
-        <p
-          className={`h-8 text-xs leading-4 transition-opacity motion-reduce:transition-none ${
-            hasRefreshError ? "text-destructive" : "text-muted-foreground"
-          }`}
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          <span className={isRefreshing || hasRefreshError ? "opacity-100" : "opacity-0"}>
-            {hasRefreshError
-              ? "Analytics could not be refreshed. Showing the previous results."
-              : isRefreshing
-                ? "Updating analytics…"
-                : " "}
-          </span>
-        </p>
+      </div>
+
+      <div className={cn("py-3", SHELL_LIST_EDGE_BLEED_CLASS)}>
+        <Separator />
       </div>
 
       {requestState.status === "incomplete" ? (
@@ -386,23 +377,18 @@ export function AnalyticsPage({ applications, onAddApplication }: AnalyticsPageP
                   );
                 })}
               </div>
-              <p
-                className={`text-muted-foreground mt-2 min-h-10 text-[0.7rem] leading-4 ${
-                  data.cohort.eligible < 5 ? "" : "invisible"
-                }`}
-                aria-hidden={data.cohort.eligible >= 5}
-              >
-                Rates are based on fewer than 5 eligible applications and may change substantially as more outcomes are
-                recorded.
-              </p>
             </section>
 
             <div className="grid min-w-0 gap-4 lg:grid-cols-[2fr_1fr]">
               <ApplicationVolumeChart volume={data.volume} />
               <CurrentStatusCard
                 status={data.status}
+                selectedStatuses={new Set(filters.statuses)}
                 onStatusSelect={(status) =>
-                  replaceFilters((currentFilters) => ({ ...currentFilters, statuses: [status] }))
+                  replaceFilters((currentFilters) => ({
+                    ...currentFilters,
+                    statuses: toggleAnalyticsStatusFromPane(currentFilters.statuses, status),
+                  }))
                 }
               />
             </div>

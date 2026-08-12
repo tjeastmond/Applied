@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Building2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatAnalyticsCompanyCount, formatAnalyticsRate, type AnalyticsResponse } from "@/lib/analytics";
@@ -32,7 +33,10 @@ export function CompanyPerformanceTable({
   return (
     <Card>
       <CardHeader className="min-h-9 grid-cols-[minmax(0,1fr)_auto] items-center border-b">
-        <CardTitle id="company-performance-title">Company Performance</CardTitle>
+        <CardTitle id="company-performance-title" className="flex items-center gap-2">
+          <Building2Icon className="text-muted-foreground size-4 shrink-0" aria-hidden />
+          Company Performance
+        </CardTitle>
         <span className="text-muted-foreground text-xs whitespace-nowrap tabular-nums">
           {formatAnalyticsCompanyCount(companies.length)}
         </span>

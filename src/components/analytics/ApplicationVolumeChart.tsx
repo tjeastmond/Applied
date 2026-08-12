@@ -1,6 +1,7 @@
 "use client";
 
 import { Tooltip } from "@base-ui/react/tooltip";
+import { ChartColumnIncreasingIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   analyticsRelativeBarScale,
@@ -45,11 +46,14 @@ export function ApplicationVolumeChart({ volume }: { volume: VolumeBucket[] }) {
   return (
     <Card className="min-w-0">
       <CardHeader className="border-b">
-        <CardTitle id="application-volume-title">Application Volume</CardTitle>
+        <CardTitle id="application-volume-title" className="flex items-center gap-2">
+          <ChartColumnIncreasingIcon className="text-muted-foreground size-4 shrink-0" aria-hidden />
+          Application Volume
+        </CardTitle>
       </CardHeader>
       <CardContent className="min-w-0">
         <figure aria-labelledby="application-volume-title" className="min-w-0">
-          <Tooltip.Provider>
+          <Tooltip.Provider delay={50} closeDelay={100}>
             <div
               className="min-w-0 pb-2"
               role="group"

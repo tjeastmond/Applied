@@ -95,6 +95,13 @@ export function analyticsFiltersToUrl(filters: AnalyticsFilters): string {
   return `${ANALYTICS_PATH}${query ? `?${query}` : ""}`;
 }
 
+export function toggleAnalyticsStatusFromPane(
+  statuses: ApplicationStatus[],
+  status: ApplicationStatus,
+): ApplicationStatus[] {
+  return statuses.includes(status) ? statuses.filter((currentStatus) => currentStatus !== status) : [status];
+}
+
 export function analyticsStatusesByActivity(status: AnalyticsResponse["status"]) {
   const countByStatus = new Map(status.map((item) => [item.status, item.count]));
 
