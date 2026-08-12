@@ -64,13 +64,21 @@ export function ApplicationMetadataLine({
           ) : (
             <span>{companyText}</span>
           )}
-          <MetadataDot size={dotSize} />
         </>
       ) : null}
-      {dateLabel ? <span>{dateLabel}</span> : null}
+      {posting ? (
+        <>
+          {companyText ? <MetadataDot size={dotSize} /> : null}
+          <JobDescriptionLink
+            url={posting}
+            className={stopPropagation ? "pointer-events-auto" : undefined}
+            stopPropagation={stopPropagation}
+          />
+        </>
+      ) : null}
       {linkedin ? (
         <>
-          <MetadataDot size={dotSize} />
+          {companyText || posting ? <MetadataDot size={dotSize} /> : null}
           <CompanyLinkedInLink
             url={linkedin}
             className={stopPropagation ? "pointer-events-auto" : undefined}
@@ -78,14 +86,10 @@ export function ApplicationMetadataLine({
           />
         </>
       ) : null}
-      {posting ? (
+      {dateLabel ? (
         <>
-          <MetadataDot size={dotSize} />
-          <JobDescriptionLink
-            url={posting}
-            className={stopPropagation ? "pointer-events-auto" : undefined}
-            stopPropagation={stopPropagation}
-          />
+          {companyText || posting || linkedin ? <MetadataDot size={dotSize} /> : null}
+          <span>{dateLabel}</span>
         </>
       ) : null}
     </>
