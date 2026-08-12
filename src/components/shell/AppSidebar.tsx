@@ -6,6 +6,7 @@ import { ProfileMenu } from "@/components/shell/ProfileMenu";
 import { useSidebar } from "@/components/shell/SidebarProvider";
 import type { SettingsSection } from "@/components/shell/SettingsDialog";
 import { appViewToPath, pathToAppView, type NavCounts } from "@/lib/appView";
+import { ANALYTICS_PATH, isAnalyticsRoute } from "@/lib/analytics";
 import type { UiShellMode } from "@/hooks/useUiShellMode";
 import { cn } from "@/lib/utils";
 import type { User } from "@/types";
@@ -54,7 +55,7 @@ function buildSections(counts: NavCounts): NavSection[] {
         { label: "Applications", icon: Briefcase, href: appViewToPath("applications"), count: counts.applications },
         { label: "Bookmarked", icon: Bookmark, href: appViewToPath("bookmarks"), count: counts.bookmarked },
         { label: "Archived", icon: Archive, href: appViewToPath("archived"), count: counts.archived },
-        { label: "Analytics", icon: BarChart3, href: appViewToPath("applications") },
+        { label: "Analytics", icon: BarChart3, href: ANALYTICS_PATH },
       ],
     },
     {
@@ -91,9 +92,10 @@ export function AppSidebar({
 
   function isItemActive(item: NavItemConfig): boolean {
     if (item.opensSettings) return false;
-    if (item.label === "Analytics") return false;
+    if (isAnalyticsRoute(item.href)) return isAnalyticsRoute(pathname);
+    if (isAnalyticsRoute(pathname)) return false;
     if (item.href === appViewToPath("applications") && item.label !== "Applications") return false;
-    return pathToAppView(item.href) === activeView && item.label !== "Analytics";
+    return pathToAppView(item.href) === activeView;
   }
 
   function navItemClassName(active: boolean) {

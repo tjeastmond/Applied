@@ -74,6 +74,7 @@ import type { ApplicationStatusHistoryRepository } from "../repositories/applica
 import type { UserRepository } from "../repositories/userRepository";
 import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
 import { TursoAgentApiTokenRepository } from "./tursoAgentApiTokenRepository";
+import { TursoAnalyticsRepository } from "./tursoAnalyticsRepository";
 import { nullableString, requiredNumber, requiredString, tursoFirstRow, tursoRows } from "./tursoRowHelpers";
 
 function applicationStatus(row: Row): JobApplication["status"] {
@@ -552,6 +553,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
   readonly applications: JobApplicationRepository;
   readonly notes: ApplicationNoteRepository;
   readonly statusHistory: ApplicationStatusHistoryRepository;
+  readonly analytics;
   readonly agentApiTokens;
 
   private readonly client: Client;
@@ -566,6 +568,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     this.applications = new TursoJobApplicationRepository(this.client, this.ready);
     this.notes = new TursoApplicationNoteRepository(this.client, this.ready);
     this.statusHistory = new TursoApplicationStatusHistoryRepository(this.client, this.ready, this.users);
+    this.analytics = new TursoAnalyticsRepository(this.client, this.ready);
     this.agentApiTokens = new TursoAgentApiTokenRepository(this.client, this.ready);
   }
 

@@ -118,6 +118,25 @@
 }
 
 @layer components {
+  @media (prefers-reduced-motion: no-preference) {
+    .application-volume-bar {
+      animation: application-volume-bar-in 420ms ease-out both;
+      transform-origin: bottom;
+      transition:
+        height 300ms ease-out,
+        background-color 300ms ease-out;
+    }
+  }
+
+  @keyframes application-volume-bar-in {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+
   /* Base UI uses data-starting/ending-style for backdrop; keep panel exit from snapping visible */
   @media (prefers-reduced-motion: no-preference) {
     [data-slot="sheet-overlay"].sheet-overlay {

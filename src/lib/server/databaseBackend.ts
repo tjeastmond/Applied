@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import type { DatabaseProvider } from "./databaseConfig";
 import type { ApplicationNoteRepository } from "./repositories/applicationNoteRepository";
 import type { ApplicationStatusHistoryRepository } from "./repositories/applicationStatusHistoryRepository";
+import type { AnalyticsRepository } from "./repositories/analyticsRepository";
 import type { AppAccessConfigRepository } from "./repositories/appAccessConfigRepository";
 import type { AgentApiTokenRepository } from "./repositories/agentApiTokenRepository";
 import type { JobApplicationRepository } from "./repositories/jobApplicationRepository";
@@ -16,6 +17,7 @@ export type DatabaseBackend = {
   notes: ApplicationNoteRepository;
   users: UserRepository;
   statusHistory: ApplicationStatusHistoryRepository;
+  analytics: AnalyticsRepository;
   appAccessConfig?: AppAccessConfigRepository;
   agentApiTokens?: AgentApiTokenRepository;
   exportJson(): Promise<BackupJson>;

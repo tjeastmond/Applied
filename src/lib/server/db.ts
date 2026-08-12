@@ -7,6 +7,7 @@ import { SqliteDatabaseBackend } from "./db/sqliteBackend";
 import { TursoDatabaseBackend } from "./db/tursoBackend";
 import type { ApplicationNoteRepository } from "./repositories/applicationNoteRepository";
 import type { ApplicationStatusHistoryRepository } from "./repositories/applicationStatusHistoryRepository";
+import type { AnalyticsRepository } from "./repositories/analyticsRepository";
 import type { AppAccessConfigRepository } from "./repositories/appAccessConfigRepository";
 import type { AgentApiTokenRepository } from "./repositories/agentApiTokenRepository";
 import type { JobApplicationRepository } from "./repositories/jobApplicationRepository";
@@ -16,12 +17,25 @@ const globalForDb = globalThis as unknown as {
   backend?: DatabaseBackend;
 };
 
+function hasAnalyticsRepository(backend: DatabaseBackend): boolean {
+  return typeof (backend as Partial<DatabaseBackend>).analytics?.loadSnapshot === "function";
+}
+
 export function getDatabasePath(): string {
   const config = readDatabaseConfig();
   return config.provider === "sqlite" ? config.path : getDefaultDatabasePath();
 }
 
 export function getDatabaseBackend(): DatabaseBackend {
+  if (globalForDb.backend && !hasAnalyticsRepository(globalForDb.backend)) {
+    log.warn("cached database backend is stale; recreating", {
+      provider: globalForDb.backend.provider,
+      missingRepository: "analytics",
+    });
+    globalForDb.backend.reset();
+    globalForDb.backend = undefined;
+  }
+
   if (!globalForDb.backend) {
     const config = readDatabaseConfig();
     globalForDb.backend =
@@ -54,6 +68,10 @@ export function getUserRepository(): UserRepository {
 
 export function getStatusHistoryRepository(): ApplicationStatusHistoryRepository {
   return getDatabaseBackend().statusHistory;
+}
+
+export function getAnalyticsRepository(): AnalyticsRepository {
+  return getDatabaseBackend().analytics;
 }
 
 export function getAppAccessConfigRepository(): AppAccessConfigRepository | null {

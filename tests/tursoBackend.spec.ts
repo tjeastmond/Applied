@@ -28,6 +28,18 @@ describe("TursoDatabaseBackend", () => {
         }),
       );
       const note = await backend.notes.create(created.id, "Follow up.");
+      const analytics = await backend.analytics.loadSnapshot({
+        from: "2026-06-01",
+        to: "2026-06-01",
+        companies: ["Acme"],
+        statuses: ["applied"],
+        includeArchived: true,
+      });
+      expect(analytics).toMatchObject({
+        allTimeApplicationCount: 1,
+        applications: [{ id: created.id, company: "Acme", status: "applied" }],
+      });
+
       const updated = await backend.applications.update(created.id, { status: "interviewing" });
 
       expect(updated?.status).toBe("interviewing");

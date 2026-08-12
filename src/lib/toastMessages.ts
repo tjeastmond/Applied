@@ -13,6 +13,7 @@ export const toastMessages = {
   statusHistoryLoadFailed: "Failed to load status history",
   notesLoadFailed: "Failed to load notes",
   applicationsLoadFailed: "Failed to load applications",
+  analyticsLoadFailed: "Failed to load analytics",
   noteTextRequired: "Enter note text before adding.",
   noteAdded: "Note added.",
   noteAddFailed: "Failed to add note",

@@ -43,6 +43,7 @@ export type {
 } from "@/lib/schemas/application";
 
 export type { ParseJobUrlFailure, ParseJobUrlResult, ParseJobUrlSuccess } from "@/lib/schemas/parseJob";
+export type { AnalyticsFilters, AnalyticsRange, AnalyticsResponse } from "@/lib/schemas/analytics";
 
 export interface ApplicationNote {
   id: string;

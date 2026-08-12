@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { AnalyticsPage } from "@/components/analytics/AnalyticsPage";
 import { ApplicationListPage } from "@/components/ApplicationListPage";
 import { AuthenticatedAppOverlays } from "@/components/AuthenticatedAppOverlays";
 import { AppHeader } from "@/components/shell/AppHeader";
@@ -12,6 +13,7 @@ import { SidebarProvider } from "@/components/shell/SidebarProvider";
 import type { AuthenticatedAppControllerOptions } from "@/hooks/useAuthenticatedAppController";
 import { useAuthenticatedAppController } from "@/hooks/useAuthenticatedAppController";
 import { useUiShellMode } from "@/hooks/useUiShellMode";
+import { isAnalyticsRoute } from "@/lib/analytics";
 import { appViewToPath, computeNavCounts, isProfileRoute, pathToAppView, PROFILE_PATH } from "@/lib/appView";
 import { SHELL_LIST_EDGE_BLEED_CLASS } from "@/lib/listPageLayout";
 import type { User } from "@/types";
@@ -31,6 +33,7 @@ export function ShellAuthenticatedApp({
   const router = useRouter();
   const pathname = usePathname();
   const routeAppView = useMemo(() => pathToAppView(pathname), [pathname]);
+  const onAnalyticsRoute = isAnalyticsRoute(pathname);
   const onProfileRoute = isProfileRoute(pathname);
 
   const navigateToApplications = useCallback(() => {
@@ -98,7 +101,9 @@ export function ShellAuthenticatedApp({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <AppHeader onAddApplication={controller.openAddForm} onLogoClick={handleResetToHome} />
           <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            {onProfileRoute ? (
+            {onAnalyticsRoute ? (
+              <AnalyticsPage applications={controller.applications} onAddApplication={controller.openAddForm} />
+            ) : onProfileRoute ? (
               <ProfilePage user={currentUser} onUserUpdated={handleUserUpdated} onCancel={handleLeaveProfile} />
             ) : (
               <ApplicationListPage

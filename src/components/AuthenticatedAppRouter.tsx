@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { AuthenticatedApp } from "@/components/AuthenticatedApp";
 import { ShellAuthenticatedApp } from "@/components/ShellAuthenticatedApp";
 import { useUiShellMode } from "@/hooks/useUiShellMode";
+import { isAnalyticsRoute } from "@/lib/analytics";
 import type { AppView } from "@/lib/appView";
 import type { AuthStatus } from "@/lib/authTypes";
 import type { ApplicationPageSize } from "@/lib/applicationPagination";
@@ -22,8 +25,17 @@ type AppPageProps = {
 
 export function AuthenticatedAppRouter(props: AppPageProps) {
   const { mode, hasHydrated } = useUiShellMode();
+  const pathname = usePathname();
+  const router = useRouter();
+  const redirectClassicAnalytics = hasHydrated && mode === "classic" && isAnalyticsRoute(pathname);
 
-  if (!hasHydrated) {
+  useEffect(() => {
+    if (redirectClassicAnalytics) {
+      router.replace("/");
+    }
+  }, [redirectClassicAnalytics, router]);
+
+  if (!hasHydrated || redirectClassicAnalytics) {
     return null;
   }
 

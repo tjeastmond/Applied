@@ -3,6 +3,7 @@ import type {
   ApplicationNoteMutationResult,
   ApplicationStatusHistoryEntry,
   AgentApiTokenSummary,
+  AnalyticsResponse,
   CreateAgentApiTokenResult,
   CreateJobApplicationInput,
   ImportAgentApiTokenResult,
@@ -65,6 +66,11 @@ export function logoutApp(): Promise<{ ok: true }> {
 
 export function listApplications(): Promise<JobApplication[]> {
   return request<JobApplication[]>("/api/applications");
+}
+
+export function getAnalytics(searchParams: URLSearchParams, signal?: AbortSignal): Promise<AnalyticsResponse> {
+  const query = searchParams.toString();
+  return request<AnalyticsResponse>(`/api/analytics${query ? `?${query}` : ""}`, { signal });
 }
 
 export function bulkFetchApplications(ids?: string[]): Promise<JobApplication[]> {

@@ -8,6 +8,7 @@ import { createDatabaseBackup } from "../services/databaseBackupService";
 import { exportJson, exportSql, importJson, importSql } from "../services/backupService";
 import { hydrateAppAccessTokenFromDatabase } from "../appAccessToken";
 import { openDatabase } from "./migrate";
+import { SqliteAnalyticsRepository } from "./sqliteAnalyticsRepository";
 import { SqliteAppAccessConfigRepository } from "./sqliteAppAccessConfigRepository";
 import { SqliteAgentApiTokenRepository } from "./sqliteAgentApiTokenRepository";
 import { SqliteApplicationNoteRepository } from "./sqliteApplicationNoteRepository";
@@ -28,6 +29,7 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
   readonly applications;
   readonly notes;
   readonly statusHistory;
+  readonly analytics;
   readonly appAccessConfig;
   readonly agentApiTokens;
 
@@ -47,6 +49,7 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
     this.applications = new SqliteJobApplicationRepository(this.db);
     this.notes = new SqliteApplicationNoteRepository(this.db);
     this.statusHistory = new SqliteApplicationStatusHistoryRepository(this.db, this.users);
+    this.analytics = new SqliteAnalyticsRepository(this.db);
   }
 
   get users(): UserRepository {
