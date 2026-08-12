@@ -35,7 +35,7 @@ export function ApplicationMetadataLine({
   const linkedin = linkedinUrl?.trim() ?? "";
   const posting = postingUrl?.trim() ?? "";
   const dateLabel = appliedLabel.trim();
-  const wrapperClassName = cn("flex flex-wrap items-center gap-x-1.5", className);
+  const wrapperClassName = cn("flex flex-wrap items-center gap-x-1.5 text-xs", className);
 
   function handleCompanyClick(event: MouseEvent<HTMLButtonElement>) {
     if (stopPropagation) event.stopPropagation();
