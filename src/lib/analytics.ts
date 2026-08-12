@@ -61,7 +61,7 @@ export function parseAnalyticsFilters(searchParams: URLSearchParams): AnalyticsF
     range,
     companies: uniqueNonEmpty(searchParams.getAll("company")),
     statuses: uniqueNonEmpty(searchParams.getAll("status")).filter(isApplicationStatus),
-    includeArchived: searchParams.get("archived") !== "0",
+    includeArchived: true,
     ...(from ? { from } : {}),
     ...(to ? { to } : {}),
   };
@@ -78,9 +78,6 @@ export function analyticsFiltersToSearchParams(filters: AnalyticsFilters): URLSe
   }
   for (const status of uniqueNonEmpty(filters.statuses).filter(isApplicationStatus)) {
     searchParams.append("status", status);
-  }
-  if (!filters.includeArchived) {
-    searchParams.set("archived", "0");
   }
   if (filters.range === "custom") {
     if (filters.from && isIsoDate(filters.from)) searchParams.set("from", filters.from);
@@ -161,7 +158,6 @@ export function hasActiveAnalyticsFilters(filters: AnalyticsFilters): boolean {
     filters.range !== DEFAULT_ANALYTICS_RANGE ||
     filters.companies.length > 0 ||
     filters.statuses.length > 0 ||
-    !filters.includeArchived ||
     filters.from !== undefined ||
     filters.to !== undefined
   );

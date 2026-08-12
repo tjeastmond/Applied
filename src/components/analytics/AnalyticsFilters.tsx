@@ -1,7 +1,7 @@
 "use client";
 
-import { ArchivedViewToggle } from "@/components/ArchivedViewToggle";
 import { CompanyFilter } from "@/components/CompanyFilter";
+import { SingleSelectFilter } from "@/components/SingleSelectFilter";
 import { StatusFilter } from "@/components/StatusFilter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +12,10 @@ import {
   type AnalyticsFilters as AnalyticsFilterState,
   type AnalyticsRange,
 } from "@/lib/analytics";
+import { FILTER_CONTROL_HEIGHT_CLASS } from "@/lib/filterControls";
 import { cn } from "@/lib/utils";
 import type { ApplicationStatus } from "@/types";
-import { ChevronDownIcon, XIcon } from "lucide-react";
+import { CalendarIcon, XIcon } from "lucide-react";
 
 type AnalyticsFiltersProps = {
   companies: string[];
@@ -22,7 +23,6 @@ type AnalyticsFiltersProps = {
   onRangeChange: (range: AnalyticsRange) => void;
   onCompaniesChange: (companies: Set<string>) => void;
   onStatusesChange: (statuses: Set<ApplicationStatus>) => void;
-  onIncludeArchivedChange: (includeArchived: boolean) => void;
   onDateChange: (field: "from" | "to", value: string) => void;
   onClearFilters: () => void;
 };
@@ -33,7 +33,6 @@ export function AnalyticsFilters({
   onRangeChange,
   onCompaniesChange,
   onStatusesChange,
-  onIncludeArchivedChange,
   onDateChange,
   onClearFilters,
 }: AnalyticsFiltersProps) {
@@ -45,39 +44,27 @@ export function AnalyticsFilters({
       <h2 id="analytics-filters-heading" className="sr-only">
         Analytics Filters
       </h2>
-      <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(9rem,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
-        <label className="relative min-w-0">
-          <span className="sr-only">Date range</span>
-          <select
-            value={filters.range}
-            onChange={(event) => onRangeChange(event.target.value as AnalyticsRange)}
-            className="border-input bg-background dark:bg-input/30 h-10 w-full appearance-none rounded-md border px-2.5 pr-8 text-sm outline-none focus:border-blue-500 sm:h-8"
-            aria-label="Date Range"
-          >
-            {ANALYTICS_RANGE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDownIcon className="text-muted-foreground pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2" />
-        </label>
+      <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(9rem,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <SingleSelectFilter
+          items={ANALYTICS_RANGE_OPTIONS}
+          value={filters.range}
+          onValueChange={onRangeChange}
+          groupLabel="Date Range"
+          ariaLabel="Date Range"
+          leadingIcon={<CalendarIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />}
+          className={FILTER_CONTROL_HEIGHT_CLASS}
+        />
         <CompanyFilter
           companies={companies}
           selectedCompanies={new Set(filters.companies)}
           onSelectedCompaniesChange={onCompaniesChange}
           disabled={companies.length === 0}
-          className="h-10 sm:h-8"
+          className={FILTER_CONTROL_HEIGHT_CLASS}
         />
         <StatusFilter
           selectedStatuses={new Set(filters.statuses)}
           onSelectedStatusesChange={onStatusesChange}
-          className="h-10 sm:h-8"
-        />
-        <ArchivedViewToggle
-          includeArchived={filters.includeArchived}
-          onIncludeArchivedChange={onIncludeArchivedChange}
-          className="h-10 w-full justify-center sm:h-8 sm:w-auto"
+          className={FILTER_CONTROL_HEIGHT_CLASS}
         />
         <span
           className={cn(
@@ -92,7 +79,8 @@ export function AnalyticsFilters({
             size="icon"
             disabled={!hasActiveFilters}
             className={cn(
-              "size-10 active:translate-y-0 sm:size-8",
+              "active:translate-y-0",
+              FILTER_CONTROL_HEIGHT_CLASS,
               !hasActiveFilters && "[&_svg]:text-muted-foreground disabled:opacity-100",
               hasActiveFilters &&
                 "border-border bg-destructive/45 hover:border-border hover:bg-destructive/55 dark:border-input dark:bg-destructive/50 dark:hover:border-input dark:hover:bg-destructive/60 text-white hover:text-white [&_svg]:text-white",
@@ -114,8 +102,13 @@ export function AnalyticsFilters({
               value={filters.from ?? ""}
               max={filters.to}
               aria-invalid={invalidDateRange}
-              onChange={(event) => onDateChange("from", event.target.value)}
-              className="h-10 w-full sm:h-8 sm:w-40"
+              onChange={(event) => {
+                onDateChange("from", event.currentTarget.value);
+                if (event.currentTarget.value && event.currentTarget.checkValidity()) {
+                  event.currentTarget.blur();
+                }
+              }}
+              className={cn("w-full sm:w-40", FILTER_CONTROL_HEIGHT_CLASS)}
             />
           </label>
           <label className="grid gap-1 text-xs">
@@ -125,8 +118,13 @@ export function AnalyticsFilters({
               value={filters.to ?? ""}
               min={filters.from}
               aria-invalid={invalidDateRange}
-              onChange={(event) => onDateChange("to", event.target.value)}
-              className="h-10 w-full sm:h-8 sm:w-40"
+              onChange={(event) => {
+                onDateChange("to", event.currentTarget.value);
+                if (event.currentTarget.value && event.currentTarget.checkValidity()) {
+                  event.currentTarget.blur();
+                }
+              }}
+              className={cn("w-full sm:w-40", FILTER_CONTROL_HEIGHT_CLASS)}
             />
           </label>
           {invalidDateRange ? (

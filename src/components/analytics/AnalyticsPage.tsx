@@ -276,9 +276,6 @@ export function AnalyticsPage({ applications, onAddApplication }: AnalyticsPageP
           onRangeChange={handleRangeChange}
           onCompaniesChange={handleCompaniesChange}
           onStatusesChange={handleStatusesChange}
-          onIncludeArchivedChange={(includeArchived) =>
-            replaceFilters((currentFilters) => ({ ...currentFilters, includeArchived }))
-          }
           onDateChange={handleDateChange}
           onClearFilters={handleClearFilters}
         />

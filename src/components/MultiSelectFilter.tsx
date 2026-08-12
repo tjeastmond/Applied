@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Button } from "@/components/ui/button";
+import { FilterDropdownTrigger } from "@/components/FilterDropdownTrigger";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -10,10 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FILTER_TRIGGER_BUTTON_CLASS } from "@/lib/filterControls";
 import { toggleSetSelection } from "@/lib/toggleSetSelection";
-import { cn } from "@/lib/utils";
-import { ChevronDownIcon, ListFilterIcon } from "lucide-react";
 
 type MultiSelectFilterItem<T extends string> = {
   value: T;
@@ -62,23 +59,7 @@ export function MultiSelectFilter<T extends string>({
     <DropdownMenu open={open} onOpenChange={handleOpenChange} modal={false}>
       <DropdownMenuTrigger
         disabled={disabled}
-        render={
-          <Button
-            type="button"
-            variant="outline"
-            size="default"
-            disabled={disabled}
-            className={cn(FILTER_TRIGGER_BUTTON_CLASS, className)}
-          >
-            <span className="flex min-w-0 flex-1 items-center gap-1.5">
-              <ListFilterIcon className="size-3.5 shrink-0 opacity-70" />
-              <span className="truncate">{label}</span>
-            </span>
-            <ChevronDownIcon
-              className={cn("size-3.5 shrink-0 opacity-70 transition-transform duration-200", open && "rotate-180")}
-            />
-          </Button>
-        }
+        render={<FilterDropdownTrigger label={label} open={open} disabled={disabled} className={className} />}
       />
       <DropdownMenuContent align="start" className={contentClassName}>
         <DropdownMenuGroup>

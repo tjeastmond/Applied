@@ -24,7 +24,7 @@ describe("analytics filters", () => {
     expect(analyticsFiltersToSearchParams(defaultAnalyticsFilters()).toString()).toBe("");
   });
 
-  it("parses repeated filters and archived exclusion", () => {
+  it("parses repeated filters while ignoring legacy archived exclusion", () => {
     const filters = parseAnalyticsFilters(
       new URLSearchParams("range=6m&company=Acme&company=Beta&status=interviewing&status=offer&archived=0"),
     );
@@ -33,12 +33,19 @@ describe("analytics filters", () => {
       range: "6m",
       companies: ["Acme", "Beta"],
       statuses: ["interviewing", "offer"],
-      includeArchived: false,
+      includeArchived: true,
     });
     expect(analyticsFiltersToSearchParams(filters).getAll("company")).toEqual(["Acme", "Beta"]);
     expect(analyticsFiltersToSearchParams(filters).getAll("status")).toEqual(["interviewing", "offer"]);
+    expect(analyticsFiltersToSearchParams(filters).has("archived")).toBe(false);
     expect(analyticsFiltersToUrl(filters)).toBe(
-      "/analytics?range=6m&company=Acme&company=Beta&status=interviewing&status=offer&archived=0",
+      "/analytics?range=6m&company=Acme&company=Beta&status=interviewing&status=offer",
+    );
+  });
+
+  it("never emits archived exclusion even when given stale frontend state", () => {
+    expect(analyticsFiltersToSearchParams({ ...defaultAnalyticsFilters(), includeArchived: false }).toString()).toBe(
+      "",
     );
   });
 
@@ -88,7 +95,16 @@ describe("analytics filters", () => {
     const filters = parseAnalyticsFilters(new URLSearchParams("range=6m&company=Acme&status=offer&archived=0"));
     const statuses = toggleAnalyticsStatusFromPane(filters.statuses, "offer");
 
-    expect(analyticsFiltersToUrl({ ...filters, statuses })).toBe("/analytics?range=6m&company=Acme&archived=0");
+    expect(analyticsFiltersToUrl({ ...filters, statuses })).toBe("/analytics?range=6m&company=Acme");
+  });
+
+  it("clears all page filters without emitting an archived parameter", () => {
+    const filters = parseAnalyticsFilters(
+      new URLSearchParams("range=custom&company=Acme&status=offer&from=2026-08-01&to=2026-08-12&archived=0"),
+    );
+
+    expect(analyticsFiltersToUrl(filters)).not.toContain("archived");
+    expect(analyticsFiltersToUrl(defaultAnalyticsFilters())).toBe(ANALYTICS_PATH);
   });
 });
 
