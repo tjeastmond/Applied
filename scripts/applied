@@ -24,7 +24,7 @@ Commands:
   stop      Stop the dev server
   restart   Stop then start
   status    Show whether the server is running
-  logs      Tail the dev server log (Ctrl+C to exit)
+  logs      Tail application logs (Ctrl+C to exit)
 
 Environment:
   APPLIED_DEV_DIR   Project root (default: ~/Projects/applied.dev)
@@ -93,7 +93,7 @@ cmd_start() {
   while [[ "$attempt" -le "$max_attempts" ]]; do
     if is_running "$port"; then
       echo "applied: started at http://localhost:${port}"
-      echo "applied: log ${DEV_LOG}"
+      echo "applied: tail logs with 'applied logs' (dev output: ${DEV_LOG})"
       exit 0
     fi
     sleep 1
@@ -179,9 +179,7 @@ cmd_status() {
 
 cmd_logs() {
   require_project
-  mkdir -p "$(dirname "$DEV_LOG")"
-  touch "$DEV_LOG"
-  exec tail -f "$DEV_LOG"
+  exec "${APPLIED_DEV_DIR}/scripts/logs-tail.sh"
 }
 
 cmd_restart() {
