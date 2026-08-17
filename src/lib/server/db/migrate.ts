@@ -26,6 +26,27 @@ function agentApiTokenColumnExists(db: Database.Database, column: string): boole
   return columns.some((col) => col.name === column);
 }
 
+function userColumnExists(db: Database.Database, column: string): boolean {
+  if (!tableExists(db, "users")) {
+    return false;
+  }
+  const columns = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+  return columns.some((col) => col.name === column);
+}
+
+function migrateUserCredentials(db: Database.Database): void {
+  if (!tableExists(db, "users")) {
+    return;
+  }
+
+  if (!userColumnExists(db, "password_hash")) {
+    db.exec(`ALTER TABLE users ADD COLUMN password_hash TEXT`);
+  }
+
+  db.exec(`UPDATE users SET email = lower(trim(email)) WHERE email IS NOT NULL AND email <> lower(trim(email))`);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (email) WHERE email IS NOT NULL`);
+}
+
 export function migrateLegacyApplicationNotes(db: Database.Database): void {
   if (!tableExists(db, "application_notes")) {
     return;
@@ -131,6 +152,7 @@ export function migrate(db: Database.Database): void {
     db.exec(`ALTER TABLE agent_api_tokens ADD COLUMN last_used_at TEXT`);
   }
 
+  migrateUserCredentials(db);
   migrateDefaultUser(db);
   migrateInitialStatusHistory(db);
 }

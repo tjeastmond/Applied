@@ -28,7 +28,6 @@ type AppPageProps = {
 
 export function AppPage(props: AppPageProps) {
   const router = useRouter();
-  const loginMode = props.authStatus.devQuickLoginAvailable ? "dev-quick" : "token-paste";
   const [sessionActive, setSessionActive] = useState(props.authStatus.authenticated);
   const [isBootstrapping, setIsBootstrapping] = useState(false);
 
@@ -73,7 +72,14 @@ export function AppPage(props: AppPageProps) {
   }, [router]);
 
   if (!sessionActive) {
-    return <LoginGate mode={loginMode} onAuthenticated={handleAuthenticated} isLoading={isBootstrapping} />;
+    return (
+      <LoginGate
+        setupRequired={props.authStatus.setupRequired}
+        devQuickLoginAvailable={props.authStatus.devQuickLoginAvailable}
+        onAuthenticated={handleAuthenticated}
+        isLoading={isBootstrapping}
+      />
+    );
   }
 
   return (

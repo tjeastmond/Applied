@@ -56,9 +56,12 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
   email TEXT,
+  password_hash TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (email) WHERE email IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS application_status_history (
   id TEXT PRIMARY KEY,

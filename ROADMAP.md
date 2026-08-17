@@ -12,11 +12,11 @@
 
 ### User Accounts And Email Login
 
-- Add users with email addresses and password-based login.
-- Store passwords securely using a strong password hashing algorithm.
-- Add session management for authenticated browser access.
-- Scope application data to authenticated users once accounts exist.
-- Keep a migration path for the current single-user local database.
+- Done in this slice: owner email/password login on `DEFAULT_USER_ID` alongside existing token and one-click auth.
+- Browser login supports Create Account (first run), Sign In (email/password), token paste (production), and one-click Log In (local SQLite dev, below the credential form).
+- Password hashes live in `users.password_hash` (scrypt); never exported in JSON/SQL backups or `.db` zip backups (stripped on export).
+- Still single-user: no support users, no per-user application scoping, no in-profile password change yet.
+- Later: support users, data scoping, password change/reset, Admin app-token UI.
 
 ### Log Tracing And Tracking
 

@@ -87,11 +87,26 @@ function deleteTableRowsIfExists(db: Database.Database, tableName: string): void
   }
 }
 
+function nullPasswordHashesIfExists(db: Database.Database): void {
+  const table = db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'users'`).get();
+  if (!table) {
+    return;
+  }
+
+  const columns = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+  if (!columns.some((column) => column.name === "password_hash")) {
+    return;
+  }
+
+  db.exec(`UPDATE users SET password_hash = NULL WHERE password_hash IS NOT NULL;`);
+}
+
 export function stripSensitiveDataFromDatabase(dbPath: string): void {
   const db = new Database(dbPath);
   try {
     deleteTableRowsIfExists(db, APP_ACCESS_CONFIG_TABLE);
     deleteTableRowsIfExists(db, AGENT_API_TOKENS_TABLE);
+    nullPasswordHashesIfExists(db);
   } finally {
     db.close();
   }

@@ -1,15 +1,17 @@
 "use client";
 
-import { LoginPanel, type LoginPanelMode } from "@/components/login/LoginPanel";
+import { LoginPanel } from "@/components/login/LoginPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function LoginGate({
-  mode,
+  setupRequired,
+  devQuickLoginAvailable,
   onAuthenticated,
   isLoading = false,
 }: {
-  mode: LoginPanelMode;
+  setupRequired: boolean;
+  devQuickLoginAvailable: boolean;
   onAuthenticated: () => void;
   isLoading?: boolean;
 }) {
@@ -21,7 +23,12 @@ export function LoginGate({
       <p className="mb-8 text-3xl font-bold tracking-tight">APPLIED.</p>
       <Card className="w-full max-w-md shadow-sm shadow-black/5">
         <CardContent className="pt-6">
-          <LoginPanel mode={mode} onAuthenticated={onAuthenticated} isLoading={isLoading} />
+          <LoginPanel
+            setupRequired={setupRequired}
+            devQuickLoginAvailable={devQuickLoginAvailable}
+            onAuthenticated={onAuthenticated}
+            isLoading={isLoading}
+          />
         </CardContent>
       </Card>
     </div>

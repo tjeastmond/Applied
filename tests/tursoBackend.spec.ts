@@ -76,4 +76,28 @@ describe("TursoDatabaseBackend", () => {
       backend.reset();
     }
   });
+
+  test("users repository supports password_hash migration and owner credentials", async () => {
+    const tursoConfig = requireTursoTestConfig();
+    const backend = new TursoDatabaseBackend({
+      provider: "turso",
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
+    });
+
+    try {
+      expect(await backend.users.hasPasswordLogin()).toBe(false);
+      const updated = await backend.users.setOwnerPassword({
+        email: "owner@example.com",
+        passwordHash: "scrypt$test",
+      });
+      expect(updated).toBe(true);
+      expect(await backend.users.hasPasswordLogin()).toBe(true);
+      expect(await backend.users.getCredentialByEmail("owner@example.com")).toMatchObject({
+        passwordHash: "scrypt$test",
+      });
+    } finally {
+      backend.reset();
+    }
+  });
 });

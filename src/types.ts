@@ -60,6 +60,10 @@ export interface User {
   updatedAt: string;
 }
 
+export type UserProfile = User & {
+  hasPasswordLogin: boolean;
+};
+
 export interface ApplicationStatusHistoryEntry {
   id: string;
   applicationId: string;

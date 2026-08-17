@@ -1,27 +1,25 @@
-import { getUserRepository, resetDatabaseBackend } from "@/lib/server/db";
+import { badRequestResponse, jsonError } from "@/lib/server/applicationRouteHelpers";
+import { getUserRepository } from "@/lib/server/db";
 import { withAppAccess } from "@/lib/server/appAuth";
-import { jsonError } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { updateUserProfileSchema } from "@/lib/schemas/user";
 import { resolveCurrentUserId } from "@/lib/server/currentUser";
+import type { UserProfile } from "@/types";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function userRepositoryForProfileWrite() {
-  const users = getUserRepository();
-  if (typeof users.updateProfile !== "function") {
-    resetDatabaseBackend();
-    return getUserRepository();
-  }
-  return users;
+  return getUserRepository();
 }
 
 export const GET = withAppAccess(async () => {
-  const user = await getUserRepository().ensureDefaultUser();
-  return NextResponse.json(user);
+  const users = getUserRepository();
+  const [user, hasPasswordLogin] = await Promise.all([users.ensureDefaultUser(), users.hasPasswordLogin()]);
+  const profile: UserProfile = { ...user, hasPasswordLogin };
+  return NextResponse.json(profile);
 });
 
 export const PATCH = withAppAccess(async (request: Request) => {
@@ -32,7 +30,18 @@ export const PATCH = withAppAccess(async (request: Request) => {
   }
 
   const userId = await resolveCurrentUserId();
-  const user = await userRepositoryForProfileWrite().updateProfile(userId, data);
+  const users = userRepositoryForProfileWrite();
+  const hasPassword = await users.hasPasswordLogin();
+
+  if (hasPassword && !data.email) {
+    return badRequestResponse("Email is required");
+  }
+
+  if (data.email && (await users.isEmailTaken(data.email, userId))) {
+    return jsonError("Email is already in use", 409);
+  }
+
+  const user = await users.updateProfile(userId, data);
   if (!user) {
     return jsonError("User not found", 404);
   }

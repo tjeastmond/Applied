@@ -57,8 +57,16 @@ export const optionalEmailSchema = z
   .transform((value) => {
     if (typeof value !== "string") return null;
     const sanitized = sanitizePlainText(value).slice(0, 254);
-    return sanitized.length > 0 ? sanitized : null;
+    return sanitized.length > 0 ? sanitized.toLowerCase() : null;
   });
+
+export const requiredEmailSchema = z
+  .string({ error: "Email is required" })
+  .trim()
+  .min(1, "Email is required")
+  .email("must be a valid email address")
+  .max(254)
+  .transform((value) => sanitizePlainText(value).toLowerCase().slice(0, 254));
 
 export const optionalPhoneSchema = z.preprocess(
   emptyToNull,

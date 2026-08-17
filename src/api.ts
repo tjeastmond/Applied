@@ -10,7 +10,9 @@ import type {
   JobApplication,
   ParseJobUrlResult,
   User,
+  UserProfile,
 } from "./types";
+import type { ChangePasswordInput } from "@/lib/schemas/auth";
 import type { UpdateUserProfileInput } from "@/lib/schemas/user";
 import { notifyUnauthorized, UnauthorizedError } from "./lib/apiUnauthorized";
 
@@ -55,6 +57,20 @@ export function loginApp(accessToken: string): Promise<{ ok: true }> {
 export function devLoginApp(): Promise<{ ok: true }> {
   return request<{ ok: true }>("/api/auth/dev-login", {
     method: "POST",
+  });
+}
+
+export function setupApp(input: { email: string; password: string; displayName: string }): Promise<{ ok: true }> {
+  return request<{ ok: true }>("/api/auth/setup", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function passwordLoginApp(input: { email: string; password: string }): Promise<{ ok: true }> {
+  return request<{ ok: true }>("/api/auth/password-login", {
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }
 
@@ -274,13 +290,20 @@ export function revokeAgentToken(id: string): Promise<void> {
   });
 }
 
-export function getCurrentUserProfile(): Promise<User> {
-  return request<User>("/api/user/profile");
+export function getCurrentUserProfile(): Promise<UserProfile> {
+  return request<UserProfile>("/api/user/profile");
 }
 
 export function updateCurrentUserProfile(input: UpdateUserProfileInput): Promise<User> {
   return request<User>("/api/user/profile", {
     method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export function changeCurrentUserPassword(input: ChangePasswordInput): Promise<{ ok: true }> {
+  return request<{ ok: true }>("/api/user/password", {
+    method: "POST",
     body: JSON.stringify(input),
   });
 }

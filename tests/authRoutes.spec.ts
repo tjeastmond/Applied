@@ -35,15 +35,18 @@ describe("auth API routes", () => {
 
   test("GET /api/auth/status reports unauthenticated session", async () => {
     withTestAppAccessToken();
+    useTestDatabase(openDatabase(":memory:"));
     const response = await authStatusRoute(new Request("http://localhost/api/auth/status"));
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
       authenticated: boolean;
       appAccessConfigured: boolean;
       devQuickLoginAvailable: boolean;
+      setupRequired: boolean;
     };
     expect(body.authenticated).toBe(false);
     expect(body.appAccessConfigured).toBe(true);
+    expect(body.setupRequired).toBe(true);
   });
 
   test("getAuthStatus accepts session cookie when token is stored in database", async () => {

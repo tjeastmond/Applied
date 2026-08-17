@@ -266,6 +266,24 @@ describe("backupService", () => {
     reopened.close();
     rmSync(dbPath, { force: true });
   });
+
+  test("stripSensitiveDataFromDatabase nulls password hashes", () => {
+    const dbPath = join(tmpdir(), `applied-backup-strip-${randomUUID()}.db`);
+    const db = openDatabase(dbPath);
+    db.prepare(`UPDATE users SET email = ?, password_hash = ? WHERE id = (SELECT id FROM users LIMIT 1)`).run(
+      "owner@example.com",
+      "scrypt$test",
+    );
+    db.close();
+
+    stripSensitiveDataFromDatabase(dbPath);
+
+    const reopened = openDatabase(dbPath);
+    const row = reopened.prepare(`SELECT password_hash FROM users LIMIT 1`).get() as { password_hash: string | null };
+    expect(row.password_hash).toBeNull();
+    reopened.close();
+    rmSync(dbPath, { force: true });
+  });
 });
 
 async function appRepoCreateSecond(db: ReturnType<typeof openDatabase>) {

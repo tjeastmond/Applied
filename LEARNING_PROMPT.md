@@ -28,6 +28,18 @@ Precedence (highest first): `--token` / `--base-url` → shell exports (e.g. `~/
 
 Or pass per invocation: `--token`, `--base-url`
 
+## Browser app authentication (not agent)
+
+The browser UI supports **dual auth**:
+
+- Primary: owner **Create Account** / **Sign In** with email and password (`POST /api/auth/setup`, `POST /api/auth/password-login`)
+- Secondary: **token paste** (`POST /api/auth/login` with `{ accessToken }`) or local SQLite **one-click** dev login (`POST /api/auth/dev-login`, below the credential form)
+
+Sessions use the `applied-session` HttpOnly cookie signed with `APP_ACCESS_TOKEN` (env on Turso/Vercel; SQLite can hydrate from `app_access_config`). `GET /api/auth/status` returns `{ authenticated, appAccessConfigured, devQuickLoginAvailable, setupRequired }` — no email or password hash.
+
+- Use `APP_ACCESS_TOKEN` for browser session signing and Bearer `/api/*` scripts (`pnpm app:token`)
+- Do **not** use `APP_ACCESS_TOKEN` for agent endpoints
+
 ## Authentication
 
 **All** agent endpoints require bearer-token authentication. The OpenAPI document at `GET /api/agent/openapi` is public (no token). Interactive docs: `/agent/docs`.
@@ -97,7 +109,7 @@ Status values: `applied`, `to_apply`, `interviewing`, `waiting`, `no_response`, 
 - Add applications one at a time from job URLs
 - Default status is `to_apply`; pass `--status` or `{ "status": "..." }` to override
 - Status changes create an automatic status-update note, a "Updated by the CLI" audit note, and a history entry
-- Creating an application adds a "Created by the CLI" audit note; explicit `add-note` does not add an extra audit note
+- Creating an application adds a "Saved by {name}: CLI" audit note; explicit `add-note` does not add an extra audit note
 - Archived applications are hidden from list, company, and get-by-id responses
 - If creating from a URL fails because title or company cannot be parsed, report the failure — do not invent data
 - Do not access backups, imports, user management, or unrelated app routes

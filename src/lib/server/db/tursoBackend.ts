@@ -62,16 +62,23 @@ import {
 } from "./applicationStatusHistoryRepositoryShared";
 import {
   buildDefaultUserInsertArgs,
+  GET_CREDENTIAL_BY_EMAIL_SQL,
+  GET_CREDENTIAL_BY_ID_SQL,
   GET_USER_BY_ID_SQL,
+  HAS_PASSWORD_LOGIN_SQL,
   INSERT_DEFAULT_USER_SQL,
+  IS_EMAIL_TAKEN_SQL,
   rowToUser,
+  SET_OWNER_PASSWORD_SQL,
+  UPDATE_PASSWORD_HASH_SQL,
   UPDATE_USER_PROFILE_SQL,
+  type SetOwnerPasswordInput,
   type UserRow,
 } from "./userRepositoryShared";
 import { DEFAULT_USER_ID } from "@/lib/server/defaultUser";
 import type { ApplicationStatusHistoryEntry, User } from "@/types";
 import type { ApplicationStatusHistoryRepository } from "../repositories/applicationStatusHistoryRepository";
-import type { UserRepository } from "../repositories/userRepository";
+import type { UserCredential, UserRepository } from "../repositories/userRepository";
 import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
 import { TursoAgentApiTokenRepository } from "./tursoAgentApiTokenRepository";
 import { TursoAnalyticsRepository } from "./tursoAnalyticsRepository";
@@ -144,6 +151,31 @@ async function agentApiTokenColumnExists(client: Client, column: string): Promis
   }
   const result = await tursoRows(client, "PRAGMA table_info(agent_api_tokens)");
   return result.some((row) => nullableString(row, "name") === column);
+}
+
+async function userColumnExists(client: Client, column: string): Promise<boolean> {
+  if (!(await tableExists(client, "users"))) {
+    return false;
+  }
+  const result = await tursoRows(client, "PRAGMA table_info(users)");
+  return result.some((row) => nullableString(row, "name") === column);
+}
+
+async function migrateUserCredentials(client: Client): Promise<void> {
+  if (!(await tableExists(client, "users"))) {
+    return;
+  }
+
+  if (!(await userColumnExists(client, "password_hash"))) {
+    await client.execute(`ALTER TABLE users ADD COLUMN password_hash TEXT`);
+  }
+
+  await client.execute(
+    `UPDATE users SET email = lower(trim(email)) WHERE email IS NOT NULL AND email <> lower(trim(email))`,
+  );
+  await client.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (email) WHERE email IS NOT NULL`,
+  );
 }
 
 async function migrateLegacyApplicationNotes(client: Client): Promise<void> {
@@ -267,6 +299,7 @@ async function migrateTurso(client: Client): Promise<void> {
     await client.execute(`ALTER TABLE agent_api_tokens ADD COLUMN last_used_at TEXT`);
   }
 
+  await migrateUserCredentials(client);
   await migrateDefaultUser(client);
   await migrateInitialStatusHistory(client);
 }
@@ -323,9 +356,10 @@ class TursoUserRepository implements UserRepository {
   async updateProfile(id: string, input: UpdateUserProfileInput): Promise<User | null> {
     await this.ready;
     const updatedAt = nowIso();
+    const email = input.email?.toLowerCase() ?? null;
     const result = await this.client.execute({
       sql: UPDATE_USER_PROFILE_SQL,
-      args: [input.displayName, input.email, updatedAt, id],
+      args: [input.displayName, email, updatedAt, id],
     });
 
     if (result.rowsAffected === 0) {
@@ -333,6 +367,62 @@ class TursoUserRepository implements UserRepository {
     }
 
     return this.getById(id);
+  }
+
+  async hasPasswordLogin(): Promise<boolean> {
+    await this.ready;
+    const row = await tursoFirstRow(this.client, HAS_PASSWORD_LOGIN_SQL);
+    return row !== null;
+  }
+
+  async getCredentialByEmail(email: string): Promise<UserCredential | null> {
+    await this.ready;
+    const row = await tursoFirstRow(this.client, GET_CREDENTIAL_BY_EMAIL_SQL, [email.toLowerCase()]);
+    if (!row) {
+      return null;
+    }
+    return {
+      id: requiredString(row, "id"),
+      passwordHash: requiredString(row, "password_hash"),
+    };
+  }
+
+  async getCredentialById(id: string): Promise<UserCredential | null> {
+    await this.ready;
+    const row = await tursoFirstRow(this.client, GET_CREDENTIAL_BY_ID_SQL, [id]);
+    if (!row) {
+      return null;
+    }
+    return {
+      id: requiredString(row, "id"),
+      passwordHash: requiredString(row, "password_hash"),
+    };
+  }
+
+  async setOwnerPassword(input: SetOwnerPasswordInput): Promise<boolean> {
+    await this.ready;
+    const updatedAt = nowIso();
+    const result = await this.client.execute({
+      sql: SET_OWNER_PASSWORD_SQL,
+      args: [input.email.toLowerCase(), input.passwordHash, input.displayName ?? null, updatedAt, DEFAULT_USER_ID],
+    });
+    return result.rowsAffected > 0;
+  }
+
+  async updatePasswordHash(userId: string, passwordHash: string): Promise<boolean> {
+    await this.ready;
+    const updatedAt = nowIso();
+    const result = await this.client.execute({
+      sql: UPDATE_PASSWORD_HASH_SQL,
+      args: [passwordHash, updatedAt, userId],
+    });
+    return result.rowsAffected > 0;
+  }
+
+  async isEmailTaken(email: string, excludeUserId: string): Promise<boolean> {
+    await this.ready;
+    const row = await tursoFirstRow(this.client, IS_EMAIL_TAKEN_SQL, [email.toLowerCase(), excludeUserId]);
+    return row !== null;
   }
 }
 
