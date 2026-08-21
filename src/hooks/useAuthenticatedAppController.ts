@@ -5,7 +5,7 @@ import { deleteApplication, updateApplication } from "@/api";
 import { useApplicationListView } from "@/hooks/useApplicationListView";
 import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
 import { useApplicationStatusHistoryCache } from "@/hooks/useApplicationStatusHistoryCache";
-import { shouldShowIncludeArchived, type AppView } from "@/lib/appView";
+import { companyFilterNavigatesHome, shouldShowIncludeArchived, type AppView } from "@/lib/appView";
 import { removeApplication, sortApplications, upsertApplication } from "@/lib/applicationsList";
 import { applicationMatchesViewMode } from "@/lib/applicationArchive";
 import {
@@ -68,6 +68,7 @@ export function useAuthenticatedAppController({
     snapshot,
     viewMode,
     bookmarksOnly,
+    toApplyOnly,
     includeArchived,
     selectedCompanies,
     selectedStatuses,
@@ -83,7 +84,7 @@ export function useAuthenticatedAppController({
     handleIncludeArchivedChange,
     handlePageChange: setListPage,
     handlePageSizeChange: setListPageSize,
-    handleCompanyFilter,
+    handleCompanyFilter: applyCompanyFilter,
     queuePendingCompanyFilterForNavigation,
     resetListPagination,
   } = listView;
@@ -96,6 +97,7 @@ export function useAuthenticatedAppController({
     pagination: paginatedApplications,
     isArchivedViewEmpty,
     isBookmarksViewEmpty,
+    isToApplyViewEmpty,
     isFilteredEmpty,
   } = snapshot;
 
@@ -195,10 +197,11 @@ export function useAuthenticatedAppController({
 
     const matchesView = applicationMatchesViewMode(selectedApplication, viewMode, includeArchived);
     const matchesBookmarks = !bookmarksOnly || selectedApplication.pinned;
-    if (!matchesView || !matchesBookmarks) {
+    const matchesToApply = !toApplyOnly || selectedApplication.status === "to_apply";
+    if (!matchesView || !matchesBookmarks || !matchesToApply) {
       setDetailOpen(false);
     }
-  }, [bookmarksOnly, detailOpen, includeArchived, selectedApplication, viewMode]);
+  }, [bookmarksOnly, detailOpen, includeArchived, selectedApplication, toApplyOnly, viewMode]);
 
   useEffect(() => {
     prefetchMany(visibleApplicationIds);
@@ -261,16 +264,24 @@ export function useAuthenticatedAppController({
     }
   }, []);
 
+  const handleCompanyFilter = useCallback(
+    (company: string) => {
+      if (companyFilterNavigatesHome(routeAppView) && navigateToApplications) {
+        queuePendingCompanyFilterForNavigation(company);
+        navigateToApplications();
+        return;
+      }
+      applyCompanyFilter(company);
+    },
+    [applyCompanyFilter, navigateToApplications, queuePendingCompanyFilterForNavigation, routeAppView],
+  );
+
   const handleCompanyFilterFromDetail = useCallback(
     (company: string) => {
-      if (routeAppView && routeAppView !== "applications") {
-        queuePendingCompanyFilterForNavigation(company);
-      }
       handleCompanyFilter(company);
       setDetailOpen(false);
-      navigateToApplications?.();
     },
-    [handleCompanyFilter, navigateToApplications, queuePendingCompanyFilterForNavigation, routeAppView],
+    [handleCompanyFilter],
   );
 
   const handleDetailCloseComplete = useCallback(() => {
@@ -579,6 +590,7 @@ export function useAuthenticatedAppController({
     paginatedApplications,
     isArchivedViewEmpty,
     isBookmarksViewEmpty,
+    isToApplyViewEmpty,
     isFilteredEmpty,
     applicationsListRef,
     searchInputRef,

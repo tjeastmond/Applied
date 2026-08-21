@@ -15,6 +15,7 @@ function makeQuery(overrides: Partial<ApplicationListViewQuery> = {}): Applicati
     viewMode: "active",
     includeArchived: false,
     bookmarksOnly: false,
+    toApplyOnly: false,
     selectedCompanies: new Set(),
     selectedStatuses: new Set(),
     searchQuery: "",
@@ -116,6 +117,38 @@ describe("resolveApplicationListView", () => {
     expect(snapshot.isFilteredEmpty).toBe(false);
   });
 
+  it("filters to To Apply applications when toApplyOnly is true", () => {
+    const applications = [
+      makeJobApplication({ id: "apply-me", status: "to_apply", archived: false }),
+      makeJobApplication({ id: "applied", status: "applied", archived: false }),
+      makeJobApplication({ id: "archived-apply", status: "to_apply", archived: true }),
+    ];
+
+    const snapshot = resolveApplicationListView(applications, {
+      ...makeQuery({ toApplyOnly: true }),
+      currentPage: 1,
+      pageSize: 10,
+    });
+
+    expect(snapshot.viewApplications.map((item) => item.id)).toEqual(["apply-me"]);
+    expect(snapshot.isToApplyViewEmpty).toBe(false);
+  });
+
+  it("marks To Apply view empty when no to_apply applications exist", () => {
+    const snapshot = resolveApplicationListView(
+      [makeJobApplication({ id: "applied-only", status: "applied", archived: false })],
+      {
+        ...makeQuery({ toApplyOnly: true }),
+        currentPage: 1,
+        pageSize: 10,
+      },
+    );
+
+    expect(snapshot.viewApplications).toEqual([]);
+    expect(snapshot.isToApplyViewEmpty).toBe(true);
+    expect(snapshot.isFilteredEmpty).toBe(false);
+  });
+
   it("marks filtered empty when view has rows but filters exclude all", () => {
     const snapshot = resolveApplicationListView(applications, {
       ...makeQuery({ selectedCompanies: new Set(["Missing Co"]) }),
@@ -214,6 +247,7 @@ describe("listViewQueriesEqual", () => {
     expect(listViewQueriesEqual(base, makeQuery({ selectedCompanies: new Set(["Acme"]) }))).toBe(false);
     expect(listViewQueriesEqual(base, makeQuery({ selectedStatuses: new Set(["applied"]) }))).toBe(false);
     expect(listViewQueriesEqual(base, makeQuery({ bookmarksOnly: true }))).toBe(false);
+    expect(listViewQueriesEqual(base, makeQuery({ toApplyOnly: true }))).toBe(false);
     expect(listViewQueriesEqual(base, makeQuery({ dedicatedArchivedView: true }))).toBe(false);
   });
 });
@@ -234,6 +268,7 @@ describe("resolvePendingCompanyOnRouteChange", () => {
     expect(resolvePendingCompanyOnRouteChange("applications", "Acme")).toBe("Acme");
     expect(resolvePendingCompanyOnRouteChange("applications", null)).toBeNull();
     expect(resolvePendingCompanyOnRouteChange("bookmarks", "Acme")).toBeNull();
+    expect(resolvePendingCompanyOnRouteChange("toApply", "Acme")).toBeNull();
     expect(resolvePendingCompanyOnRouteChange("archived", "Acme")).toBeNull();
   });
 
@@ -293,6 +328,32 @@ describe("composed pipeline golden cases", () => {
     });
 
     expect(snapshot.filteredApplications.map((item) => item.id)).toEqual(["passed", "rejected", "offer"]);
+  });
+
+  it("shows every role for a company after leaving the To Apply view", () => {
+    const applications = [
+      makeJobApplication({ id: "to-apply", company: "Acme", status: "to_apply", archived: false }),
+      makeJobApplication({ id: "applied", company: "Acme", status: "applied", archived: false }),
+      makeJobApplication({ id: "archived", company: "Acme", status: "rejected", archived: true }),
+      makeJobApplication({ id: "other", company: "Beta", status: "applied", archived: false }),
+    ];
+
+    const toApplyView = resolveApplicationListView(applications, {
+      ...makeQuery({ toApplyOnly: true }),
+      currentPage: 1,
+      pageSize: 10,
+    });
+    expect(toApplyView.filteredApplications.map((item) => item.id)).toEqual(["to-apply"]);
+
+    const companyView = resolveApplicationListView(applications, {
+      ...makeQuery({
+        selectedCompanies: new Set(["Acme"]),
+        includeArchived: true,
+      }),
+      currentPage: 1,
+      pageSize: 10,
+    });
+    expect(companyView.filteredApplications.map((item) => item.id)).toEqual(["to-apply", "applied", "archived"]);
   });
 
   it("resets highlight validity when search narrows visible cards", () => {

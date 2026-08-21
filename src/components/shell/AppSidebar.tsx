@@ -16,6 +16,7 @@ import {
   Bookmark,
   Briefcase,
   DatabaseBackup,
+  ListTodo,
   PanelLeftClose,
   RefreshCw,
   Settings,
@@ -53,6 +54,7 @@ function buildSections(counts: NavCounts): NavSection[] {
       heading: "Workspace",
       items: [
         { label: "Applications", icon: Briefcase, href: appViewToPath("applications"), count: counts.applications },
+        { label: "To Apply", icon: ListTodo, href: appViewToPath("toApply"), count: counts.toApply },
         { label: "Bookmarked", icon: Bookmark, href: appViewToPath("bookmarks"), count: counts.bookmarked },
         { label: "Archived", icon: Archive, href: appViewToPath("archived"), count: counts.archived },
         { label: "Analytics", icon: BarChart3, href: ANALYTICS_PATH },

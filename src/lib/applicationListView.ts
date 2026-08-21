@@ -10,6 +10,7 @@ export type ApplicationListViewQuery = {
   viewMode: ApplicationViewMode;
   includeArchived: boolean;
   bookmarksOnly: boolean;
+  toApplyOnly: boolean;
   selectedCompanies: ReadonlySet<string>;
   selectedStatuses: ReadonlySet<ApplicationStatus>;
   searchQuery: string;
@@ -31,6 +32,7 @@ export type ApplicationListViewSnapshot = {
   hasActiveFilters: boolean;
   isArchivedViewEmpty: boolean;
   isBookmarksViewEmpty: boolean;
+  isToApplyViewEmpty: boolean;
   isFilteredEmpty: boolean;
 };
 
@@ -47,6 +49,7 @@ export function listViewQueriesEqual(left: ApplicationListViewQuery, right: Appl
     left.viewMode === right.viewMode &&
     left.includeArchived === right.includeArchived &&
     left.bookmarksOnly === right.bookmarksOnly &&
+    left.toApplyOnly === right.toApplyOnly &&
     left.dedicatedArchivedView === right.dedicatedArchivedView &&
     left.searchQuery === right.searchQuery &&
     setsEqual(left.selectedCompanies, right.selectedCompanies) &&
@@ -62,6 +65,7 @@ export function resolveApplicationListView(
     viewMode,
     includeArchived,
     bookmarksOnly,
+    toApplyOnly,
     selectedCompanies,
     selectedStatuses,
     searchQuery,
@@ -76,6 +80,9 @@ export function resolveApplicationListView(
   let viewApplications = partitionApplicationsByView(applications, effectiveViewMode, effectiveIncludeArchived);
   if (bookmarksOnly) {
     viewApplications = viewApplications.filter((application) => application.pinned);
+  }
+  if (toApplyOnly) {
+    viewApplications = viewApplications.filter((application) => application.status === "to_apply");
   }
   const companyNames = uniqueCompanyNames(viewApplications);
   const filteredApplications = filterApplications(viewApplications, {
@@ -104,10 +111,12 @@ export function resolveApplicationListView(
     }),
     isArchivedViewEmpty: effectiveViewMode === "archived" && viewApplications.length === 0,
     isBookmarksViewEmpty: bookmarksOnly && viewApplications.length === 0,
+    isToApplyViewEmpty: toApplyOnly && viewApplications.length === 0,
     isFilteredEmpty:
       filteredApplications.length === 0 &&
       !(effectiveViewMode === "archived" && viewApplications.length === 0) &&
-      !(bookmarksOnly && viewApplications.length === 0),
+      !(bookmarksOnly && viewApplications.length === 0) &&
+      !(toApplyOnly && viewApplications.length === 0),
   };
 }
 

@@ -50,11 +50,15 @@ function includeArchivedForRoute(routeAppView: AppView, pendingCompany: string |
 
   switch (routeAppView) {
     case "archived":
+    case "bookmarks":
+    case "toApply":
       return false;
     case "applications":
       return readStoredIncludeArchived();
-    case "bookmarks":
-      return false;
+    default: {
+      const exhaustive: never = routeAppView;
+      return exhaustive;
+    }
   }
 }
 
@@ -76,6 +80,7 @@ export function useApplicationListView({
   const [selectedStatuses, setSelectedStatuses] = useState<Set<ApplicationStatus>>(() => new Set());
   const [viewMode, setViewMode] = useState<ApplicationViewMode>(() => routeQuery?.viewMode ?? "active");
   const [bookmarksOnly, setBookmarksOnly] = useState(() => routeQuery?.bookmarksOnly ?? false);
+  const [toApplyOnly, setToApplyOnly] = useState(() => routeQuery?.toApplyOnly ?? false);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,12 +97,22 @@ export function useApplicationListView({
       viewMode,
       includeArchived,
       bookmarksOnly,
+      toApplyOnly,
       selectedCompanies,
       selectedStatuses,
       searchQuery,
       dedicatedArchivedView,
     }),
-    [viewMode, includeArchived, bookmarksOnly, selectedCompanies, selectedStatuses, searchQuery, dedicatedArchivedView],
+    [
+      viewMode,
+      includeArchived,
+      bookmarksOnly,
+      toApplyOnly,
+      selectedCompanies,
+      selectedStatuses,
+      searchQuery,
+      dedicatedArchivedView,
+    ],
   );
 
   const previousListQueryRef = useRef(listQuery);
@@ -140,6 +155,7 @@ export function useApplicationListView({
 
       setViewMode(query.viewMode);
       setBookmarksOnly(query.bookmarksOnly);
+      setToApplyOnly(query.toApplyOnly);
       setSearchQuery("");
       setSelectedCompanies(filter?.selectedCompanies ?? new Set());
       setSelectedStatuses(filter?.selectedStatuses ?? new Set());
@@ -272,6 +288,7 @@ export function useApplicationListView({
     snapshot,
     viewMode,
     bookmarksOnly,
+    toApplyOnly,
     includeArchived,
     selectedCompanies,
     selectedStatuses,

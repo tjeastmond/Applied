@@ -25,6 +25,7 @@ type ApplicationListPageProps = Pick<
   | "paginatedApplications"
   | "isArchivedViewEmpty"
   | "isBookmarksViewEmpty"
+  | "isToApplyViewEmpty"
   | "isFilteredEmpty"
   | "hasSyncedPageSize"
   | "includeArchived"
@@ -69,6 +70,7 @@ export function ApplicationListPage({
   paginatedApplications,
   isArchivedViewEmpty,
   isBookmarksViewEmpty,
+  isToApplyViewEmpty,
   isFilteredEmpty,
   hasSyncedPageSize,
   includeArchived,
@@ -106,7 +108,12 @@ export function ApplicationListPage({
     ? APPLICATION_CARD_GRID_SINGLE_COLUMN_CLASSES
     : APPLICATION_CARD_GRID_CLASSES;
   const listFooterVisible =
-    applications.length > 0 && !isArchivedViewEmpty && !isBookmarksViewEmpty && !isFilteredEmpty && hasSyncedPageSize;
+    applications.length > 0 &&
+    !isArchivedViewEmpty &&
+    !isBookmarksViewEmpty &&
+    !isToApplyViewEmpty &&
+    !isFilteredEmpty &&
+    hasSyncedPageSize;
 
   return (
     <section className={cn(showListFooterProp && "flex min-h-0 flex-1 flex-col")}>
@@ -165,6 +172,15 @@ export function ApplicationListPage({
             <Card className={EMPTY_STATE_CARD_CLASS}>
               <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
                 <p className="text-muted-foreground text-sm">No bookmarked applications.</p>
+                <Button type="button" variant="outline" size="sm" onClick={onBackToApplications ?? clearFilters}>
+                  Back To Applications
+                </Button>
+              </CardContent>
+            </Card>
+          ) : isToApplyViewEmpty ? (
+            <Card className={EMPTY_STATE_CARD_CLASS}>
+              <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+                <p className="text-muted-foreground text-sm">No To Apply applications.</p>
                 <Button type="button" variant="outline" size="sm" onClick={onBackToApplications ?? clearFilters}>
                   Back To Applications
                 </Button>
