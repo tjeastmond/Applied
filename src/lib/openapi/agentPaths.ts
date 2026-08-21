@@ -53,7 +53,7 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
     tags: ["Applications"],
     summary: "Create application from job URL",
     description:
-      'Parses title, company, salaryRange, and fullJd from the URL when available. Adds audit note "Created by {token name}, via api|cli".',
+      'Parses title, company, salaryRange, and fullJd from the URL when available. Adds audit note "Saved by {token name}: API|CLI".',
     security: agentSecurity,
     request: {
       body: {

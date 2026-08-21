@@ -3,7 +3,7 @@ export type ApplicationAuditAction = "created" | "updated";
 export type ApplicationAuditChannel = "app" | "cli" | "api";
 
 const CHANNEL_LABELS: Record<ApplicationAuditChannel, string> = {
-  app: "app",
+  app: "APP",
   cli: "CLI",
   api: "API",
 };
@@ -13,6 +13,8 @@ export function formatApplicationAuditNote(
   actorName: string,
   channel: ApplicationAuditChannel,
 ): string {
-  const verb = action === "created" ? "Created" : "Updated";
-  return `${verb} by ${actorName}, via ${CHANNEL_LABELS[channel]}`;
+  if (action === "created") {
+    return `Saved by ${actorName}: ${CHANNEL_LABELS[channel]}`;
+  }
+  return `Updated by ${actorName}, via ${CHANNEL_LABELS[channel]}`;
 }

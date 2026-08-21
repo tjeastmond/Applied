@@ -6,6 +6,7 @@ import { GET as getNotes, POST as postNote } from "@/app/api/applications/[id]/n
 import { DELETE as deleteNote, PATCH as patchNote } from "@/app/api/applications/[id]/notes/[noteId]/route";
 import { PATCH as patchApplication } from "@/app/api/applications/[id]/route";
 import { POST as createApplication } from "@/app/api/applications/route";
+import { PATCH as patchUserProfile } from "@/app/api/user/profile/route";
 import { GET as getStatusHistory } from "@/app/api/applications/[id]/status-history/route";
 import { POST as bulkArchiveApplicationsRoute } from "@/app/api/applications/bulk-archive/route";
 import { POST as bulkFetchApplicationsRoute } from "@/app/api/applications/bulk/route";
@@ -124,6 +125,18 @@ describe("application API routes", () => {
   });
 
   test("POST create records initial status history", async () => {
+    await patchUserProfile(
+      authorizedAppRequest("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: "Taylor Eastmond",
+          email: null,
+        }),
+      }),
+      emptyRouteContext,
+    );
+
     const response = await createApplication(
       authorizedAppRequest("/api/applications", {
         method: "POST",
@@ -147,7 +160,7 @@ describe("application API routes", () => {
     expect(history[0]?.toStatus).toBe("applied");
 
     const notes = await getNoteRepository().listByApplicationId(application.id);
-    expect(notes.some((note) => note.content === "Created by You, via app")).toBe(true);
+    expect(notes.some((note) => note.content === "Saved by Taylor Eastmond: APP")).toBe(true);
   });
 
   test("PATCH status change creates a status update note", async () => {

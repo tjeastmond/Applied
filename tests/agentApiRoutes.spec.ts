@@ -254,7 +254,7 @@ describe("agent API routes", () => {
     expect(body.status).toBe("to_apply");
 
     const notes = await getNoteRepository().listByApplicationId(body.id);
-    expect(notes.some((note) => note.content === "Created by Environment, via API")).toBe(true);
+    expect(notes.some((note) => note.content === "Saved by Environment: API")).toBe(true);
   });
 
   test("POST /api/agent/applications uses CLI channel when client header is set", async () => {
@@ -280,7 +280,7 @@ describe("agent API routes", () => {
     expect(response.status).toBe(201);
     const body = (await response.json()) as { id: string };
     const notes = await getNoteRepository().listByApplicationId(body.id);
-    expect(notes.some((note) => note.content === "Created by Environment, via CLI")).toBe(true);
+    expect(notes.some((note) => note.content === "Saved by Environment: CLI")).toBe(true);
   });
 
   test("POST /api/agent/applications uses registered token name for audit notes", async () => {
@@ -310,7 +310,7 @@ describe("agent API routes", () => {
     expect(response.status).toBe(201);
     const body = (await response.json()) as { id: string };
     const notes = await getNoteRepository().listByApplicationId(body.id);
-    expect(notes.some((note) => note.content === "Created by Codex, via API")).toBe(true);
+    expect(notes.some((note) => note.content === "Saved by Codex: API")).toBe(true);
   });
 
   test("POST /api/agent/applications honors submitted status", async () => {

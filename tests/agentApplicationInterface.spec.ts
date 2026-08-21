@@ -139,7 +139,7 @@ describe("agent application interface", () => {
     expect(stored?.fullJd).toBe("<p>Build things.</p>");
 
     const notes = await getNoteRepository().listByApplicationId(result.application.id);
-    expect(notes.some((note) => note.content === "Created by Codex, via API")).toBe(true);
+    expect(notes.some((note) => note.content === "Saved by Codex: API")).toBe(true);
   });
 
   test("creates an application with an explicit status override", async () => {
