@@ -138,9 +138,35 @@ export function shouldClearKeyboardHighlight(
   return highlightId !== null && !visibleApplicationIds.includes(highlightId);
 }
 
+export type PendingCompanyRouteResolution = {
+  applyCompany: string | null;
+  retainPending: boolean;
+};
+
+let pendingCompanyFilter: string | null = null;
+
+export function queuePendingCompanyFilter(company: string): void {
+  const trimmed = company.trim();
+  pendingCompanyFilter = trimmed.length > 0 ? trimmed : null;
+}
+
+export function clearPendingCompanyFilter(): void {
+  pendingCompanyFilter = null;
+}
+
+export function peekPendingCompanyFilter(): string | null {
+  return pendingCompanyFilter;
+}
+
 export function resolvePendingCompanyOnRouteChange(
   routeAppView: AppView,
   pendingCompany: string | null,
-): string | null {
-  return routeAppView === "applications" ? pendingCompany : null;
+): PendingCompanyRouteResolution {
+  if (pendingCompany === null) {
+    return { applyCompany: null, retainPending: false };
+  }
+  if (routeAppView === "applications") {
+    return { applyCompany: pendingCompany, retainPending: false };
+  }
+  return { applyCompany: null, retainPending: true };
 }

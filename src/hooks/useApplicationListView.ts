@@ -11,8 +11,11 @@ import {
   type ApplicationViewMode,
 } from "@/lib/applicationArchive";
 import {
+  clearPendingCompanyFilter,
   listViewQueriesEqual,
+  peekPendingCompanyFilter,
   pruneCompanySelection,
+  queuePendingCompanyFilter,
   resolveApplicationListView,
   resolvePendingCompanyOnRouteChange,
   type ApplicationListViewQuery,
@@ -76,12 +79,18 @@ export function useApplicationListView({
   routeAppView,
 }: UseApplicationListViewOptions) {
   const routeQuery = routeAppView ? appViewToQuery(routeAppView) : null;
-  const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(() => new Set());
+  const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(() => {
+    if (routeAppView !== "applications") return new Set();
+    const pending = peekPendingCompanyFilter();
+    return pending ? companyFilterSelection(pending).selectedCompanies : new Set();
+  });
   const [selectedStatuses, setSelectedStatuses] = useState<Set<ApplicationStatus>>(() => new Set());
   const [viewMode, setViewMode] = useState<ApplicationViewMode>(() => routeQuery?.viewMode ?? "active");
   const [bookmarksOnly, setBookmarksOnly] = useState(() => routeQuery?.bookmarksOnly ?? false);
   const [toApplyOnly, setToApplyOnly] = useState(() => routeQuery?.toApplyOnly ?? false);
-  const [includeArchived, setIncludeArchived] = useState(false);
+  const [includeArchived, setIncludeArchived] = useState(
+    () => routeAppView === "applications" && peekPendingCompanyFilter() !== null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<ApplicationPageSize>(initialPageSize);
@@ -90,7 +99,6 @@ export function useApplicationListView({
   );
 
   const dedicatedArchivedView = routeAppView === "archived";
-  const pendingCompanyFilterRef = useRef<string | null>(null);
 
   const listQuery = useMemo<ApplicationListViewQuery>(
     () => ({
@@ -149,9 +157,15 @@ export function useApplicationListView({
   useLayoutEffect(() => {
     if (routeAppView) {
       const query = appViewToQuery(routeAppView);
-      const pendingCompany = resolvePendingCompanyOnRouteChange(routeAppView, pendingCompanyFilterRef.current);
-      pendingCompanyFilterRef.current = null;
-      const filter = pendingCompany ? companyFilterSelection(pendingCompany) : null;
+      const { applyCompany, retainPending } = resolvePendingCompanyOnRouteChange(
+        routeAppView,
+        peekPendingCompanyFilter(),
+      );
+      if (!retainPending) {
+        clearPendingCompanyFilter();
+      }
+
+      const filter = applyCompany ? companyFilterSelection(applyCompany) : null;
 
       setViewMode(query.viewMode);
       setBookmarksOnly(query.bookmarksOnly);
@@ -159,7 +173,7 @@ export function useApplicationListView({
       setSearchQuery("");
       setSelectedCompanies(filter?.selectedCompanies ?? new Set());
       setSelectedStatuses(filter?.selectedStatuses ?? new Set());
-      setIncludeArchived(includeArchivedForRoute(routeAppView, pendingCompany));
+      setIncludeArchived(includeArchivedForRoute(routeAppView, applyCompany));
       if (filter) {
         persistIncludeArchived(true);
       }
@@ -212,7 +226,7 @@ export function useApplicationListView({
   }, [selectedCompanies, snapshot.companyNames]);
 
   const clearFilters = useCallback(() => {
-    pendingCompanyFilterRef.current = null;
+    clearPendingCompanyFilter();
     setSelectedCompanies(new Set());
     setSelectedStatuses(new Set());
     setSearchQuery("");
@@ -264,9 +278,7 @@ export function useApplicationListView({
   }, []);
 
   const queuePendingCompanyFilterForNavigation = useCallback((company: string) => {
-    const trimmed = company.trim();
-    if (!trimmed) return;
-    pendingCompanyFilterRef.current = trimmed;
+    queuePendingCompanyFilter(company);
   }, []);
 
   const handleCompanyFilter = useCallback((company: string) => {
@@ -278,6 +290,8 @@ export function useApplicationListView({
     setIncludeArchived(true);
     persistIncludeArchived(true);
     setViewMode(exitArchivedViewIfNeeded);
+    setToApplyOnly(false);
+    setBookmarksOnly(false);
   }, []);
 
   const resetListPagination = useCallback(() => {

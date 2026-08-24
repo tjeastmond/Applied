@@ -1,8 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterEach } from "vitest";
 import { APPLICATION_VIEW_ALL_PAGE_SIZE } from "@/lib/applicationPagination";
 import {
+  clearPendingCompanyFilter,
   listViewQueriesEqual,
+  peekPendingCompanyFilter,
   pruneCompanySelection,
+  queuePendingCompanyFilter,
   resolveApplicationListView,
   resolvePendingCompanyOnRouteChange,
   shouldClearKeyboardHighlight,
@@ -264,36 +267,54 @@ describe("pruneCompanySelection", () => {
 });
 
 describe("resolvePendingCompanyOnRouteChange", () => {
+  afterEach(() => {
+    clearPendingCompanyFilter();
+  });
+
   it("applies pending company only when landing on applications", () => {
-    expect(resolvePendingCompanyOnRouteChange("applications", "Acme")).toBe("Acme");
-    expect(resolvePendingCompanyOnRouteChange("applications", null)).toBeNull();
-    expect(resolvePendingCompanyOnRouteChange("bookmarks", "Acme")).toBeNull();
-    expect(resolvePendingCompanyOnRouteChange("toApply", "Acme")).toBeNull();
-    expect(resolvePendingCompanyOnRouteChange("archived", "Acme")).toBeNull();
+    expect(resolvePendingCompanyOnRouteChange("applications", "Acme")).toEqual({
+      applyCompany: "Acme",
+      retainPending: false,
+    });
+    expect(resolvePendingCompanyOnRouteChange("applications", null)).toEqual({
+      applyCompany: null,
+      retainPending: false,
+    });
+    expect(resolvePendingCompanyOnRouteChange("bookmarks", "Acme")).toEqual({
+      applyCompany: null,
+      retainPending: true,
+    });
+    expect(resolvePendingCompanyOnRouteChange("toApply", "Acme")).toEqual({
+      applyCompany: null,
+      retainPending: true,
+    });
+    expect(resolvePendingCompanyOnRouteChange("archived", "Acme")).toEqual({
+      applyCompany: null,
+      retainPending: true,
+    });
+  });
+
+  it("keeps a queued company when the list remounts on To Apply before home loads", () => {
+    queuePendingCompanyFilter("Numeral");
+    expect(peekPendingCompanyFilter()).toBe("Numeral");
+
+    const whileStillOnToApply = resolvePendingCompanyOnRouteChange("toApply", peekPendingCompanyFilter());
+    expect(whileStillOnToApply).toEqual({ applyCompany: null, retainPending: true });
+    expect(peekPendingCompanyFilter()).toBe("Numeral");
+
+    const onHome = resolvePendingCompanyOnRouteChange("applications", peekPendingCompanyFilter());
+    expect(onHome).toEqual({ applyCompany: "Numeral", retainPending: false });
   });
 
   it("does not reapply stale company after filter on home, clear, and route change", () => {
-    let pendingCompany: string | null = null;
-    const currentRoute = "applications" as const;
+    queuePendingCompanyFilter("Acme");
+    clearPendingCompanyFilter();
+    expect(peekPendingCompanyFilter()).toBeNull();
 
-    function handleCompanyFilterOnHome(company: string) {
-      if (currentRoute !== "applications") {
-        pendingCompany = company;
-      }
-    }
-
-    function clearFilters() {
-      pendingCompany = null;
-    }
-
-    handleCompanyFilterOnHome("Acme");
-    expect(pendingCompany).toBeNull();
-
-    clearFilters();
-    expect(pendingCompany).toBeNull();
-
-    const reapplied = resolvePendingCompanyOnRouteChange("bookmarks", pendingCompany);
-    expect(reapplied).toBeNull();
+    expect(resolvePendingCompanyOnRouteChange("bookmarks", peekPendingCompanyFilter())).toEqual({
+      applyCompany: null,
+      retainPending: false,
+    });
   });
 });
 

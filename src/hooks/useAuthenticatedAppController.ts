@@ -266,12 +266,11 @@ export function useAuthenticatedAppController({
 
   const handleCompanyFilter = useCallback(
     (company: string) => {
+      applyCompanyFilter(company);
       if (companyFilterNavigatesHome(routeAppView) && navigateToApplications) {
         queuePendingCompanyFilterForNavigation(company);
         navigateToApplications();
-        return;
       }
-      applyCompanyFilter(company);
     },
     [applyCompanyFilter, navigateToApplications, queuePendingCompanyFilterForNavigation, routeAppView],
   );
