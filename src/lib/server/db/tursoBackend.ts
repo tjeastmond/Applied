@@ -133,6 +133,12 @@ function tursoRowToNote(row: Row): ApplicationNote {
   return rowToNote(rowToNoteRow(row));
 }
 
+async function executeStatementsSequentially(client: Client, statements: InStatement[]): Promise<void> {
+  for (const statement of statements) {
+    await client.execute(statement);
+  }
+}
+
 async function tableExists(client: Client, table: string): Promise<boolean> {
   const row = await tursoFirstRow(client, `SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?`, [
     table,
@@ -209,7 +215,7 @@ async function migrateLegacyApplicationNotes(client: Client): Promise<void> {
   }
 
   if (statements.length > 0) {
-    await client.batch(statements, "write");
+    await executeStatementsSequentially(client, statements);
   }
 
   await client.execute(`UPDATE applications SET notes = NULL WHERE notes IS NOT NULL`);
@@ -269,7 +275,7 @@ async function migrateInitialStatusHistory(client: Client): Promise<void> {
   }
 
   if (statements.length > 0) {
-    await client.batch(statements, "write");
+    await executeStatementsSequentially(client, statements);
   }
 }
 
@@ -756,7 +762,10 @@ export class TursoDatabaseBackend implements DatabaseBackend {
 
     const imported = countSqlInserts(trimmed);
     if (mode === "upsert") {
-      await this.client.batch(prepareSqlUpsertStatements(trimmed), "write");
+      await executeStatementsSequentially(
+        this.client,
+        prepareSqlUpsertStatements(trimmed).map((sql) => ({ sql })),
+      );
     } else {
       await this.client.executeMultiple(trimmed);
       await this.ready;

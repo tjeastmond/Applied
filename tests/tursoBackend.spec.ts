@@ -4,6 +4,49 @@ import { TursoDatabaseBackend } from "@/lib/server/db/tursoBackend";
 import { requireTursoTestConfig } from "./helpers/tursoTestConfig";
 
 describe("TursoDatabaseBackend", () => {
+  test("importJson backfills status history when backup omits statusHistory", async () => {
+    const tursoConfig = requireTursoTestConfig();
+    const backend = new TursoDatabaseBackend({
+      provider: "turso",
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
+    });
+
+    try {
+      const created = await backend.applications.create(
+        createJobApplicationSchema.parse({
+          url: "https://jobs.example.com/turso-backfill",
+          title: "Engineer",
+          company: "Acme",
+          appliedAt: "2026-06-01",
+          status: "applied",
+        }),
+      );
+
+      await backend.importJson(
+        {
+          version: 2,
+          exportedAt: new Date().toISOString(),
+          applications: [created],
+          notes: [],
+          users: [],
+          statusHistory: [],
+        },
+        "replace",
+      );
+
+      const history = await backend.statusHistory.listByApplicationId(created.id);
+      expect(history).toHaveLength(1);
+      expect(history[0]?.toStatus).toBe("applied");
+    } finally {
+      await backend.importJson(
+        { version: 1, exportedAt: new Date().toISOString(), applications: [], notes: [] },
+        "replace",
+      );
+      backend.reset();
+    }
+  });
+
   test("matches core application and note repository behavior", async () => {
     const tursoConfig = requireTursoTestConfig();
     const backend = new TursoDatabaseBackend({
