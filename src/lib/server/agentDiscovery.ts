@@ -131,7 +131,7 @@ export const AGENT_LIMITATIONS = [
 ] as const;
 
 export const AGENT_CLI_COMMANDS = [
-  "pnpm applied:agent applications list [--search QUERY] [--json]",
+  "pnpm applied:agent applications list [--search QUERY] [--status STATUS] [--json]",
   "pnpm applied:agent applications add --url URL [--status STATUS] [--json]",
   "pnpm applied:agent applications get --id ID [--json]",
   "pnpm applied:agent applications set-status --id ID --status STATUS [--json]",

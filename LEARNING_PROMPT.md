@@ -71,7 +71,7 @@ Public (no token):
 ## CLI commands
 
 ```
-applied-agent applications list [--search QUERY] [--json]
+applied-agent applications list [--search QUERY] [--status STATUS] [--json]
 applied-agent applications add --url URL [--status STATUS] [--json]
 applied-agent applications get --id ID [--json]
 applied-agent applications set-status --id ID --status STATUS [--json]

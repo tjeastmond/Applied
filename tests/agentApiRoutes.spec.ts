@@ -204,6 +204,34 @@ describe("agent API routes", () => {
     expect(body.applications[0]).not.toHaveProperty("fullJd");
   });
 
+  test("GET /api/agent/applications filters results with status query", async () => {
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/backend",
+        title: "Backend Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+        status: "applied",
+      }),
+    );
+    await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/design",
+        title: "Product Designer",
+        company: "Globex",
+        appliedAt: "2026-06-02",
+        status: "interviewing",
+      }),
+    );
+
+    const response = await agentApplicationsRoute.GET(authorizedRequest("/api/agent/applications?status=interviewing"));
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { applications: { status: string }[] };
+    expect(body.applications).toHaveLength(1);
+    expect(body.applications[0]?.status).toBe("interviewing");
+  });
+
   test("GET /api/agent/applications filters results with search query", async () => {
     await getRepository().create(
       createJobApplicationSchema.parse({

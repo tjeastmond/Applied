@@ -66,9 +66,16 @@ export async function fetchAgentDocs(config: AgentCliConfig): Promise<string> {
 
 export async function listApplications(
   config: AgentCliConfig,
-  search?: string,
+  filters: { search?: string; status?: string } = {},
 ): Promise<{ applications: AgentApplicationSummary[] }> {
-  const query = search ? `?search=${encodeURIComponent(search)}` : "";
+  const params = new URLSearchParams();
+  if (filters.search) {
+    params.set("search", filters.search);
+  }
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+  const query = params.size > 0 ? `?${params.toString()}` : "";
   return request(config, `/api/agent/applications${query}`);
 }
 

@@ -107,7 +107,7 @@ describe("agent CLI client", () => {
       }),
     );
 
-    await listApplications({ baseUrl: "http://localhost:3030", token: "cli-token" }, "engineer");
+    await listApplications({ baseUrl: "http://localhost:3030", token: "cli-token" }, { search: "engineer" });
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -115,5 +115,38 @@ describe("agent CLI client", () => {
     expect(init.headers).toMatchObject({
       Authorization: "Bearer cli-token",
     });
+  });
+
+  test("listApplications sends status query parameter", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ applications: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await listApplications({ baseUrl: "http://localhost:3030", token: "cli-token" }, { status: "interviewing" });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://localhost:3030/api/agent/applications?status=interviewing");
+  });
+
+  test("listApplications sends search and status together", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ applications: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await listApplications(
+      { baseUrl: "http://localhost:3030", token: "cli-token" },
+      { search: "engineer", status: "applied" },
+    );
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://localhost:3030/api/agent/applications?search=engineer&status=applied");
   });
 });

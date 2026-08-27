@@ -42,7 +42,7 @@ type GlobalOptions = {
 type ParsedCommand =
   | { kind: "help" }
   | { kind: "docs"; options: GlobalOptions }
-  | { kind: "applications-list"; search?: string; options: GlobalOptions }
+  | { kind: "applications-list"; search?: string; status?: string; options: GlobalOptions }
   | { kind: "applications-add"; url: string; status?: string; options: GlobalOptions }
   | { kind: "applications-get"; id: string; options: GlobalOptions }
   | { kind: "applications-set-status"; id: string; status: string; options: GlobalOptions }
@@ -51,15 +51,19 @@ type ParsedCommand =
 
 function printHelp(): void {
   process.stdout.write(`Usage:
-  applied-agent applications list [--search QUERY] [--json]
-  pnpm applied:agent applications list [--search QUERY] [--json]
-  pnpm applied:agent applications add --url URL [--status STATUS] [--json]
-  pnpm applied:agent applications get --id ID [--json]
-  pnpm applied:agent applications set-status --id ID --status STATUS [--json]
-  pnpm applied:agent applications add-note --id ID --content "..." [--json]
-  pnpm applied:agent companies list [--search QUERY] [--json]
-  pnpm applied:agent posts add --url URL [--status STATUS] [--json]
-  pnpm applied:agent docs [--json]
+  applied applications list [--search QUERY] [--status STATUS] [--json]
+  applied applications add --url URL [--status STATUS] [--json]
+  applied applications get --id ID [--json]
+  applied applications set-status --id ID --status STATUS [--json]
+  applied applications add-note --id ID --content "..." [--json]
+  applied companies list [--search QUERY] [--json]
+  applied posts add --url URL [--status STATUS] [--json]
+  applied docs [--json]
+
+Aliases:
+  apps …              Shorthand for applications (e.g. applied apps list)
+  applied-agent …     Same commands (global npm bin)
+  pnpm applied:agent …   From repo checkout (auto-builds when stale)
 
 Environment (precedence: CLI flags, then shell exports such as ~/.zshrc, then .env files, then defaults):
   APPLIED_DEV_URL   Base URL (default http://localhost:3030; use your Vercel URL for production)
@@ -128,6 +132,13 @@ function parseGlobalOptions(args: string[]): { options: GlobalOptions; rest: str
   return { options, rest };
 }
 
+function normalizeResource(resource: string): string {
+  if (resource === "apps") {
+    return "applications";
+  }
+  return resource;
+}
+
 function parseCommand(argv: string[]): ParsedCommand {
   const { options, rest } = parseGlobalOptions(argv);
 
@@ -136,16 +147,17 @@ function parseCommand(argv: string[]): ParsedCommand {
   }
 
   const [resource, action, ...tail] = rest;
+  const normalizedResource = normalizeResource(resource ?? "");
 
-  if (resource === "docs") {
+  if (normalizedResource === "docs") {
     return { kind: "docs", options };
   }
 
-  if (resource === "posts" && action === "add") {
+  if (normalizedResource === "posts" && action === "add") {
     return parseApplicationsAdd(tail, options);
   }
 
-  if (resource === "applications") {
+  if (normalizedResource === "applications") {
     if (action === "list") {
       return parseApplicationsList(tail, options);
     }
@@ -174,6 +186,7 @@ function parseCommand(argv: string[]): ParsedCommand {
 
 function parseApplicationsList(args: string[], options: GlobalOptions): ParsedCommand {
   let search: string | undefined;
+  let status: string | undefined;
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--search") {
@@ -183,10 +196,17 @@ function parseApplicationsList(args: string[], options: GlobalOptions): ParsedCo
       index = parsed.nextIndex;
       continue;
     }
+    if (arg === "--status") {
+      const parsed = readFlagValue(args, index, arg);
+      if (!parsed) process.exit(1);
+      status = normalizeAgentStatus(parsed.value);
+      index = parsed.nextIndex;
+      continue;
+    }
     process.stderr.write(`Unknown option: ${arg}\n`);
     process.exit(1);
   }
-  return { kind: "applications-list", search, options };
+  return { kind: "applications-list", search, status, options };
 }
 
 function parseApplicationsAdd(args: string[], options: GlobalOptions): ParsedCommand {
@@ -347,7 +367,10 @@ async function runCommand(command: ParsedCommand): Promise<void> {
       return;
     }
     case "applications-list": {
-      const result = await listApplications(config, command.search);
+      const result = await listApplications(config, {
+        search: command.search,
+        status: command.status,
+      });
       if (command.options.json) {
         printJson(result);
       } else {

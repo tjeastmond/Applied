@@ -43,4 +43,18 @@ describe("applied:agent script stdout", () => {
       JSON.parse(result.stdout);
     }).not.toThrow();
   });
+
+  test("run-applied-agent accepts apps as an alias for applications", () => {
+    const result = spawnSync(process.execPath, [join(root, "scripts/run-applied-agent.mjs"), "apps", "list"], {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        AGENT_API_TOKEN: "",
+      },
+    });
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("AGENT_API_TOKEN");
+  });
 });

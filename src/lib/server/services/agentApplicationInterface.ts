@@ -51,8 +51,13 @@ async function getVisibleApplicationForAgent(id: string): Promise<JobApplication
   return application;
 }
 
-export async function listApplicationsForAgent(searchQuery = ""): Promise<AgentApplicationSummary[]> {
-  const applications = (await getRepository().list()).filter((application) => !application.archived);
+export async function listApplicationsForAgent(
+  searchQuery = "",
+  status?: ApplicationStatus,
+): Promise<AgentApplicationSummary[]> {
+  const applications = (await getRepository().list()).filter(
+    (application) => !application.archived && (!status || application.status === status),
+  );
   const summaries = applications.map(toAgentApplicationSummary);
   return filterAgentApplicationsBySearch(summaries, searchQuery);
 }

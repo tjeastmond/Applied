@@ -22,12 +22,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const parsedQuery = agentListApplicationsQuerySchema.safeParse({
     search: searchParams.get("search") ?? undefined,
+    status: searchParams.get("status") ?? undefined,
   });
   if (!parsedQuery.success) {
     return badRequestResponse(formatZodError(parsedQuery.error));
   }
 
-  const applications = await listApplicationsForAgent(parsedQuery.data.search ?? "");
+  const applications = await listApplicationsForAgent(parsedQuery.data.search ?? "", parsedQuery.data.status);
   return NextResponse.json({ applications });
 }
 

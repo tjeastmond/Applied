@@ -11,6 +11,7 @@ export type AgentNoteSummary = Pick<ApplicationNote, "id" | "content" | "created
 
 export const agentListApplicationsQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
+  status: applicationStatusSchema.optional(),
 });
 
 export const agentListCompaniesQuerySchema = z.object({

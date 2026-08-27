@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# applied — start/stop the Applied.dev local server from your personal bin.
+# applied — manage the Applied.dev local server and application data from your personal bin.
 #
 # Install:
 #   ln -sf "$HOME/Projects/applied.dev/scripts/applied" "$HOME/bin/applied"
+#   pnpm build:cli && pnpm setup && pnpm add -g .   # optional: global applied-agent alias
 #
 # Override the project path:
 #   export APPLIED_DEV_DIR=/path/to/applied.dev
@@ -17,18 +18,67 @@ DEV_LOG="${APPLIED_DEV_DIR}/data/logs/dev-server.log"
 
 usage() {
   cat <<'EOF'
-Usage: applied <command>
+Usage: applied <command> [options]
 
-Commands:
+Server commands:
   start     Start the dev server in the background (default)
   stop      Stop the dev server
   restart   Stop then start
   status    Show whether the server is running
   logs      Tail application logs (Ctrl+C to exit)
 
+Application commands (requires AGENT_API_TOKEN and a running server):
+  applications list [--search QUERY] [--status STATUS] [--json]
+  applications add --url URL [--status STATUS] [--json]
+  applications get --id ID [--json]
+  applications set-status --id ID --status STATUS [--json]
+  applications add-note --id ID --content "..." [--json]
+  companies list [--search QUERY] [--json]
+  posts add --url URL [--status STATUS] [--json]
+  docs [--json]
+
+  apps                  Alias for applications (e.g. applied apps list)
+
+Agent options (application commands):
+  --token TOKEN     Override AGENT_API_TOKEN for this invocation
+  --base-url URL    Override APPLIED_DEV_URL (default http://localhost:3030)
+  --json            Print JSON responses
+  -h, --help        Show agent command help
+
 Environment:
-  APPLIED_DEV_DIR   Project root (default: ~/Projects/applied.dev)
+  APPLIED_DEV_DIR     Project root (default: ~/Projects/applied.dev)
+  APPLIED_DEV_URL     API base URL for application commands
+  AGENT_API_TOKEN     Bearer token for application commands
+
+Also available as: applied-agent <application-command>
 EOF
+}
+
+is_agent_command() {
+  case "$1" in
+    applications | apps | companies | docs | posts | --json | --token | --base-url)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+cmd_agent() {
+  require_project
+
+  if command -v applied-agent >/dev/null 2>&1; then
+    exec applied-agent "$@"
+  fi
+
+  local runner="${APPLIED_DEV_DIR}/scripts/run-applied-agent.mjs"
+  if [[ -f "$runner" ]]; then
+    exec node "$runner" "$@"
+  fi
+
+  echo "applied: applied-agent not found (install with: pnpm build:cli && pnpm setup && pnpm add -g .)" >&2
+  exit 1
 }
 
 read_port() {
@@ -210,9 +260,13 @@ main() {
       usage
       ;;
     *)
-      echo "applied: unknown command '${command}'" >&2
-      usage >&2
-      exit 1
+      if is_agent_command "$command"; then
+        cmd_agent "$@"
+      else
+        echo "applied: unknown command '${command}'" >&2
+        usage >&2
+        exit 1
+      fi
       ;;
   esac
 }
