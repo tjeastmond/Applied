@@ -1,4 +1,4 @@
-import type { AgentApplicationSummary, AgentNoteSummary } from "@/lib/schemas/agent";
+import type { AgentApplicationSummary, AgentCompanySummary, AgentNoteSummary } from "@/lib/schemas/agent";
 import type { AgentCliConfig } from "@/lib/agentCli/config";
 import { APPLIED_DEV_CLIENT_HEADER, APPLIED_DEV_CLI_CLIENT_VALUE } from "@/lib/agentClientHeaders";
 
@@ -107,9 +107,65 @@ export async function setApplicationStatus(
   });
 }
 
-export async function listCompanies(config: AgentCliConfig, search?: string): Promise<{ companies: string[] }> {
-  const query = search ? `?search=${encodeURIComponent(search)}` : "";
+export async function listCompanies(
+  config: AgentCliConfig,
+  filters: { search?: string; ignored?: boolean } = {},
+): Promise<{ companies: AgentCompanySummary[] }> {
+  const params = new URLSearchParams();
+  if (filters.search) {
+    params.set("search", filters.search);
+  }
+  if (filters.ignored) {
+    params.set("ignored", "1");
+  }
+  const query = params.size > 0 ? `?${params.toString()}` : "";
   return request(config, `/api/agent/companies${query}`);
+}
+
+export type AgentCompanyInput = {
+  name: string;
+  url?: string;
+  linkedinUrl?: string;
+  email?: string;
+};
+
+export type AgentCompanyPatchInput = {
+  name?: string;
+  url?: string;
+  linkedinUrl?: string;
+  email?: string;
+};
+
+export async function createCompany(config: AgentCliConfig, input: AgentCompanyInput): Promise<AgentCompanySummary> {
+  return request(config, "/api/agent/companies", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateCompany(
+  config: AgentCliConfig,
+  id: string,
+  input: AgentCompanyPatchInput,
+): Promise<AgentCompanySummary> {
+  return request(config, `/api/agent/companies/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function setCompanyIgnored(
+  config: AgentCliConfig,
+  id: string,
+  ignored: boolean,
+): Promise<AgentCompanySummary> {
+  return request(config, `/api/agent/companies/${id}/ignore`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ignored }),
+  });
 }
 
 export async function addApplicationNote(

@@ -15,11 +15,14 @@
 import {
   addApplicationNote,
   createApplication,
+  createCompany,
   fetchAgentDocs,
   getApplication,
   listApplications,
   listCompanies,
   setApplicationStatus,
+  setCompanyIgnored,
+  updateCompany,
   AgentCliRequestError,
 } from "@/lib/agentCli/client";
 import { AgentCliConfigError, normalizeAgentStatus, resolveAgentCliConfig } from "@/lib/agentCli/config";
@@ -27,6 +30,7 @@ import {
   printApplication,
   printApplications,
   printCompanies,
+  printCompany,
   printJson,
   printMarkdown,
   printNote,
@@ -47,7 +51,19 @@ type ParsedCommand =
   | { kind: "applications-get"; id: string; options: GlobalOptions }
   | { kind: "applications-set-status"; id: string; status: string; options: GlobalOptions }
   | { kind: "applications-add-note"; id: string; content: string; options: GlobalOptions }
-  | { kind: "companies-list"; search?: string; options: GlobalOptions };
+  | { kind: "companies-list"; search?: string; ignored?: boolean; options: GlobalOptions }
+  | { kind: "companies-add"; name: string; url?: string; linkedinUrl?: string; email?: string; options: GlobalOptions }
+  | {
+      kind: "companies-update";
+      id: string;
+      name?: string;
+      url?: string;
+      linkedinUrl?: string;
+      email?: string;
+      options: GlobalOptions;
+    }
+  | { kind: "companies-ignore"; id: string; options: GlobalOptions }
+  | { kind: "companies-unignore"; id: string; options: GlobalOptions };
 
 function printHelp(): void {
   process.stdout.write(`Usage:
@@ -56,7 +72,11 @@ function printHelp(): void {
   applied applications get --id ID [--json]
   applied applications set-status --id ID --status STATUS [--json]
   applied applications add-note --id ID --content "..." [--json]
-  applied companies list [--search QUERY] [--json]
+  applied companies list [--search QUERY] [--ignored] [--json]
+  applied companies add --name "Acme" [--url URL] [--linkedin URL] [--email EMAIL] [--json]
+  applied companies update --id ID [--name NAME] [--url URL] [--linkedin URL] [--email EMAIL] [--json]
+  applied companies ignore --id ID [--json]
+  applied companies unignore --id ID [--json]
   applied posts add --url URL [--status STATUS] [--json]
   applied docs [--json]
 
@@ -175,8 +195,22 @@ function parseCommand(argv: string[]): ParsedCommand {
     }
   }
 
-  if (resource === "companies" && action === "list") {
-    return parseCompaniesList(tail, options);
+  if (resource === "companies") {
+    if (action === "list") {
+      return parseCompaniesList(tail, options);
+    }
+    if (action === "add") {
+      return parseCompaniesAdd(tail, options);
+    }
+    if (action === "update") {
+      return parseCompaniesUpdate(tail, options);
+    }
+    if (action === "ignore") {
+      return parseCompaniesIgnore(tail, options, true);
+    }
+    if (action === "unignore") {
+      return parseCompaniesIgnore(tail, options, false);
+    }
   }
 
   process.stderr.write(`Unknown command: ${rest.join(" ")}\n`);
@@ -330,6 +364,7 @@ function parseApplicationsAddNote(args: string[], options: GlobalOptions): Parse
 
 function parseCompaniesList(args: string[], options: GlobalOptions): ParsedCommand {
   let search: string | undefined;
+  let ignored = false;
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--search") {
@@ -339,10 +374,143 @@ function parseCompaniesList(args: string[], options: GlobalOptions): ParsedComma
       index = parsed.nextIndex;
       continue;
     }
+    if (arg === "--ignored") {
+      ignored = true;
+      continue;
+    }
     process.stderr.write(`Unknown option: ${arg}\n`);
     process.exit(1);
   }
-  return { kind: "companies-list", search, options };
+  return { kind: "companies-list", search, ignored, options };
+}
+
+function parseCompaniesAdd(args: string[], options: GlobalOptions): ParsedCommand {
+  let name: string | undefined;
+  let url: string | undefined;
+  let linkedinUrl: string | undefined;
+  let email: string | undefined;
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--name") {
+      const parsed = readFlagValue(args, index, arg);
+      if (!parsed) process.exit(1);
+      name = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+    if (arg === "--url") {
+      const parsed = readFlagValue(args, index, arg);
+      if (!parsed) process.exit(1);
+      url = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+    if (arg === "--linkedin") {
+      const parsed = readFlagValue(args, index, arg);
+      if (!parsed) process.exit(1);
+      linkedinUrl = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+    if (arg === "--email") {
+      const parsed = readFlagValue(args, index, arg);
+      if (!parsed) process.exit(1);
+      email = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+    process.stderr.write(`Unknown option: ${arg}\n`);
+    process.exit(1);
+  }
+
+  if (!name) {
+    process.stderr.write("companies add requires --name\n");
+    process.exit(1);
+  }
+
+  return { kind: "companies-add", name, url, linkedinUrl, email, options };
+}
+
+function parseCompaniesUpdate(args: string[], options: GlobalOptions): ParsedCommand {
+  let id: string | undefined;
+  let name: string | undefined;
+  let url: string | undefined;
+  let linkedinUrl: string | undefined;
+  let email: string | undefined;
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--id") {
+      const parsed = readFlagValue(args, index, arg);
+      if (!parsed) process.exit(1);
+      id = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+    if (arg === "--name") {
+      const parsed = readFlagValue(args, index, arg);
+      if (!parsed) process.exit(1);
+      name = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+    if (arg === "--url") {
+      const parsed = readFlagValue(args, index, arg);
+      if (!parsed) process.exit(1);
+      url = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+    if (arg === "--linkedin") {
+      const parsed = readFlagValue(args, index, arg);
+      if (!parsed) process.exit(1);
+      linkedinUrl = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+    if (arg === "--email") {
+      const parsed = readFlagValue(args, index, arg);
+      if (!parsed) process.exit(1);
+      email = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+    process.stderr.write(`Unknown option: ${arg}\n`);
+    process.exit(1);
+  }
+
+  if (!id) {
+    process.stderr.write("companies update requires --id\n");
+    process.exit(1);
+  }
+  if (!name && !url && !linkedinUrl && !email) {
+    process.stderr.write("companies update requires at least one of --name, --url, --linkedin, or --email\n");
+    process.exit(1);
+  }
+
+  return { kind: "companies-update", id, name, url, linkedinUrl, email, options };
+}
+
+function parseCompaniesIgnore(args: string[], options: GlobalOptions, ignored: boolean): ParsedCommand {
+  let id: string | undefined;
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--id") {
+      const parsed = readFlagValue(args, index, arg);
+      if (!parsed) process.exit(1);
+      id = parsed.value;
+      index = parsed.nextIndex;
+      continue;
+    }
+    process.stderr.write(`Unknown option: ${arg}\n`);
+    process.exit(1);
+  }
+
+  if (!id) {
+    process.stderr.write(`companies ${ignored ? "ignore" : "unignore"} requires --id\n`);
+    process.exit(1);
+  }
+
+  return ignored ? { kind: "companies-ignore", id, options } : { kind: "companies-unignore", id, options };
 }
 
 async function runCommand(command: ParsedCommand): Promise<void> {
@@ -415,11 +583,60 @@ async function runCommand(command: ParsedCommand): Promise<void> {
       return;
     }
     case "companies-list": {
-      const result = await listCompanies(config, command.search);
+      const result = await listCompanies(config, {
+        search: command.search,
+        ignored: command.ignored,
+      });
       if (command.options.json) {
         printJson(result);
       } else {
         printCompanies(result.companies);
+      }
+      return;
+    }
+    case "companies-add": {
+      const company = await createCompany(config, {
+        name: command.name,
+        ...(command.url ? { url: command.url } : {}),
+        ...(command.linkedinUrl ? { linkedinUrl: command.linkedinUrl } : {}),
+        ...(command.email ? { email: command.email } : {}),
+      });
+      if (command.options.json) {
+        printJson(company);
+      } else {
+        printCompany(company);
+      }
+      return;
+    }
+    case "companies-update": {
+      const company = await updateCompany(config, command.id, {
+        ...(command.name ? { name: command.name } : {}),
+        ...(command.url ? { url: command.url } : {}),
+        ...(command.linkedinUrl ? { linkedinUrl: command.linkedinUrl } : {}),
+        ...(command.email ? { email: command.email } : {}),
+      });
+      if (command.options.json) {
+        printJson(company);
+      } else {
+        printCompany(company);
+      }
+      return;
+    }
+    case "companies-ignore": {
+      const company = await setCompanyIgnored(config, command.id, true);
+      if (command.options.json) {
+        printJson(company);
+      } else {
+        printCompany(company);
+      }
+      return;
+    }
+    case "companies-unignore": {
+      const company = await setCompanyIgnored(config, command.id, false);
+      if (command.options.json) {
+        printJson(company);
+      } else {
+        printCompany(company);
       }
       return;
     }

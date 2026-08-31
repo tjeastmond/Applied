@@ -1,4 +1,4 @@
-import type { AgentApplicationSummary, AgentNoteSummary } from "@/lib/schemas/agent";
+import type { AgentApplicationSummary, AgentCompanySummary, AgentNoteSummary } from "@/lib/schemas/agent";
 
 export function printJson(value: unknown): void {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
@@ -27,15 +27,34 @@ export function printApplication(application: AgentApplicationSummary): void {
   process.stdout.write(`  Updated: ${application.updatedAt}\n`);
 }
 
-export function printCompanies(companies: string[]): void {
+export function printCompanies(companies: AgentCompanySummary[]): void {
   if (companies.length === 0) {
     process.stdout.write("No companies found.\n");
     return;
   }
 
   for (const company of companies) {
-    process.stdout.write(`${company}\n`);
+    process.stdout.write(
+      `${company.id}  ${company.ignored ? "ignored".padEnd(8) : "active".padEnd(8)}  ${company.name}\n`,
+    );
   }
+}
+
+export function printCompany(company: AgentCompanySummary): void {
+  process.stdout.write(`${company.id}\n`);
+  process.stdout.write(`  Name: ${company.name}\n`);
+  if (company.url) {
+    process.stdout.write(`  URL: ${company.url}\n`);
+  }
+  if (company.linkedinUrl) {
+    process.stdout.write(`  LinkedIn: ${company.linkedinUrl}\n`);
+  }
+  if (company.email) {
+    process.stdout.write(`  Email: ${company.email}\n`);
+  }
+  process.stdout.write(`  Ignored: ${company.ignored ? "yes" : "no"}\n`);
+  process.stdout.write(`  Created: ${company.createdAt}\n`);
+  process.stdout.write(`  Updated: ${company.updatedAt}\n`);
 }
 
 export function printNote(note: AgentNoteSummary & { applicationUpdatedAt?: string }): void {
