@@ -3,6 +3,7 @@ import { loadInitialPageData, type InitialPageData } from "@/lib/server/loadInit
 
 const EMPTY_PAGE_DATA: InitialPageData = {
   applications: [],
+  companies: [],
   notesByApplicationId: {},
   currentUser: {
     id: DEFAULT_USER_ID,

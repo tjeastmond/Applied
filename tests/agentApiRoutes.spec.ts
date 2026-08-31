@@ -3,6 +3,7 @@ import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { AGENT_REQUIRED_PATHS } from "@/lib/server/agentDiscovery";
 import {
   getAgentApiTokenRepository,
+  getCompanyRepository,
   getNoteRepository,
   getRepository,
   getStatusHistoryRepository,
@@ -11,7 +12,9 @@ import {
 import { openDatabase } from "@/lib/server/db/migrate";
 import { GET as getAgentInfo } from "@/app/api/agent/route";
 import { GET as getAgentDocs } from "@/app/api/agent/docs/route";
-import { GET as getAgentCompanies } from "@/app/api/agent/companies/route";
+import { GET as getAgentCompanies, POST as postAgentCompanies } from "@/app/api/agent/companies/route";
+import { PATCH as patchAgentCompany } from "@/app/api/agent/companies/[id]/route";
+import { PATCH as patchAgentCompanyIgnore } from "@/app/api/agent/companies/[id]/ignore/route";
 import * as agentApplicationsRoute from "@/app/api/agent/applications/route";
 import { GET as getAgentApplication, PATCH as patchAgentApplication } from "@/app/api/agent/applications/[id]/route";
 import { GET as getAgentNotes, POST as postAgentNote } from "@/app/api/agent/applications/[id]/notes/route";
@@ -97,6 +100,7 @@ describe("agent API routes", () => {
         expect.objectContaining({ method: "POST", path: "/api/agent/applications" }),
         expect.objectContaining({ method: "PATCH", path: "/api/agent/applications/:id" }),
         expect.objectContaining({ method: "GET", path: "/api/agent/companies" }),
+        expect.objectContaining({ method: "PATCH", path: "/api/agent/companies/:id" }),
         expect.objectContaining({ method: "GET", path: "/api/agent/docs" }),
       ]),
     );
@@ -519,65 +523,105 @@ describe("agent API routes", () => {
     expect(body.notes[0]?.content).toBe("Agent follow up");
   });
 
-  test("GET /api/agent/companies returns distinct sorted companies", async () => {
-    await getRepository().create(
-      createJobApplicationSchema.parse({
-        url: "https://jobs.example.com/a",
-        title: "A",
-        company: "Globex",
-        appliedAt: "2026-06-01",
-        status: "applied",
-      }),
-    );
-    await getRepository().create(
-      createJobApplicationSchema.parse({
-        url: "https://jobs.example.com/b",
-        title: "B",
-        company: "Acme",
-        appliedAt: "2026-06-02",
-        status: "applied",
-      }),
-    );
-    await getRepository().create(
-      createJobApplicationSchema.parse({
-        url: "https://jobs.example.com/c",
-        title: "C",
-        company: "Acme",
-        appliedAt: "2026-06-03",
-        status: "applied",
-      }),
-    );
+  test("GET /api/agent/companies returns sorted company records", async () => {
+    await getCompanyRepository().create({ name: "Globex" });
+    await getCompanyRepository().create({ name: "Acme" });
 
     const response = await getAgentCompanies(authorizedRequest("/api/agent/companies"));
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { companies: string[] };
-    expect(body.companies).toEqual(["Acme", "Globex"]);
+    const body = (await response.json()) as { companies: { name: string }[] };
+    expect(body.companies.map((company) => company.name)).toEqual(["Acme", "Globex"]);
   });
 
   test("GET /api/agent/companies filters by search", async () => {
-    await getRepository().create(
-      createJobApplicationSchema.parse({
-        url: "https://jobs.example.com/a",
-        title: "A",
-        company: "Globex",
-        appliedAt: "2026-06-01",
-        status: "applied",
-      }),
-    );
-    await getRepository().create(
-      createJobApplicationSchema.parse({
-        url: "https://jobs.example.com/b",
-        title: "B",
-        company: "Acme",
-        appliedAt: "2026-06-02",
-        status: "applied",
-      }),
-    );
+    await getCompanyRepository().create({ name: "Globex" });
+    await getCompanyRepository().create({ name: "Acme" });
 
     const response = await getAgentCompanies(authorizedRequest("/api/agent/companies?search=glob"));
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { companies: string[] };
-    expect(body.companies).toEqual(["Globex"]);
+    const body = (await response.json()) as { companies: { name: string }[] };
+    expect(body.companies.map((company) => company.name)).toEqual(["Globex"]);
+  });
+
+  test("POST and PATCH /api/agent/companies manage company records", async () => {
+    const createResponse = await postAgentCompanies(
+      authorizedRequest("/api/agent/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Initech",
+          url: "https://initech.example",
+          linkedinUrl: "https://linkedin.com/company/initech",
+          email: "jobs@initech.example",
+        }),
+      }),
+    );
+    expect(createResponse.status).toBe(201);
+    const created = (await createResponse.json()) as {
+      id: string;
+      name: string;
+      url: string;
+      linkedinUrl: string;
+      email: string;
+      ignored: boolean;
+    };
+    expect(created.name).toBe("Initech");
+    expect(created.url).toBe("https://initech.example/");
+    expect(created.linkedinUrl).toBe("https://linkedin.com/company/initech");
+    expect(created.email).toBe("jobs@initech.example");
+
+    const renameResponse = await patchAgentCompany(
+      authorizedRequest("/api/agent/companies", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Initech Corp", email: "careers@initech.example" }),
+      }),
+      { params: Promise.resolve({ id: created.id }) },
+    );
+    expect(renameResponse.status).toBe(200);
+    const renamed = (await renameResponse.json()) as { name: string; email: string; url: string };
+    expect(renamed.name).toBe("Initech Corp");
+    expect(renamed.email).toBe("careers@initech.example");
+    expect(renamed.url).toBe("https://initech.example/");
+
+    const ignoreResponse = await patchAgentCompanyIgnore(
+      authorizedRequest("/api/agent/companies", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ignored: true }),
+      }),
+      { params: Promise.resolve({ id: created.id }) },
+    );
+    expect(ignoreResponse.status).toBe(200);
+    const ignored = (await ignoreResponse.json()) as { ignored: boolean };
+    expect(ignored.ignored).toBe(true);
+  });
+
+  test("PATCH /api/agent/companies/:id returns 404 and 409 for missing and duplicate names", async () => {
+    await getCompanyRepository().create({ name: "Existing Co" });
+    const other = await getCompanyRepository().create({ name: "Other Co" });
+
+    const missingResponse = await patchAgentCompany(
+      authorizedRequest("/api/agent/companies", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Missing" }),
+      }),
+      { params: Promise.resolve({ id: "00000000-0000-4000-8000-000000000000" }) },
+    );
+    expect(missingResponse.status).toBe(404);
+
+    const conflictResponse = await patchAgentCompany(
+      authorizedRequest("/api/agent/companies", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "existing co" }),
+      }),
+      { params: Promise.resolve({ id: other.id }) },
+    );
+    expect(conflictResponse.status).toBe(409);
+    const conflictBody = (await conflictResponse.json()) as { error: string };
+    expect(conflictBody.error).toBe("Company name already exists");
   });
 
   test("agent applications collection route does not export forbidden mutations", () => {

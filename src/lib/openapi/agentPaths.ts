@@ -5,6 +5,7 @@ import {
   agentApplicationSummarySchema,
   agentApplicationsListResponseSchema,
   agentCompaniesListResponseSchema,
+  agentCompanySummarySchema,
   agentCreateNoteBodySchema,
   agentNoteSummarySchema,
   agentNotesListResponseSchema,
@@ -12,9 +13,12 @@ import {
 import { agentErrorResponses } from "@/lib/openapi/responses";
 import {
   agentCreateApplicationSchema,
+  agentCreateCompanySchema,
   agentListApplicationsQuerySchema,
   agentListCompaniesQuerySchema,
   agentPatchApplicationSchema,
+  agentPatchCompanySchema,
+  agentSetCompanyIgnoredSchema,
 } from "@/lib/schemas/agent";
 
 const agentSecurity = [{ AgentBearer: [] }];
@@ -185,18 +189,104 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
     method: "get",
     path: "/api/agent/companies",
     tags: ["Companies"],
-    summary: "List distinct company names",
-    description: "Returns sorted company names from non-archived applications.",
+    summary: "List companies",
+    description: "Returns company records sorted alphabetically.",
     security: agentSecurity,
     request: {
       query: agentListCompaniesQuerySchema,
     },
     responses: {
       200: {
-        description: "Company names",
+        description: "Companies",
         content: {
           "application/json": {
             schema: agentCompaniesListResponseSchema,
+          },
+        },
+      },
+      ...agentErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "post",
+    path: "/api/agent/companies",
+    tags: ["Companies"],
+    summary: "Create company",
+    security: agentSecurity,
+    request: {
+      body: {
+        content: {
+          "application/json": {
+            schema: agentCreateCompanySchema,
+          },
+        },
+      },
+    },
+    responses: {
+      201: {
+        description: "Created company",
+        content: {
+          "application/json": {
+            schema: agentCompanySummarySchema,
+          },
+        },
+      },
+      ...agentErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "patch",
+    path: "/api/agent/companies/{id}",
+    tags: ["Companies"],
+    summary: "Update company name",
+    security: agentSecurity,
+    request: {
+      params: z.object({ id: z.uuid() }),
+      body: {
+        content: {
+          "application/json": {
+            schema: agentPatchCompanySchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "Updated company",
+        content: {
+          "application/json": {
+            schema: agentCompanySummarySchema,
+          },
+        },
+      },
+      ...agentErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "patch",
+    path: "/api/agent/companies/{id}/ignore",
+    tags: ["Companies"],
+    summary: "Set company ignored flag",
+    security: agentSecurity,
+    request: {
+      params: z.object({ id: z.uuid() }),
+      body: {
+        content: {
+          "application/json": {
+            schema: agentSetCompanyIgnoredSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "Updated company",
+        content: {
+          "application/json": {
+            schema: agentCompanySummarySchema,
           },
         },
       },

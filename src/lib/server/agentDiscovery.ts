@@ -21,6 +21,8 @@ export const AGENT_REQUIRED_PATHS = [
   "/api/agent/applications/:id",
   "/api/agent/applications/:id/notes",
   "/api/agent/companies",
+  "/api/agent/companies/:id",
+  "/api/agent/companies/:id/ignore",
 ] as const;
 
 export const AGENT_CAPABILITIES = [
@@ -109,13 +111,50 @@ export const AGENT_CAPABILITIES = [
     name: "list_companies",
     method: "GET",
     path: "/api/agent/companies",
-    description: "List distinct company names from non-archived applications.",
+    description: "List company records.",
     query: {
       search: "optional case-insensitive substring filter on company name",
+      ignored: "optional 0|1 filter for ignored companies",
     },
     response: {
-      companies: "string[]",
+      companies: ["id", "name", "url", "linkedinUrl", "email", "ignored", "createdAt", "updatedAt"],
     },
+  },
+  {
+    name: "create_company",
+    method: "POST",
+    path: "/api/agent/companies",
+    description: "Create a company record.",
+    requestBody: {
+      name: "company name (required)",
+      url: "optional company website URL",
+      linkedinUrl: "optional LinkedIn URL",
+      email: "optional contact email",
+    },
+    response: ["id", "name", "url", "linkedinUrl", "email", "ignored", "createdAt", "updatedAt"],
+  },
+  {
+    name: "update_company",
+    method: "PATCH",
+    path: "/api/agent/companies/:id",
+    description: "Update a company record.",
+    requestBody: {
+      name: "optional company name",
+      url: "optional company website URL",
+      linkedinUrl: "optional LinkedIn URL",
+      email: "optional contact email",
+    },
+    response: ["id", "name", "url", "linkedinUrl", "email", "ignored", "createdAt", "updatedAt"],
+  },
+  {
+    name: "set_company_ignored",
+    method: "PATCH",
+    path: "/api/agent/companies/:id/ignore",
+    description: "Toggle a company ignored flag.",
+    requestBody: {
+      ignored: "boolean (required)",
+    },
+    response: ["id", "name", "ignored", "createdAt", "updatedAt"],
   },
 ] as const;
 
@@ -136,7 +175,11 @@ export const AGENT_CLI_COMMANDS = [
   "pnpm applied:agent applications get --id ID [--json]",
   "pnpm applied:agent applications set-status --id ID --status STATUS [--json]",
   'pnpm applied:agent applications add-note --id ID --content "..." [--json]',
-  "pnpm applied:agent companies list [--search QUERY] [--json]",
+  "pnpm applied:agent companies list [--search QUERY] [--ignored] [--json]",
+  "pnpm applied:agent companies add --name NAME [--url URL] [--linkedin URL] [--email EMAIL] [--json]",
+  "pnpm applied:agent companies update --id ID [--name NAME] [--url URL] [--linkedin URL] [--email EMAIL] [--json]",
+  "pnpm applied:agent companies ignore --id ID [--json]",
+  "pnpm applied:agent companies unignore --id ID [--json]",
   "pnpm applied:agent docs [--json]",
   "pnpm applied:agent posts add --url URL [--status STATUS] [--json]",
 ] as const;

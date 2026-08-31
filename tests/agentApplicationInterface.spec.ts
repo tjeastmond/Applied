@@ -1,16 +1,22 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
-import { getNoteRepository, getRepository, getStatusHistoryRepository, useTestDatabase } from "@/lib/server/db";
+import {
+  getCompanyRepository,
+  getNoteRepository,
+  getRepository,
+  getStatusHistoryRepository,
+  useTestDatabase,
+} from "@/lib/server/db";
 import { openDatabase } from "@/lib/server/db/migrate";
 import {
   createApplicationFromUrlForAgent,
   createNoteForAgent,
   getApplicationForAgent,
   listApplicationsForAgent,
-  listCompaniesForAgent,
   listNotesForAgent,
   updateApplicationStatusForAgent,
 } from "@/lib/server/services/agentApplicationInterface";
+import { listCompaniesForAgent } from "@/lib/server/services/agentCompanyInterface";
 import { parseJobUrl } from "@/lib/server/services/parseJobUrl";
 
 vi.mock("@/lib/server/services/parseJobUrl", () => ({
@@ -243,28 +249,14 @@ describe("agent application interface", () => {
     expect(history.some((entry) => entry.fromStatus === "to_apply" && entry.toStatus === "applied")).toBe(true);
   });
 
-  test("listCompaniesForAgent returns distinct sorted companies", async () => {
-    await getRepository().create(
-      createJobApplicationSchema.parse({
-        url: "https://jobs.example.com/a",
-        title: "A",
-        company: "Globex",
-        appliedAt: "2026-06-01",
-        status: "applied",
-      }),
-    );
-    await getRepository().create(
-      createJobApplicationSchema.parse({
-        url: "https://jobs.example.com/b",
-        title: "B",
-        company: "Acme",
-        appliedAt: "2026-06-02",
-        status: "applied",
-      }),
-    );
+  test("listCompaniesForAgent returns company records", async () => {
+    await getCompanyRepository().create({ name: "Globex" });
+    await getCompanyRepository().create({ name: "Acme" });
 
-    expect(await listCompaniesForAgent()).toEqual(["Acme", "Globex"]);
-    expect(await listCompaniesForAgent("glob")).toEqual(["Globex"]);
+    const companies = await listCompaniesForAgent();
+    expect(companies.map((company) => company.name)).toEqual(["Acme", "Globex"]);
+    expect(companies.every((company) => company.id && company.ignored === false)).toBe(true);
+    expect(await listCompaniesForAgent("glob")).toEqual(companies.filter((company) => company.name === "Globex"));
   });
 
   test("listNotesForAgent and createNoteForAgent work for visible applications", async () => {

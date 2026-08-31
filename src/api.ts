@@ -4,7 +4,9 @@ import type {
   ApplicationStatusHistoryEntry,
   AgentApiTokenSummary,
   AnalyticsResponse,
+  Company,
   CreateAgentApiTokenResult,
+  CreateCompanyInput,
   CreateJobApplicationInput,
   ImportAgentApiTokenResult,
   JobApplication,
@@ -13,6 +15,7 @@ import type {
   UserProfile,
 } from "./types";
 import type { ChangePasswordInput } from "@/lib/schemas/auth";
+import type { PatchCompanyInput } from "@/lib/schemas/company";
 import type { UpdateUserProfileInput } from "@/lib/schemas/user";
 import { notifyUnauthorized, UnauthorizedError } from "./lib/apiUnauthorized";
 
@@ -82,6 +85,39 @@ export function logoutApp(): Promise<{ ok: true }> {
 
 export function listApplications(): Promise<JobApplication[]> {
   return request<JobApplication[]>("/api/applications");
+}
+
+export function listCompanies(search?: { search?: string; ignored?: boolean }): Promise<Company[]> {
+  const params = new URLSearchParams();
+  if (search?.search) {
+    params.set("search", search.search);
+  }
+  if (search?.ignored !== undefined) {
+    params.set("ignored", search.ignored ? "1" : "0");
+  }
+  const query = params.size > 0 ? `?${params.toString()}` : "";
+  return request<Company[]>(`/api/companies${query}`);
+}
+
+export function createCompany(input: CreateCompanyInput): Promise<Company> {
+  return request<Company>("/api/companies", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function patchCompany(id: string, input: PatchCompanyInput): Promise<Company> {
+  return request<Company>(`/api/companies/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export function setCompanyIgnored(id: string, ignored: boolean): Promise<Company> {
+  return request<Company>(`/api/companies/${id}/ignore`, {
+    method: "PATCH",
+    body: JSON.stringify({ ignored }),
+  });
 }
 
 export function getAnalytics(searchParams: URLSearchParams, signal?: AbortSignal): Promise<AnalyticsResponse> {
