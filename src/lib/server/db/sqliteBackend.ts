@@ -13,6 +13,7 @@ import { SqliteAppAccessConfigRepository } from "./sqliteAppAccessConfigReposito
 import { SqliteAgentApiTokenRepository } from "./sqliteAgentApiTokenRepository";
 import { SqliteApplicationNoteRepository } from "./sqliteApplicationNoteRepository";
 import { SqliteApplicationStatusHistoryRepository } from "./sqliteApplicationStatusHistoryRepository";
+import { SqliteCompanyRepository } from "./sqliteCompanyRepository";
 import { SqliteJobApplicationRepository } from "./sqliteRepository";
 import { SqliteUserRepository } from "./sqliteUserRepository";
 import type { UserRepository } from "../repositories/userRepository";
@@ -27,6 +28,7 @@ function ensureDataDirectory(dbPath: string): void {
 export class SqliteDatabaseBackend implements DatabaseBackend {
   readonly provider = "sqlite";
   readonly applications;
+  readonly companies;
   readonly notes;
   readonly statusHistory;
   readonly analytics;
@@ -47,6 +49,7 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
     this.agentApiTokens = new SqliteAgentApiTokenRepository(this.db);
     hydrateAppAccessTokenFromDatabase(this.appAccessConfig.getToken());
     this.applications = new SqliteJobApplicationRepository(this.db);
+    this.companies = new SqliteCompanyRepository(this.db);
     this.notes = new SqliteApplicationNoteRepository(this.db);
     this.statusHistory = new SqliteApplicationStatusHistoryRepository(this.db, this.users);
     this.analytics = new SqliteAnalyticsRepository(this.db);

@@ -63,7 +63,20 @@ CREATE INDEX IF NOT EXISTS idx_application_status_history_application_id
   ON application_status_history (application_id, changed_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_application_status_history_user_id
-  ON application_status_history (user_id, changed_at DESC);`;
+  ON application_status_history (user_id, changed_at DESC);
+
+CREATE TABLE IF NOT EXISTS companies (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  url TEXT,
+  linkedin_url TEXT,
+  email TEXT,
+  ignored INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_companies_name_normalized ON companies (lower(trim(name)));`;
 
 export function readSchemaSql(): string {
   return readFileSync(join(__dirname, "schema.sql"), "utf-8");

@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { CLEAR_PINNED_ON_ARCHIVED_SQL } from "./applicationRepositoryShared";
 import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
+import { INSERT_COMPANY_SQL } from "./companyRepositoryShared";
 
 import { DEFAULT_USER_ID } from "@/lib/server/defaultUser";
 import { buildDefaultUserInsertArgs } from "./userRepositoryShared";
@@ -23,6 +24,14 @@ function agentApiTokenColumnExists(db: Database.Database, column: string): boole
     return false;
   }
   const columns = db.prepare("PRAGMA table_info(agent_api_tokens)").all() as { name: string }[];
+  return columns.some((col) => col.name === column);
+}
+
+function companyColumnExists(db: Database.Database, column: string): boolean {
+  if (!tableExists(db, "companies")) {
+    return false;
+  }
+  const columns = db.prepare("PRAGMA table_info(companies)").all() as { name: string }[];
   return columns.some((col) => col.name === column);
 }
 
@@ -125,6 +134,46 @@ function migrateInitialStatusHistory(db: Database.Database): void {
   }
 }
 
+export function backfillCompaniesFromApplications(db: Database.Database): void {
+  if (!tableExists(db, "companies")) {
+    return;
+  }
+
+  const apps = db
+    .prepare(
+      `SELECT trim(company) AS name, MIN(created_at) AS created_at
+       FROM applications
+       WHERE company IS NOT NULL AND trim(company) <> ''
+       GROUP BY lower(trim(company))`,
+    )
+    .all() as { name: string; created_at: string }[];
+
+  if (apps.length === 0) {
+    return;
+  }
+
+  const findExisting = db.prepare(`SELECT id FROM companies WHERE lower(trim(name)) = lower(trim(?))`);
+  const insert = db.prepare(INSERT_COMPANY_SQL);
+
+  for (const app of apps) {
+    if (findExisting.get(app.name)) {
+      continue;
+    }
+
+    const timestamp = app.created_at;
+    insert.run({
+      id: crypto.randomUUID(),
+      name: app.name,
+      url: null,
+      linkedin_url: null,
+      email: null,
+      ignored: 0,
+      created_at: timestamp,
+      updated_at: timestamp,
+    });
+  }
+}
+
 export function migrate(db: Database.Database): void {
   db.pragma("foreign_keys = ON");
 
@@ -152,9 +201,16 @@ export function migrate(db: Database.Database): void {
     db.exec(`ALTER TABLE agent_api_tokens ADD COLUMN last_used_at TEXT`);
   }
 
+  for (const column of ["url", "linkedin_url", "email"] as const) {
+    if (!companyColumnExists(db, column)) {
+      db.exec(`ALTER TABLE companies ADD COLUMN ${column} TEXT`);
+    }
+  }
+
   migrateUserCredentials(db);
   migrateDefaultUser(db);
   migrateInitialStatusHistory(db);
+  backfillCompaniesFromApplications(db);
 }
 
 export function openDatabase(path = ":memory:"): Database.Database {

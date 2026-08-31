@@ -7,6 +7,7 @@ import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { openDatabase } from "@/lib/server/db/migrate";
 import { SqliteAppAccessConfigRepository } from "@/lib/server/db/sqliteAppAccessConfigRepository";
 import { SqliteApplicationNoteRepository } from "@/lib/server/db/sqliteApplicationNoteRepository";
+import { SqliteCompanyRepository } from "@/lib/server/db/sqliteCompanyRepository";
 import { SqliteJobApplicationRepository } from "@/lib/server/db/sqliteRepository";
 import { stripSensitiveDataFromDatabase } from "@/lib/server/services/databaseBackupService";
 import { exportJson, exportSql, importJson, importSql } from "@/lib/server/services/backupService";
@@ -169,7 +170,7 @@ describe("backupService", () => {
     );
 
     const exported = exportJson(db);
-    expect(exported.version).toBe(2);
+    expect(exported.version).toBe(3);
     expect(exported.statusHistory.length).toBeGreaterThanOrEqual(1);
     expect(exported.users.length).toBeGreaterThanOrEqual(1);
 
@@ -265,6 +266,37 @@ describe("backupService", () => {
     expect(new SqliteAppAccessConfigRepository(reopened).getToken()).toBeNull();
     reopened.close();
     rmSync(dbPath, { force: true });
+  });
+
+  test("exports and imports company contact fields in JSON backup", async () => {
+    const db = openDatabase(":memory:");
+    const companyRepo = new SqliteCompanyRepository(db);
+    const created = await companyRepo.create({
+      name: "Acme",
+      url: "https://acme.example/",
+      linkedinUrl: "https://linkedin.com/company/acme",
+      email: "hello@acme.example",
+    });
+
+    const exported = exportJson(db);
+    expect(exported.companies).toHaveLength(1);
+    expect(exported.companies[0]).toMatchObject({
+      id: created.id,
+      name: "Acme",
+      url: "https://acme.example/",
+      linkedinUrl: "https://linkedin.com/company/acme",
+      email: "hello@acme.example",
+    });
+
+    const targetDb = openDatabase(":memory:");
+    importJson(targetDb, exported, "replace");
+    const imported = exportJson(targetDb);
+    expect(imported.companies[0]).toMatchObject({
+      name: "Acme",
+      url: "https://acme.example/",
+      linkedinUrl: "https://linkedin.com/company/acme",
+      email: "hello@acme.example",
+    });
   });
 
   test("stripSensitiveDataFromDatabase nulls password hashes", () => {

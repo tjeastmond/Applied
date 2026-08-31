@@ -6,6 +6,7 @@ import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
 import { touchApplicationUpdatedAt } from "@/lib/server/touchApplicationUpdatedAt";
+import { ensureCompanyForApplicationName } from "@/lib/server/services/companySyncService";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { NextResponse } from "next/server";
 
@@ -24,6 +25,7 @@ export const POST = withAppAccess(async (request: Request) => {
   }
 
   const application = await getRepository().create(sanitizeApplicationInput(data));
+  await ensureCompanyForApplicationName(application.company);
   const user = await resolveCurrentUser();
   await getNoteRepository().create(application.id, formatApplicationAuditNote("created", user.displayName, "app"));
   await touchApplicationUpdatedAt(application.id);

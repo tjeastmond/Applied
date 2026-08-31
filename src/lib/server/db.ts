@@ -10,6 +10,7 @@ import type { ApplicationStatusHistoryRepository } from "./repositories/applicat
 import type { AnalyticsRepository } from "./repositories/analyticsRepository";
 import type { AppAccessConfigRepository } from "./repositories/appAccessConfigRepository";
 import type { AgentApiTokenRepository } from "./repositories/agentApiTokenRepository";
+import type { CompanyRepository } from "./repositories/companyRepository";
 import type { JobApplicationRepository } from "./repositories/jobApplicationRepository";
 import type { UserRepository } from "./repositories/userRepository";
 
@@ -56,6 +57,10 @@ export function getDatabaseBackend(): DatabaseBackend {
 
 export function getRepository(): JobApplicationRepository {
   return getDatabaseBackend().applications;
+}
+
+export function getCompanyRepository(): CompanyRepository {
+  return getDatabaseBackend().companies;
 }
 
 export function getNoteRepository(): ApplicationNoteRepository {

@@ -2,8 +2,9 @@ import { z } from "zod";
 import { applicationSalaryFieldSchemas } from "@/lib/schemas/application";
 import { applicationStatusSchema } from "@/lib/schemas/common";
 
-export const BACKUP_JSON_VERSION = 2 as const;
+export const BACKUP_JSON_VERSION = 3 as const;
 export const BACKUP_JSON_VERSION_LEGACY = 1 as const;
+export const BACKUP_JSON_VERSION_WITH_STATUS_HISTORY = 2 as const;
 
 const backupApplicationSchema = z
   .strictObject({
@@ -59,14 +60,30 @@ const backupStatusHistorySchema = z.strictObject({
   changedAt: z.string().min(1),
 });
 
+const backupCompanySchema = z.strictObject({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  url: z.string().nullable().optional(),
+  linkedinUrl: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  ignored: z.boolean().optional(),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
+});
+
 export const backupJsonSchema = z
   .strictObject({
-    version: z.union([z.literal(BACKUP_JSON_VERSION), z.literal(BACKUP_JSON_VERSION_LEGACY)]),
+    version: z.union([
+      z.literal(BACKUP_JSON_VERSION),
+      z.literal(BACKUP_JSON_VERSION_WITH_STATUS_HISTORY),
+      z.literal(BACKUP_JSON_VERSION_LEGACY),
+    ]),
     exportedAt: z.string().min(1),
     applications: z.array(backupApplicationSchema),
     notes: z.array(backupNoteSchema),
     users: z.array(backupUserSchema).optional(),
     statusHistory: z.array(backupStatusHistorySchema).optional(),
+    companies: z.array(backupCompanySchema).optional(),
   })
   .transform((backup) => ({
     version: BACKUP_JSON_VERSION,
@@ -75,6 +92,13 @@ export const backupJsonSchema = z
     notes: backup.notes,
     users: backup.users ?? [],
     statusHistory: backup.statusHistory ?? [],
+    companies: (backup.companies ?? []).map((company) => ({
+      ...company,
+      url: company.url ?? null,
+      linkedinUrl: company.linkedinUrl ?? null,
+      email: company.email ?? null,
+      ignored: company.ignored ?? false,
+    })),
   }));
 
 export type BackupJson = z.infer<typeof backupJsonSchema>;

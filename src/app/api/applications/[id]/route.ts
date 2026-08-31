@@ -10,6 +10,7 @@ import {
 import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
+import { ensureCompanyForApplicationName } from "@/lib/server/services/companySyncService";
 import { patchJobApplicationSchema } from "@/lib/schemas/application";
 import { NextResponse } from "next/server";
 
@@ -48,6 +49,10 @@ export const PATCH = withAppAccess<ApplicationIdRouteContext>(async (request: Re
       : await getRepository().update(id, sanitized);
   if (!updated) {
     return applicationNotFoundResponse();
+  }
+
+  if (sanitized.company !== undefined) {
+    await ensureCompanyForApplicationName(updated.company);
   }
 
   log.info("application updated", {

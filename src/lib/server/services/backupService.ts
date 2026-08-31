@@ -3,8 +3,9 @@ import { BACKUP_JSON_VERSION, backupJsonSchema, type BackupJson, type ImportMode
 import type { ApplicationNote, JobApplication } from "@/types";
 import type { NoteRow } from "../db/applicationNoteRepositoryShared";
 import { LIST_APPLICATIONS_SQL, type ApplicationRow } from "../db/applicationRepositoryShared";
-import { backfillMissingStatusHistory } from "../db/migrate";
+import { backfillCompaniesFromApplications, backfillMissingStatusHistory } from "../db/migrate";
 import { readBackupSchemaSql } from "../db/schema";
+import type { CompanyRow } from "../db/companyRepositoryShared";
 import type { UserRow } from "../db/userRepositoryShared";
 
 export type ImportResult = {
@@ -14,6 +15,7 @@ export type ImportResult = {
     notes: number;
     users: number;
     statusHistory: number;
+    companies: number;
   };
 };
 
@@ -78,6 +80,16 @@ ON CONFLICT(id) DO UPDATE SET
   from_status = excluded.from_status,
   to_status = excluded.to_status,
   changed_at = excluded.changed_at`;
+
+export const UPSERT_COMPANY_SQL = `INSERT INTO companies (id, name, url, linkedin_url, email, ignored, created_at, updated_at)
+VALUES (@id, @name, @url, @linkedin_url, @email, @ignored, @created_at, @updated_at)
+ON CONFLICT(id) DO UPDATE SET
+  name = excluded.name,
+  url = excluded.url,
+  linkedin_url = excluded.linkedin_url,
+  email = excluded.email,
+  ignored = excluded.ignored,
+  updated_at = excluded.updated_at`;
 
 export function rowToBackupApplication(row: ApplicationBackupRow): JobApplication {
   return {
@@ -167,6 +179,19 @@ export function statusHistoryToRow(entry: BackupJson["statusHistory"][number]): 
   };
 }
 
+export function companyToRow(company: BackupJson["companies"][number]): CompanyRow {
+  return {
+    id: company.id,
+    name: company.name,
+    url: company.url,
+    linkedin_url: company.linkedinUrl,
+    email: company.email,
+    ignored: company.ignored ? 1 : 0,
+    created_at: company.createdAt,
+    updated_at: company.updatedAt,
+  };
+}
+
 function rowToBackupUser(row: UserRow): BackupJson["users"][number] {
   return {
     id: row.id,
@@ -225,11 +250,34 @@ function listStatusHistory(db: Database.Database): BackupJson["statusHistory"] {
   return rows.map(rowToBackupStatusHistory);
 }
 
+function rowToBackupCompany(row: CompanyRow): BackupJson["companies"][number] {
+  return {
+    id: row.id,
+    name: row.name,
+    url: row.url,
+    linkedinUrl: row.linkedin_url,
+    email: row.email,
+    ignored: row.ignored === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function listCompanies(db: Database.Database): BackupJson["companies"] {
+  const rows = db
+    .prepare(
+      `SELECT id, name, url, linkedin_url, email, ignored, created_at, updated_at FROM companies ORDER BY lower(trim(name)) ASC, created_at ASC`,
+    )
+    .all() as CompanyRow[];
+  return rows.map(rowToBackupCompany);
+}
+
 export function createBackupJson(
   applications: JobApplication[],
   notes: ApplicationNote[],
   users: BackupJson["users"],
   statusHistory: BackupJson["statusHistory"],
+  companies: BackupJson["companies"],
 ): BackupJson {
   return {
     version: BACKUP_JSON_VERSION,
@@ -238,6 +286,7 @@ export function createBackupJson(
     notes,
     users,
     statusHistory,
+    companies,
   };
 }
 
@@ -251,7 +300,7 @@ export function parseBackupJson(raw: unknown): BackupJson {
 }
 
 export function exportJson(db: Database.Database): BackupJson {
-  return createBackupJson(listApplications(db), listNotes(db), listUsers(db), listStatusHistory(db));
+  return createBackupJson(listApplications(db), listNotes(db), listUsers(db), listStatusHistory(db), listCompanies(db));
 }
 
 function applicationToSqlRow(application: JobApplication): ApplicationBackupRow {
@@ -283,6 +332,7 @@ export function exportSqlFromRecords(
   notes: ApplicationNote[],
   users: BackupJson["users"],
   statusHistory: BackupJson["statusHistory"],
+  companies: BackupJson["companies"],
 ): string {
   const exportedAt = new Date().toISOString();
   const lines: string[] = [
@@ -295,6 +345,7 @@ export function exportSqlFromRecords(
     "DROP TABLE IF EXISTS application_status_history;",
     "DROP TABLE IF EXISTS application_notes;",
     "DROP TABLE IF EXISTS applications;",
+    "DROP TABLE IF EXISTS companies;",
     "DROP TABLE IF EXISTS users;",
     "",
     readBackupSchemaSql().trim(),
@@ -307,6 +358,21 @@ export function exportSqlFromRecords(
         sqlQuote(row.id),
         sqlQuote(row.display_name),
         sqlQuote(row.email),
+        sqlQuote(row.created_at),
+        sqlQuote(row.updated_at),
+      ].join(", ")});`,
+    );
+  }
+
+  for (const row of companies.map(companyToRow)) {
+    lines.push(
+      `INSERT INTO companies (id, name, url, linkedin_url, email, ignored, created_at, updated_at) VALUES (${[
+        sqlQuote(row.id),
+        sqlQuote(row.name),
+        sqlQuote(row.url),
+        sqlQuote(row.linkedin_url),
+        sqlQuote(row.email),
+        String(row.ignored),
         sqlQuote(row.created_at),
         sqlQuote(row.updated_at),
       ].join(", ")});`,
@@ -369,12 +435,18 @@ export function exportSqlFromRecords(
 }
 
 export function exportSql(db: Database.Database): string {
-  return exportSqlFromRecords(listApplications(db), listNotes(db), listUsers(db), listStatusHistory(db));
+  return exportSqlFromRecords(
+    listApplications(db),
+    listNotes(db),
+    listUsers(db),
+    listStatusHistory(db),
+    listCompanies(db),
+  );
 }
 
 function clearAllData(db: Database.Database): void {
   db.exec(
-    `DELETE FROM application_status_history; DELETE FROM application_notes; DELETE FROM applications; DELETE FROM users;`,
+    `DELETE FROM application_status_history; DELETE FROM application_notes; DELETE FROM applications; DELETE FROM companies; DELETE FROM users;`,
   );
 }
 
@@ -383,6 +455,7 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
   const upsertNote = db.prepare(UPSERT_NOTE_SQL);
   const upsertUser = db.prepare(UPSERT_USER_SQL);
   const upsertStatusHistory = db.prepare(UPSERT_STATUS_HISTORY_SQL);
+  const upsertCompany = db.prepare(UPSERT_COMPANY_SQL);
 
   const run = db.transaction(() => {
     if (mode === "replace") {
@@ -391,6 +464,10 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
 
     for (const user of data.users) {
       upsertUser.run(userToRow(user));
+    }
+
+    for (const company of data.companies) {
+      upsertCompany.run(companyToRow(company));
     }
 
     for (const application of data.applications) {
@@ -412,6 +489,10 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
     backfillMissingStatusHistory(db);
   }
 
+  if (data.companies.length === 0) {
+    backfillCompaniesFromApplications(db);
+  }
+
   return {
     applications: listApplications(db),
     imported: {
@@ -419,6 +500,7 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
       notes: data.notes.length,
       users: data.users.length,
       statusHistory: data.statusHistory.length,
+      companies: data.companies.length,
     },
   };
 }
@@ -469,7 +551,11 @@ function isAllowedSqlBackupStatement(statement: string): boolean {
     return true;
   }
 
-  if (/^DROP TABLE IF EXISTS (?:application_status_history|application_notes|applications|users)$/i.test(normalized)) {
+  if (
+    /^DROP TABLE IF EXISTS (?:application_status_history|application_notes|applications|companies|users)$/i.test(
+      normalized,
+    )
+  ) {
     return true;
   }
 
@@ -489,11 +575,17 @@ function isAllowedSqlBackupStatement(statement: string): boolean {
     return true;
   }
 
-  if (/^CREATE INDEX IF NOT EXISTS idx_/i.test(normalized)) {
+  if (/^CREATE TABLE IF NOT EXISTS companies\s*\(/i.test(normalized)) {
     return true;
   }
 
-  if (/^INSERT\s+INTO\s+(?:applications|application_notes|users|application_status_history)\b/i.test(normalized)) {
+  if (/^CREATE (?:UNIQUE )?INDEX IF NOT EXISTS idx_/i.test(normalized)) {
+    return true;
+  }
+
+  if (
+    /^INSERT\s+INTO\s+(?:applications|application_notes|users|application_status_history|companies)\b/i.test(normalized)
+  ) {
     return true;
   }
 
@@ -529,12 +621,14 @@ export function countSqlInserts(sql: string): {
   notes: number;
   users: number;
   statusHistory: number;
+  companies: number;
 } {
   const inserts = extractInsertStatements(sql);
   let applications = 0;
   let notes = 0;
   let users = 0;
   let statusHistory = 0;
+  let companies = 0;
 
   for (const insert of inserts) {
     if (/INSERT\s+INTO\s+applications\b/i.test(insert)) {
@@ -545,24 +639,29 @@ export function countSqlInserts(sql: string): {
       users += 1;
     } else if (/INSERT\s+INTO\s+application_status_history\b/i.test(insert)) {
       statusHistory += 1;
+    } else if (/INSERT\s+INTO\s+companies\b/i.test(insert)) {
+      companies += 1;
     }
   }
 
-  return { applications, notes, users, statusHistory };
+  return { applications, notes, users, statusHistory, companies };
 }
 
 function sqlInsertTablePriority(insert: string): number {
   if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+users\b/i.test(insert)) {
     return 0;
   }
-  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+applications\b/i.test(insert)) {
+  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+companies\b/i.test(insert)) {
     return 1;
   }
-  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+application_notes\b/i.test(insert)) {
+  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+applications\b/i.test(insert)) {
     return 2;
   }
-  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+application_status_history\b/i.test(insert)) {
+  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+application_notes\b/i.test(insert)) {
     return 3;
+  }
+  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+application_status_history\b/i.test(insert)) {
+    return 4;
   }
   return 99;
 }
@@ -575,6 +674,14 @@ function insertToUpsertStatement(insert: string): string {
 ON CONFLICT(id) DO UPDATE SET
   display_name = excluded.display_name,
   email = excluded.email,
+  updated_at = excluded.updated_at;`;
+  }
+
+  if (/^INSERT INTO companies\b/i.test(normalized)) {
+    return `${normalized}
+ON CONFLICT(id) DO UPDATE SET
+  name = excluded.name,
+  ignored = excluded.ignored,
   updated_at = excluded.updated_at;`;
   }
 

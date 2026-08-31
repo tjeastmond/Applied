@@ -6,6 +6,7 @@ import {
   patchJobApplicationSchema,
 } from "@/lib/schemas/application";
 import { backupJsonSchema } from "@/lib/schemas/backup";
+import { createCompanySchema, patchCompanySchema } from "@/lib/schemas/company";
 import { createApplicationNoteSchema } from "@/lib/schemas/note";
 import { parseJobUrlRequestSchema, parseJobUrlResultSchema, parseJobUrlSuccessSchema } from "@/lib/schemas/parseJob";
 
@@ -312,7 +313,42 @@ describe("backupJsonSchema", () => {
     expect(parsed.applications[0]?.desiredSalary).toBeNull();
     expect(parsed.users).toEqual([]);
     expect(parsed.statusHistory).toEqual([]);
-    expect(parsed.version).toBe(2);
+    expect(parsed.companies).toEqual([]);
+    expect(parsed.version).toBe(3);
+  });
+});
+
+describe("company schemas", () => {
+  it("validates create and patch company payloads", () => {
+    expect(createCompanySchema.parse({ name: " Acme " })).toEqual({
+      name: "Acme",
+      url: null,
+      linkedinUrl: null,
+      email: null,
+    });
+    expect(
+      createCompanySchema.parse({
+        name: "Acme",
+        url: "https://acme.example/",
+        linkedinUrl: "https://linkedin.com/company/acme",
+        email: "Hello@Acme.example",
+      }),
+    ).toEqual({
+      name: "Acme",
+      url: "https://acme.example/",
+      linkedinUrl: "https://linkedin.com/company/acme",
+      email: "hello@acme.example",
+    });
+    expect(patchCompanySchema.parse({ name: "Globex" })).toEqual({ name: "Globex" });
+    expect(patchCompanySchema.parse({ url: "https://globex.example/" })).toEqual({
+      url: "https://globex.example/",
+    });
+  });
+
+  it("rejects invalid company contact fields", () => {
+    expect(() => createCompanySchema.parse({ name: "Acme", url: "not-a-url" })).toThrow();
+    expect(() => createCompanySchema.parse({ name: "Acme", email: "not-an-email" })).toThrow();
+    expect(() => patchCompanySchema.parse({})).toThrow();
   });
 });
 

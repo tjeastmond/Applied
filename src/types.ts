@@ -78,6 +78,24 @@ export type ApplicationNoteMutationResult = ApplicationNote & {
   applicationUpdatedAt: string;
 };
 
+export interface Company {
+  id: string;
+  name: string;
+  url: string | null;
+  linkedinUrl: string | null;
+  email: string | null;
+  ignored: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type {
+  CreateCompanyInput,
+  ParsedCreateCompanyInput,
+  PatchCompanyInput,
+  ParsedPatchCompanyInput,
+} from "@/lib/schemas/company";
+
 export type AgentApiTokenSummary = {
   id: string;
   name: string;

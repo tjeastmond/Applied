@@ -1,4 +1,4 @@
-import { filterAgentApplicationsBySearch, normalizeSearchQuery } from "@/lib/applicationSearch";
+import { filterAgentApplicationsBySearch } from "@/lib/applicationSearch";
 import { formatApplicationAuditNote } from "@/lib/applicationAuditNote";
 import type { ApplicationStatus } from "@/lib/applicationStatus";
 import { normalizePastedJobUrl, today } from "@/lib/applicationForm";
@@ -9,6 +9,7 @@ import { getNoteRepository, getRepository } from "@/lib/server/db";
 import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
 import { patchApplicationWithSideEffects } from "@/lib/server/services/applicationMutationService";
 import { touchApplicationUpdatedAt } from "@/lib/server/touchApplicationUpdatedAt";
+import { ensureCompanyForApplicationName } from "@/lib/server/services/companySyncService";
 import type { JobApplication } from "@/types";
 import { parseJobUrl } from "./parseJobUrl";
 
@@ -65,21 +66,6 @@ export async function listApplicationsForAgent(
 export async function getApplicationForAgent(id: string): Promise<AgentApplicationSummary | null> {
   const application = await getVisibleApplicationForAgent(id);
   return application ? toAgentApplicationSummary(application) : null;
-}
-
-export async function listCompaniesForAgent(searchQuery = ""): Promise<string[]> {
-  const applications = (await getRepository().list()).filter((application) => !application.archived);
-  const normalizedSearch = normalizeSearchQuery(searchQuery);
-  const companies = new Set<string>();
-
-  for (const application of applications) {
-    const company = application.company?.trim();
-    if (!company) continue;
-    if (normalizedSearch && !company.toLowerCase().includes(normalizedSearch)) continue;
-    companies.add(company);
-  }
-
-  return [...companies].sort((a, b) => a.localeCompare(b));
 }
 
 export async function listNotesForAgent(applicationId: string): Promise<AgentNoteSummary[] | null> {
@@ -170,6 +156,7 @@ export async function createApplicationFromUrlForAgent(
   }
 
   const application = await getRepository().create(sanitizeApplicationInput(input.data));
+  await ensureCompanyForApplicationName(application.company);
   await getNoteRepository().create(application.id, agentAuditNote("created", auditContext));
   const applicationUpdatedAt = await touchApplicationUpdatedAt(application.id);
   return {

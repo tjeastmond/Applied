@@ -5,6 +5,7 @@ import type { ApplicationStatusHistoryRepository } from "./repositories/applicat
 import type { AnalyticsRepository } from "./repositories/analyticsRepository";
 import type { AppAccessConfigRepository } from "./repositories/appAccessConfigRepository";
 import type { AgentApiTokenRepository } from "./repositories/agentApiTokenRepository";
+import type { CompanyRepository } from "./repositories/companyRepository";
 import type { JobApplicationRepository } from "./repositories/jobApplicationRepository";
 import type { UserRepository } from "./repositories/userRepository";
 import type { ImportMode, BackupJson } from "@/lib/schemas/backup";
@@ -14,6 +15,7 @@ import type { ImportResult } from "./services/backupService";
 export type DatabaseBackend = {
   provider: DatabaseProvider;
   applications: JobApplicationRepository;
+  companies: CompanyRepository;
   notes: ApplicationNoteRepository;
   users: UserRepository;
   statusHistory: ApplicationStatusHistoryRepository;
