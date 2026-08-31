@@ -10,13 +10,14 @@ import { toastMessages } from "@/lib/toastMessages";
 import type { AppView } from "@/lib/appView";
 import type { AuthStatus } from "@/lib/authTypes";
 import type { ApplicationPageSize } from "@/lib/applicationPagination";
-import type { ApplicationNote, JobApplication, User } from "@/types";
+import type { ApplicationNote, Company, JobApplication, User } from "@/types";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 type AppPageProps = {
   initialApplications: JobApplication[];
+  initialCompanies: Company[];
   initialNotesByApplicationId: Record<string, ApplicationNote[]>;
   initialCurrentUser: User;
   initialPageSize: ApplicationPageSize;

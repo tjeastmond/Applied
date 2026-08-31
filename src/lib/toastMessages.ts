@@ -70,4 +70,13 @@ export const toastMessages = {
   changePasswordCurrentRequired: "Enter your current password.",
   changePasswordNewRequired: "Enter a new password.",
   changePasswordMismatch: "New passwords do not match.",
+  companiesLoadFailed: "Failed to load companies.",
+  companyCreated: "Company created.",
+  companyCreateFailed: "Failed to create company.",
+  companyUpdated: "Company updated.",
+  companyUpdateFailed: "Failed to update company.",
+  companyIgnored: "Company ignored.",
+  companyUnignored: "Company removed from ignore list.",
+  companyIgnoreFailed: "Failed to update ignore status.",
+  companyNameRequired: "Enter a company name.",
 } as const;

@@ -7,6 +7,7 @@ import { useSidebar } from "@/components/shell/SidebarProvider";
 import type { SettingsSection } from "@/components/shell/SettingsDialog";
 import { appViewToPath, pathToAppView, type NavCounts } from "@/lib/appView";
 import { ANALYTICS_PATH, isAnalyticsRoute } from "@/lib/analytics";
+import { COMPANIES_PATH, isCompaniesRoute } from "@/lib/companies";
 import type { UiShellMode } from "@/hooks/useUiShellMode";
 import { cn } from "@/lib/utils";
 import type { User } from "@/types";
@@ -15,6 +16,7 @@ import {
   BarChart3,
   Bookmark,
   Briefcase,
+  Building2,
   DatabaseBackup,
   ListTodo,
   PanelLeftClose,
@@ -40,6 +42,7 @@ type NavSection = {
 type AppSidebarProps = {
   currentUser: User;
   navCounts: NavCounts;
+  companiesCount?: number;
   uiShellMode: UiShellMode;
   onToggleUiShellMode: () => void;
   onLogout: () => void;
@@ -48,12 +51,13 @@ type AppSidebarProps = {
   onLogoClick: () => void;
 };
 
-function buildSections(counts: NavCounts): NavSection[] {
+function buildSections(counts: NavCounts, companiesCount?: number): NavSection[] {
   return [
     {
       heading: "Workspace",
       items: [
         { label: "Applications", icon: Briefcase, href: appViewToPath("applications"), count: counts.applications },
+        { label: "Companies", icon: Building2, href: COMPANIES_PATH, count: companiesCount },
         { label: "To Apply", icon: ListTodo, href: appViewToPath("toApply"), count: counts.toApply },
         { label: "Bookmarked", icon: Bookmark, href: appViewToPath("bookmarks"), count: counts.bookmarked },
         { label: "Archived", icon: Archive, href: appViewToPath("archived"), count: counts.archived },
@@ -76,6 +80,7 @@ function buildSections(counts: NavCounts): NavSection[] {
 export function AppSidebar({
   currentUser,
   navCounts,
+  companiesCount,
   uiShellMode,
   onToggleUiShellMode,
   onLogout,
@@ -86,7 +91,7 @@ export function AppSidebar({
   const pathname = usePathname();
   const activeView = pathToAppView(pathname);
   const { collapsed, transitionsEnabled, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar();
-  const sections = buildSections(navCounts);
+  const sections = buildSections(navCounts, companiesCount);
 
   function handleNavigate() {
     setMobileOpen(false);
@@ -95,7 +100,8 @@ export function AppSidebar({
   function isItemActive(item: NavItemConfig): boolean {
     if (item.opensSettings) return false;
     if (isAnalyticsRoute(item.href)) return isAnalyticsRoute(pathname);
-    if (isAnalyticsRoute(pathname)) return false;
+    if (isCompaniesRoute(item.href)) return isCompaniesRoute(pathname);
+    if (isAnalyticsRoute(pathname) || isCompaniesRoute(pathname)) return false;
     if (item.href === appViewToPath("applications") && item.label !== "Applications") return false;
     return pathToAppView(item.href) === activeView;
   }

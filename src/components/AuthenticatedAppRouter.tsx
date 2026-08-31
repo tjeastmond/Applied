@@ -9,10 +9,11 @@ import { isAnalyticsRoute } from "@/lib/analytics";
 import type { AppView } from "@/lib/appView";
 import type { AuthStatus } from "@/lib/authTypes";
 import type { ApplicationPageSize } from "@/lib/applicationPagination";
-import type { ApplicationNote, JobApplication, User } from "@/types";
+import type { ApplicationNote, Company, JobApplication, User } from "@/types";
 
 type AppPageProps = {
   initialApplications: JobApplication[];
+  initialCompanies: Company[];
   initialNotesByApplicationId: Record<string, ApplicationNote[]>;
   initialCurrentUser: User;
   initialPageSize: ApplicationPageSize;
@@ -41,6 +42,7 @@ export function AuthenticatedAppRouter(props: AppPageProps) {
 
   const sharedProps = {
     initialApplications: props.initialApplications,
+    initialCompanies: props.initialCompanies,
     initialNotesByApplicationId: props.initialNotesByApplicationId,
     initialCurrentUser: props.initialCurrentUser,
     initialPageSize: props.initialPageSize,
