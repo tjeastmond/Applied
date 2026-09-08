@@ -25,6 +25,7 @@ import {
   type AnalyticsRange,
   type AnalyticsResponse,
 } from "@/lib/analytics";
+import { uniqueCompanyNames } from "@/lib/companyFilter";
 import { errorMessage } from "@/lib/errorMessage";
 import { SHELL_LIST_EDGE_BLEED_CLASS } from "@/lib/listPageLayout";
 import { toastMessages } from "@/lib/toastMessages";
@@ -168,15 +169,7 @@ export function AnalyticsPage({ applications, onAddApplication }: AnalyticsPageP
         : { status: "loading", data: null, error: null },
   );
 
-  const companyOptions = useMemo(
-    () =>
-      [
-        ...new Set(
-          applications.map((application) => application.company?.trim()).filter((value): value is string => !!value),
-        ),
-      ].sort((a, b) => a.localeCompare(b)),
-    [applications],
-  );
+  const companyOptions = useMemo(() => uniqueCompanyNames(applications), [applications]);
 
   const replaceFilters = useCallback((update: AnalyticsFilterUpdate) => {
     const currentFilters = parseAnalyticsFilters(new URLSearchParams(window.location.search));

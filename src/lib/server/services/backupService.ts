@@ -2,7 +2,12 @@ import type Database from "better-sqlite3";
 import { BACKUP_JSON_VERSION, backupJsonSchema, type BackupJson, type ImportMode } from "@/lib/schemas/backup";
 import type { ApplicationNote, JobApplication } from "@/types";
 import type { NoteRow } from "../db/applicationNoteRepositoryShared";
-import { LIST_APPLICATIONS_SQL, type ApplicationRow } from "../db/applicationRepositoryShared";
+import {
+  LIST_APPLICATIONS_SQL,
+  jobApplicationToApplicationRow,
+  rowToApplication,
+  type ApplicationRow,
+} from "../db/applicationRepositoryShared";
 import { backfillCompaniesFromApplications, backfillMissingStatusHistory } from "../db/migrate";
 import { readBackupSchemaSql } from "../db/schema";
 import type { CompanyRow } from "../db/companyRepositoryShared";
@@ -92,27 +97,7 @@ ON CONFLICT(id) DO UPDATE SET
   updated_at = excluded.updated_at`;
 
 export function rowToBackupApplication(row: ApplicationBackupRow): JobApplication {
-  return {
-    id: row.id,
-    url: row.url,
-    linkedinUrl: row.linkedin_url,
-    title: row.title,
-    company: row.company,
-    appliedAt: row.applied_at,
-    viaRecruiter: row.via_recruiter === 1,
-    recruiterName: row.recruiter_name,
-    recruiterFirm: row.recruiter_firm,
-    contactEmail: row.contact_email,
-    contactPhone: row.contact_phone,
-    salaryRange: row.salary_range,
-    desiredSalary: row.desired_salary,
-    fullJd: row.full_jd,
-    status: row.status,
-    archived: row.archived === 1,
-    pinned: row.pinned === 1,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+  return rowToApplication(row);
 }
 
 export function rowToBackupNote(row: NoteRow): ApplicationNote {
@@ -125,28 +110,14 @@ export function rowToBackupNote(row: NoteRow): ApplicationNote {
 }
 
 export function applicationToRow(application: BackupJson["applications"][number]): ApplicationBackupRow {
-  return {
-    id: application.id,
-    url: application.url,
-    linkedin_url: application.linkedinUrl,
-    title: application.title,
-    company: application.company,
-    applied_at: application.appliedAt,
-    via_recruiter: application.viaRecruiter ? 1 : 0,
-    recruiter_name: application.recruiterName,
-    recruiter_firm: application.recruiterFirm,
-    contact_email: application.contactEmail,
-    contact_phone: application.contactPhone,
-    salary_range: application.salaryRange ?? null,
-    desired_salary: application.desiredSalary ?? null,
-    notes: null,
-    full_jd: application.fullJd,
-    status: application.status,
-    archived: application.archived ? 1 : 0,
-    pinned: application.archived ? 0 : application.pinned ? 1 : 0,
-    created_at: application.createdAt,
-    updated_at: application.updatedAt,
-  };
+  const { full_jd, status, archived, pinned, created_at, updated_at, ...fields } = jobApplicationToApplicationRow({
+    ...application,
+    salaryRange: application.salaryRange ?? null,
+    desiredSalary: application.desiredSalary ?? null,
+    pinned: application.archived ? false : application.pinned,
+  });
+  // Keep parameter order aligned with UPSERT_APPLICATION_SQL for the Turso driver.
+  return { ...fields, notes: null, full_jd, status, archived, pinned, created_at, updated_at };
 }
 
 export function noteToRow(note: BackupJson["notes"][number]): NoteRow {

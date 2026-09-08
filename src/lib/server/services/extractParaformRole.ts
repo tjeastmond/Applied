@@ -1,5 +1,5 @@
 import { normalizeHost } from "@/lib/server/normalizeHost";
-import { parseJsonLdScripts } from "@/lib/server/services/parseUtils";
+import { parseJsonLdScripts, readRoleFromJsonLdRecord } from "@/lib/server/services/parseUtils";
 
 export function isParaformHost(hostname: string): boolean {
   return normalizeHost(hostname) === "paraform.com";
@@ -76,16 +76,8 @@ function extractFromDocumentTitle(document: Document): ParaformRole | null {
 function extractFromJsonLd(document: Document): ParaformRole | null {
   for (const record of parseJsonLdScripts(document)) {
     if (!record || typeof record !== "object") continue;
-    const title = readString((record as { title?: unknown }).title);
-    const hiringOrganization = (record as { hiringOrganization?: unknown }).hiringOrganization;
-    const company =
-      hiringOrganization && typeof hiringOrganization === "object"
-        ? readString((hiringOrganization as { name?: unknown }).name)
-        : "";
-
-    if (title && company) {
-      return { title, company };
-    }
+    const role = readRoleFromJsonLdRecord(record);
+    if (role) return role;
   }
 
   return null;

@@ -1,5 +1,5 @@
 import { normalizeHost } from "@/lib/server/normalizeHost";
-import { parseJsonLdScripts } from "@/lib/server/services/parseUtils";
+import { parseJsonLdScripts, readRoleFromJsonLdRecord } from "@/lib/server/services/parseUtils";
 
 export function isLinkedInHost(hostname: string): boolean {
   const host = normalizeHost(hostname);
@@ -7,10 +7,6 @@ export function isLinkedInHost(hostname: string): boolean {
 }
 
 type LinkedInRole = { title: string; company: string };
-
-function readString(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
-}
 
 function isJobPosting(record: object): boolean {
   const type = (record as { "@type"?: unknown })["@type"];
@@ -44,16 +40,8 @@ function extractFromJsonLd(document: Document): LinkedInRole | null {
     if (!record || typeof record !== "object") continue;
     if (!isJobPosting(record)) continue;
 
-    const title = readString((record as { title?: unknown }).title);
-    const hiringOrganization = (record as { hiringOrganization?: unknown }).hiringOrganization;
-    const company =
-      hiringOrganization && typeof hiringOrganization === "object"
-        ? readString((hiringOrganization as { name?: unknown }).name)
-        : "";
-
-    if (title && company) {
-      return { title, company };
-    }
+    const role = readRoleFromJsonLdRecord(record);
+    if (role) return role;
   }
 
   return null;

@@ -28,3 +28,14 @@ export function parseJsonLdScripts(document: Document): unknown[] {
 
   return records;
 }
+
+export function readRoleFromJsonLdRecord(record: object): { title: string; company: string } | null {
+  const { title, hiringOrganization } = record as { title?: unknown; hiringOrganization?: unknown };
+  const name =
+    hiringOrganization && typeof hiringOrganization === "object"
+      ? (hiringOrganization as { name?: unknown }).name
+      : undefined;
+  const roleTitle = typeof title === "string" ? title.trim() : "";
+  const company = typeof name === "string" ? name.trim() : "";
+  return roleTitle && company ? { title: roleTitle, company } : null;
+}
