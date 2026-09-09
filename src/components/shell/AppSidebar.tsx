@@ -20,9 +20,7 @@ import {
   DatabaseBackup,
   ListTodo,
   PanelLeftClose,
-  RefreshCw,
   Settings,
-  UserMinus,
   Users,
 } from "lucide-react";
 
@@ -68,8 +66,6 @@ function buildSections(counts: NavCounts, companiesCount?: number): NavSection[]
       heading: "Admin",
       items: [
         { label: "Manage Users", icon: Users, href: appViewToPath("applications") },
-        { label: "Reset Cache", icon: RefreshCw, href: appViewToPath("applications") },
-        { label: "Off-Boarding", icon: UserMinus, href: appViewToPath("applications") },
         { label: "Backup Data", icon: DatabaseBackup, href: "#", opensSettings: "data" },
         { label: "Settings", icon: Settings, href: "#", opensSettings: "general" },
       ],
