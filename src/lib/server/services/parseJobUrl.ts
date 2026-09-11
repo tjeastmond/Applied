@@ -66,10 +66,6 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
     return { ok: false, error: "URL must use http or https" };
   }
 
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    return { ok: false, error: "URL must use http or https" };
-  }
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 

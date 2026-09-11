@@ -49,6 +49,10 @@ function stripDisallowedTags(element: Element): void {
       continue;
     }
     if (!ALLOWED_TAGS.has(tag)) {
+      // Sanitize the wrapper's subtree before unwrapping it, so removed tags
+      // (script, iframe, ...) and stripped attributes don't ride along when
+      // its children are lifted up to `element`.
+      stripDisallowedTags(child);
       const parent = child.parentElement;
       if (!parent) continue;
       while (child.firstChild) {

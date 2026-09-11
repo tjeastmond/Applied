@@ -33,10 +33,5 @@ export async function POST(request: Request) {
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
 
-  const sessionResponse = await issueAppSessionResponse("password", "/api/auth/password-login");
-  if (sessionResponse.status !== 200) {
-    return sessionResponse;
-  }
-
-  return sessionResponse;
+  return issueAppSessionResponse("password", "/api/auth/password-login");
 }
