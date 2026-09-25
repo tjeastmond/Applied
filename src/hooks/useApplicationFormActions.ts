@@ -102,7 +102,7 @@ export function useApplicationFormActions({
     const parsed = safeFormToInput(form);
     if (!parsed.ok) {
       setShowValidation(true);
-      toast.error(toastMessages.requiredFields);
+      toast.error(parsed.error);
       return false;
     }
 

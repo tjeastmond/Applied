@@ -21,6 +21,22 @@ describe("buildFullJd", () => {
     expect(result).not.toContain("<script>");
   });
 
+  it("ignores stylesheet text from style tags when measuring body content", () => {
+    const css = "body{margin:0;}".repeat(20_000);
+    const html = `<!doctype html><html><body>
+      <style>${css}</style>
+      <div class="job-description">
+        <p>We are hiring a platform engineer to design reliable APIs and mentor teammates on best practices.</p>
+      </div>
+    </body></html>`;
+    const { document } = parseHTML(html);
+    const result = buildFullJd(document, null);
+
+    expect(result).toContain("platform engineer");
+    expect(result?.length ?? 0).toBeLessThan(10_000);
+    expect(result).not.toContain("margin:0");
+  });
+
   it("falls back to meta description when body content is sparse", () => {
     const html = `<!doctype html><html><body><h1>Title only</h1></body></html>`;
     const { document } = parseHTML(html);

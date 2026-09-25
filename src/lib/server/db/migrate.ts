@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { installSyncJournal } from "./sqliteSyncJournal";
 import { CLEAR_PINNED_ON_ARCHIVED_SQL } from "./applicationRepositoryShared";
 import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
 import { INSERT_COMPANY_SQL } from "./companyRepositoryShared";
@@ -211,6 +212,7 @@ export function migrate(db: Database.Database): void {
   migrateDefaultUser(db);
   migrateInitialStatusHistory(db);
   backfillCompaniesFromApplications(db);
+  installSyncJournal(db);
 }
 
 export function openDatabase(path = ":memory:"): Database.Database {

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 import { existsSync } from "node:fs";
-import type { ImportMode } from "@/lib/schemas/backup";
+import type { ImportMode, TursoSyncMode } from "@/lib/schemas/backup";
 import { initLogger, log } from "@/lib/server/logging/logger";
 import { loadProjectEnvFiles } from "@/lib/server/loadEnvFile";
 import {
+  syncSqliteToTurso,
   pullTursoToSqlite,
   pushSqliteToTurso,
   resolveSqlitePath,
@@ -17,7 +18,7 @@ type Command = "push" | "pull" | "verify";
 
 type ParsedArgs = {
   command: Command;
-  mode: ImportMode;
+  mode: TursoSyncMode;
   sqlitePath?: string;
   tursoUrl?: string;
   help: boolean;
@@ -25,12 +26,13 @@ type ParsedArgs = {
 
 function printHelp(): void {
   process.stdout.write(`Usage:
-  pnpm db:push-turso [--upsert] [--sqlite-path PATH] [--turso-url URL]
+  pnpm db:push-turso [--replace | --upsert] [--sqlite-path PATH] [--turso-url URL]
   pnpm db:pull-turso [--upsert] [--sqlite-path PATH] [--turso-url URL]
   pnpm db:verify-turso [--sqlite-path PATH] [--turso-url URL]
 
-Transfers data between local SQLite and Turso using JSON export/import.
-Default mode is replace (target mirrors source). Pass --upsert to merge by ID without deleting extras.
+Push defaults to incremental sync (first run establishes a full baseline).
+Use --replace to rebuild the baseline. --upsert sends all rows without deleting extras.
+Pull defaults to full replace; --upsert merges by ID.
 
 Environment (from .env.local when flags are omitted):
   DATABASE_PATH         Local SQLite file (default: data/applied.db)
@@ -48,7 +50,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     return { command: "push", mode: "replace", help: true };
   }
 
-  let mode: ImportMode = "replace";
+  let mode: TursoSyncMode = command === "push" ? "incremental" : "replace";
   let sqlitePath: string | undefined;
   let tursoUrl: string | undefined;
   let help = false;
@@ -152,16 +154,25 @@ async function main(): Promise<void> {
 
   try {
     if (parsed.command === "push") {
-      const result = await pushSqliteToTurso(parsed);
+      if (parsed.mode !== "upsert") {
+        const result = await syncSqliteToTurso({ ...parsed, mode: parsed.mode });
+        process.stdout.write(
+          `${result.mode}: ${JSON.stringify(result.imported)} upserted; ${JSON.stringify(result.deleted)} deleted. ${result.batches} committed batch(es), ${result.payloadBytes} payload bytes.\n`,
+        );
+        log.info("db incremental sync completed", { ...result });
+        process.exit(0);
+      }
+      const result = await pushSqliteToTurso({ ...parsed, mode: "upsert" });
       printTransferResult("push", parsed.mode, result);
       logTransferSuccess("push", parsed.mode, result);
       process.exit(result.verification.matches ? 0 : 2);
     }
 
     if (parsed.command === "pull") {
-      const result = await pullTursoToSqlite(parsed);
-      printTransferResult("pull", parsed.mode, result);
-      logTransferSuccess("pull", parsed.mode, result);
+      const mode = parsed.mode === "upsert" ? "upsert" : "replace";
+      const result = await pullTursoToSqlite({ ...parsed, mode });
+      printTransferResult("pull", mode, result);
+      logTransferSuccess("pull", mode, result);
       process.exit(result.verification.matches ? 0 : 2);
     }
 

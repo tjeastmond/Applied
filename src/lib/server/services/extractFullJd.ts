@@ -1,5 +1,6 @@
 import { parseHTML } from "linkedom";
 
+import { FULL_JD_MAX_LENGTH } from "@/lib/schemas/common";
 import { collapseWhitespace } from "@/lib/server/services/parseUtils";
 
 const ALLOWED_TAGS = new Set(["p", "ul", "ol", "li", "h2", "h3", "h4", "strong", "em", "br"]);
@@ -117,6 +118,12 @@ function elementToMinimalHtml(element: Element): string {
     .join("\n");
 }
 
+function removeNonContentElements(document: Document): void {
+  for (const element of document.querySelectorAll("style, script, noscript")) {
+    element.remove();
+  }
+}
+
 function findDescriptionRoot(document: Document): Element | null {
   for (const selector of DESCRIPTION_SELECTORS) {
     const match = document.querySelector(selector);
@@ -127,7 +134,15 @@ function findDescriptionRoot(document: Document): Element | null {
   return document.body;
 }
 
+function capFullJdLength(html: string): string {
+  if (html.length <= FULL_JD_MAX_LENGTH) {
+    return html;
+  }
+  return html.slice(0, FULL_JD_MAX_LENGTH);
+}
+
 export function buildFullJd(document: Document, metaDescription: string | null): string | null {
+  removeNonContentElements(document);
   const root = findDescriptionRoot(document);
   if (!root) return null;
 
@@ -160,7 +175,10 @@ export function buildFullJd(document: Document, metaDescription: string | null):
   }
 
   const html = sections.join("\n").trim();
-  return html.length > 0 ? html : null;
+  if (html.length === 0) {
+    return null;
+  }
+  return capFullJdLength(html);
 }
 
 export function sanitizeStoredHtml(html: string): string | null {

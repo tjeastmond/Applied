@@ -1,8 +1,12 @@
-import { importModeSchema } from "@/lib/schemas/backup";
+import { tursoSyncModeSchema } from "@/lib/schemas/backup";
 import { withAppAccess } from "@/lib/server/appAuth";
 import { logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
-import { isTursoSyncAvailable, pushSqliteToTurso } from "@/lib/server/services/databaseTransferService";
+import {
+  isTursoSyncAvailable,
+  pushSqliteToTurso,
+  syncSqliteToTurso,
+} from "@/lib/server/services/databaseTransferService";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -15,19 +19,32 @@ export const POST = withAppAccess(async (request: Request) => {
     );
   }
 
-  let modeRaw: unknown = "replace";
+  let modeRaw: unknown = "incremental";
   const body = (await request.json().catch(() => null)) as { mode?: unknown } | null;
   if (body) {
-    modeRaw = body.mode ?? "replace";
+    modeRaw = body.mode ?? "incremental";
   }
 
-  const modeParsed = importModeSchema.safeParse(modeRaw);
+  const modeParsed = tursoSyncModeSchema.safeParse(modeRaw);
   if (!modeParsed.success) {
-    return NextResponse.json({ error: "mode must be replace or upsert" }, { status: 400 });
+    return NextResponse.json({ error: "mode must be incremental, replace, or upsert" }, { status: 400 });
   }
 
   try {
-    const result = await pushSqliteToTurso({ mode: modeParsed.data });
+    if (modeParsed.data !== "upsert") {
+      const result = await syncSqliteToTurso({ mode: modeParsed.data });
+      log.info("turso incremental sync completed", {
+        route: "/api/backup/sync-turso",
+        mode: result.mode,
+        imported: result.imported,
+        deleted: result.deleted,
+        batches: result.batches,
+        payloadBytes: result.payloadBytes,
+        checkpoint: result.checkpoint,
+      });
+      return NextResponse.json(result);
+    }
+    const result = await pushSqliteToTurso({ mode: "upsert" });
     log.info("turso sync completed", {
       route: "/api/backup/sync-turso",
       method: "POST",

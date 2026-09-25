@@ -334,6 +334,9 @@ async function backfillCompaniesFromApplicationsTurso(client: Client): Promise<v
 async function migrateTurso(client: Client): Promise<void> {
   await client.execute("PRAGMA foreign_keys = ON");
   await client.executeMultiple(readSchemaSql());
+  const syncReceipt = (await tableExists(client, "sync_receipt"))
+    ? await tursoFirstRow(client, "SELECT receipt FROM sync_receipt WHERE id = 1")
+    : null;
 
   for (const column of APPLICATION_LEGACY_COLUMNS) {
     if (!(await columnExists(client, column))) {
@@ -349,9 +352,10 @@ async function migrateTurso(client: Client): Promise<void> {
     await client.execute(`ALTER TABLE applications ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`);
   }
 
-  await client.execute(CLEAR_PINNED_ON_ARCHIVED_SQL);
-
-  await migrateLegacyApplicationNotes(client);
+  if (!syncReceipt) {
+    await client.execute(CLEAR_PINNED_ON_ARCHIVED_SQL);
+    await migrateLegacyApplicationNotes(client);
+  }
 
   if (!(await agentApiTokenColumnExists(client, "last_used_at"))) {
     await client.execute(`ALTER TABLE agent_api_tokens ADD COLUMN last_used_at TEXT`);
@@ -365,8 +369,12 @@ async function migrateTurso(client: Client): Promise<void> {
 
   await migrateUserCredentials(client);
   await migrateDefaultUser(client);
-  await migrateInitialStatusHistory(client);
-  await backfillCompaniesFromApplicationsTurso(client);
+  // A resumable baseline may have committed parents but not their history yet.
+  // Managed replicas also avoid full-table data backfills on every no-op sync.
+  if (!syncReceipt) {
+    await migrateInitialStatusHistory(client);
+    await backfillCompaniesFromApplicationsTurso(client);
+  }
 }
 
 function rowToUserRow(row: Row): UserRow {
@@ -802,6 +810,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
   async importJson(raw: unknown, mode: ImportMode) {
     await this.ready;
     const data = parseBackupJson(raw);
+    await this.invalidateSyncReceipt();
 
     if (mode === "replace") {
       await this.client.execute("DELETE FROM application_status_history");
@@ -853,6 +862,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
 
   async importSql(sql: string, mode: ImportMode) {
     await this.ready;
+    await this.invalidateSyncReceipt();
     const trimmed = sql.trim();
     if (trimmed.length === 0) {
       throw new Error("SQL backup is empty");
@@ -882,6 +892,16 @@ export class TursoDatabaseBackend implements DatabaseBackend {
 
   reset(): void {
     this.client.close();
+  }
+
+  private async invalidateSyncReceipt(): Promise<void> {
+    if (await tableExists(this.client, "sync_receipt")) {
+      await this.client.execute("DELETE FROM sync_receipt");
+    }
+  }
+
+  async ensureReady(): Promise<void> {
+    await this.ready;
   }
 
   getTursoClient(): Client {

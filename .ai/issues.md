@@ -5,3 +5,5 @@
 - [ ] Re-adding the Hopper Ashby URL via `applied-agent applications add` created a duplicate application with generic title `Jobs` instead of detecting the existing parsed application or rejecting generic ATS shell captures.
 - [ ] `isoDateSchema` accepts normalized impossible calendar dates such as `2026-02-31` because it only checks whether `Date.parse` returns a number.
 - [x] Rapid analytics filter changes could overwrite a preceding selection because event handlers composed URLs from render-time filter state instead of the latest browser query.
+
+- [ ] Turso test credentials currently point at the app database. Provision a separate empty test database before running remote integration tests; the helper now rejects matching hostnames to prevent destructive test cleanup of app data.

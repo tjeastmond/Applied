@@ -11,6 +11,13 @@ export function resolveTursoTestConfig(env: Record<string, string | undefined> =
     return null;
   }
 
+  const hostname = (value: string) => new URL(value.trim().replace(/^libsql:/, "https:")).host.toLowerCase();
+  if (env.TURSO_DATABASE_URL?.trim() && hostname(url) === hostname(env.TURSO_DATABASE_URL)) {
+    throw new Error(
+      "Turso integration tests refuse to use the app database. Configure a separate empty TURSO_TEST_DATABASE_URL and TURSO_TEST_AUTH_TOKEN.",
+    );
+  }
+
   return {
     url: url.trim(),
     authToken: authToken.trim(),

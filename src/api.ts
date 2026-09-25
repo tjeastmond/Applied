@@ -262,6 +262,10 @@ export async function importBackup(file: File, mode: ImportBackupMode): Promise<
 }
 
 export type TursoSyncResult = {
+  mode?: "baseline" | "incremental";
+  deleted?: Record<string, number>;
+  batches?: number;
+  payloadBytes?: number;
   imported: {
     applications: number;
     notes: number;
@@ -270,7 +274,7 @@ export type TursoSyncResult = {
   differences: string[];
 };
 
-export async function syncTurso(mode: ImportBackupMode = "replace"): Promise<TursoSyncResult> {
+export async function syncTurso(mode: "incremental" | ImportBackupMode = "incremental"): Promise<TursoSyncResult> {
   return request<TursoSyncResult>("/api/backup/sync-turso", {
     method: "POST",
     body: JSON.stringify({ mode }),

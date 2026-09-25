@@ -2,6 +2,15 @@ import { describe, expect, test } from "vitest";
 import { requireTursoTestConfig, resolveTursoTestConfig } from "./helpers/tursoTestConfig";
 
 describe("tursoTestConfig", () => {
+  test("rejects the app database even with alternate URL transport spelling", () => {
+    expect(() =>
+      requireTursoTestConfig({
+        TURSO_DATABASE_URL: "libsql://app.example.com",
+        TURSO_TEST_DATABASE_URL: "https://app.example.com/",
+        TURSO_TEST_AUTH_TOKEN: "test-token",
+      }),
+    ).toThrow("refuse to use the app database");
+  });
   test("reads dedicated Turso test credentials only", () => {
     expect(
       resolveTursoTestConfig({

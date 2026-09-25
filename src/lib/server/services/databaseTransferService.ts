@@ -1,3 +1,6 @@
+import { syncIncrementally, syncDestinationKey } from "./incrementalSyncService";
+import { createTursoSyncTarget } from "./tursoSyncTarget";
+import type { IncrementalSyncResult } from "./syncProtocol";
 import type { ImportMode } from "@/lib/schemas/backup";
 import type { DatabaseBackend } from "../databaseBackend";
 import { getDefaultDatabasePath, readDatabaseConfig, type TursoDatabaseConfig } from "../databaseConfig";
@@ -104,6 +107,7 @@ async function withSqliteAndTursoBackends<T>(
   try {
     return await run({ sqlite, turso });
   } finally {
+    sqlite.getSqliteDatabase().close();
     turso.reset();
   }
 }
@@ -197,4 +201,19 @@ export async function verifySqliteAndTurso(
   options: Omit<DatabaseTransferOptions, "mode">,
 ): Promise<TransferVerification> {
   return withSqliteAndTursoBackends(options, ({ sqlite, turso }) => verifyBetweenBackends(sqlite, turso));
+}
+
+export async function syncSqliteToTurso(
+  options: Omit<DatabaseTransferOptions, "mode"> & { mode?: "incremental" | "replace" },
+): Promise<IncrementalSyncResult> {
+  return withSqliteAndTursoBackends(options, async ({ sqlite, turso }) => {
+    // Wait for schema migrations before opening the independent sync transaction.
+    await turso.ensureReady();
+    return syncIncrementally(
+      sqlite.getSqliteDatabase(),
+      createTursoSyncTarget(turso.getTursoClient()),
+      syncDestinationKey(resolveTursoTarget(options).tursoUrl),
+      options.mode === "replace",
+    );
+  });
 }

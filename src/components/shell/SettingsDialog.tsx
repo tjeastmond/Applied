@@ -237,7 +237,10 @@ export function SettingsDialog({
     setSyncingTurso(true);
     try {
       const result = await syncTurso();
-      const detail = `${result.imported.applications} application(s), ${result.imported.notes} note(s).`;
+      const deleted = Object.values(result.deleted ?? {}).reduce((sum, count) => sum + count, 0);
+      const updated = Object.values(result.imported).reduce((sum, count) => sum + count, 0);
+      const detail =
+        result.batches === 0 ? "Already up to date." : `${updated} record(s) updated, ${deleted} deletion(s).`;
       if (result.matches) {
         toast.success(`${toastMessages.tursoSyncSuccess} ${detail}`);
         return;

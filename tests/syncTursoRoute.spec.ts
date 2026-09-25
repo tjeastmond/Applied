@@ -36,14 +36,15 @@ describe("POST /api/backup/sync-turso", () => {
 
   test("pushes sqlite data to turso when available", async () => {
     vi.spyOn(databaseTransferService, "isTursoSyncAvailable").mockReturnValue(true);
-    vi.spyOn(databaseTransferService, "pushSqliteToTurso").mockResolvedValue({
+    vi.spyOn(databaseTransferService, "syncSqliteToTurso").mockResolvedValue({
       imported: { applications: 1, notes: 2, users: 1, statusHistory: 1, companies: 0 },
-      verification: {
-        source: { applicationCount: 1, noteCount: 2, latestUpdatedAt: "2026-06-01T00:00:00.000Z" },
-        target: { applicationCount: 1, noteCount: 2, latestUpdatedAt: "2026-06-01T00:00:00.000Z" },
-        matches: true,
-        differences: [],
-      },
+      mode: "incremental",
+      deleted: { applications: 0, notes: 0, users: 0, statusHistory: 0, companies: 0 },
+      batches: 1,
+      payloadBytes: 100,
+      checkpoint: 1,
+      matches: true,
+      differences: [],
     });
 
     await getRepository().create(
@@ -65,24 +66,25 @@ describe("POST /api/backup/sync-turso", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
+    expect(await response.json()).toMatchObject({
       imported: { applications: 1, notes: 2, users: 1, statusHistory: 1, companies: 0 },
       matches: true,
       differences: [],
     });
-    expect(databaseTransferService.pushSqliteToTurso).toHaveBeenCalledWith({ mode: "replace" });
+    expect(databaseTransferService.syncSqliteToTurso).toHaveBeenCalledWith({ mode: "replace" });
   });
 
-  test("defaults to replace mode when body is omitted", async () => {
+  test("defaults to incremental mode when body is omitted", async () => {
     vi.spyOn(databaseTransferService, "isTursoSyncAvailable").mockReturnValue(true);
-    vi.spyOn(databaseTransferService, "pushSqliteToTurso").mockResolvedValue({
+    vi.spyOn(databaseTransferService, "syncSqliteToTurso").mockResolvedValue({
       imported: { applications: 0, notes: 0, users: 0, statusHistory: 0, companies: 0 },
-      verification: {
-        source: { applicationCount: 0, noteCount: 0, latestUpdatedAt: null },
-        target: { applicationCount: 0, noteCount: 0, latestUpdatedAt: null },
-        matches: true,
-        differences: [],
-      },
+      mode: "incremental",
+      deleted: { applications: 0, notes: 0, users: 0, statusHistory: 0, companies: 0 },
+      batches: 1,
+      payloadBytes: 100,
+      checkpoint: 1,
+      matches: true,
+      differences: [],
     });
 
     const response = await syncTurso(
@@ -93,6 +95,43 @@ describe("POST /api/backup/sync-turso", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(databaseTransferService.pushSqliteToTurso).toHaveBeenCalledWith({ mode: "replace" });
+    expect(databaseTransferService.syncSqliteToTurso).toHaveBeenCalledWith({ mode: "incremental" });
+  });
+  test("rejects unknown modes without syncing", async () => {
+    vi.spyOn(databaseTransferService, "isTursoSyncAvailable").mockReturnValue(true);
+    const sync = vi.spyOn(databaseTransferService, "syncSqliteToTurso");
+    const response = await syncTurso(
+      authorizedAppRequest("/api/backup/sync-turso", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "unknown" }),
+      }),
+      emptyRouteContext,
+    );
+    expect(response.status).toBe(400);
+    expect(sync).not.toHaveBeenCalled();
+  });
+
+  test("keeps explicit upsert on the legacy merge path", async () => {
+    vi.spyOn(databaseTransferService, "isTursoSyncAvailable").mockReturnValue(true);
+    const merge = vi.spyOn(databaseTransferService, "pushSqliteToTurso").mockResolvedValue({
+      imported: { applications: 0, notes: 0, users: 0, statusHistory: 0, companies: 0 },
+      verification: {
+        source: { applicationCount: 0, noteCount: 0, latestUpdatedAt: null },
+        target: { applicationCount: 0, noteCount: 0, latestUpdatedAt: null },
+        matches: true,
+        differences: [],
+      },
+    });
+    const response = await syncTurso(
+      authorizedAppRequest("/api/backup/sync-turso", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "upsert" }),
+      }),
+      emptyRouteContext,
+    );
+    expect(response.status).toBe(200);
+    expect(merge).toHaveBeenCalledWith({ mode: "upsert" });
   });
 });

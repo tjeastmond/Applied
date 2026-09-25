@@ -82,4 +82,9 @@ export const optionalPhoneSchema = z.preprocess(
     .optional(),
 );
 
-export const optionalFullJdSchema = z.preprocess(emptyToNull, z.union([z.string().max(100_000), z.null()]).optional());
+export const FULL_JD_MAX_LENGTH = 100_000;
+
+export const optionalFullJdSchema = z.preprocess(
+  emptyToNull,
+  z.union([z.string().max(FULL_JD_MAX_LENGTH), z.null()]).optional(),
+);

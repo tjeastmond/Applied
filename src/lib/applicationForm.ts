@@ -6,6 +6,7 @@ import {
   requiredApplicationFieldsSchema,
   type ParsedCreateJobApplicationInput,
 } from "@/lib/schemas/application";
+import { FULL_JD_MAX_LENGTH } from "@/lib/schemas/common";
 import type {
   ApplicationSalaryFormFields,
   ApplicationStatus,
@@ -161,7 +162,7 @@ function buildCreateInput(form: FormState) {
     contactPhone: form.contactPhone,
     salaryRange: form.salaryRange,
     desiredSalary: form.desiredSalary,
-    fullJd: form.fullJd,
+    fullJd: truncateFullJd(form.fullJd),
     status: form.status,
   };
 }
@@ -215,6 +216,13 @@ export function isStatusOnlyFormChange(form: FormState, application: JobApplicat
   return !isFormPristine(form, application) && !isManualSaveFormDirty(form, application);
 }
 
+function truncateFullJd(value: string): string {
+  if (value.length <= FULL_JD_MAX_LENGTH) {
+    return value;
+  }
+  return value.slice(0, FULL_JD_MAX_LENGTH);
+}
+
 export function mergeParseResult(
   form: FormState,
   result: Pick<ParseJobUrlSuccess, "title" | "company" | "fullJd"> & ParsedApplicationSalaryFields,
@@ -225,7 +233,7 @@ export function mergeParseResult(
     title: parsedTitle ?? form.title,
     company: result.company ?? form.company,
     salaryRange: result.salaryRange ?? form.salaryRange,
-    fullJd: result.fullJd ?? form.fullJd,
+    fullJd: truncateFullJd(result.fullJd ?? form.fullJd),
   };
 }
 

@@ -105,6 +105,9 @@ export type BackupJson = z.infer<typeof backupJsonSchema>;
 
 export const importModeSchema = z.enum(["replace", "upsert"]);
 
+export const tursoSyncModeSchema = z.enum(["incremental", "replace", "upsert"]);
+export type TursoSyncMode = z.infer<typeof tursoSyncModeSchema>;
+
 export type ImportMode = z.infer<typeof importModeSchema>;
 
 export const backupFormatSchema = z.enum(["sql", "json"]);
