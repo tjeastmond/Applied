@@ -1,7 +1,8 @@
 "use client";
 
+import { useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { CompanyCard } from "@/components/companies/CompanyCard";
-import { CompanyDetailSheet } from "@/components/companies/CompanyDetailSheet";
 import { CompanyFilters } from "@/components/companies/CompanyFilters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import type { CompaniesController } from "@/hooks/useCompaniesController";
+import { companyPath } from "@/lib/companies";
 import { PlusIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,8 +21,6 @@ type CompanyListPageProps = Pick<
   CompaniesController,
   | "applications"
   | "visibleCompanies"
-  | "selectedCompany"
-  | "detailOpen"
   | "addDialogOpen"
   | "newCompanyForm"
   | "isCreating"
@@ -29,25 +29,18 @@ type CompanyListPageProps = Pick<
   | "searchInputRef"
   | "routeViewMode"
   | "setSearchQuery"
-  | "setDetailOpen"
   | "setAddDialogOpen"
   | "setNewCompanyForm"
-  | "handleOpenCompany"
-  | "handleCompanyChange"
   | "handleToggleIgnored"
   | "handleCreateCompany"
-  | "handleUpdateCompany"
   | "clearFilters"
 > & {
   edgeBleedClassName?: string;
-  onOpenApplication?: (id: string) => void;
 };
 
 export function CompanyListPage({
   applications,
   visibleCompanies,
-  selectedCompany,
-  detailOpen,
   addDialogOpen,
   newCompanyForm,
   isCreating,
@@ -56,18 +49,15 @@ export function CompanyListPage({
   searchInputRef,
   routeViewMode,
   setSearchQuery,
-  setDetailOpen,
   setAddDialogOpen,
   setNewCompanyForm,
-  handleOpenCompany,
-  handleCompanyChange,
   handleToggleIgnored,
   handleCreateCompany,
-  handleUpdateCompany,
   clearFilters,
   edgeBleedClassName,
-  onOpenApplication,
 }: CompanyListPageProps) {
+  const router = useRouter();
+  const handleOpenCompany = useCallback((id: string) => router.push(companyPath(id)), [router]);
   const isIgnoredView = routeViewMode === "ignored";
   const emptyTitle = isIgnoredView ? "No ignored companies" : "No companies yet";
   const emptyDescription = isIgnoredView
@@ -92,7 +82,6 @@ export function CompanyListPage({
       <CompanyFilters
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
-        viewMode={routeViewMode}
         onClearFilters={clearFilters}
         hasActiveFilters={hasActiveFilters}
         searchInputRef={searchInputRef}
@@ -126,19 +115,6 @@ export function CompanyListPage({
           ))}
         </div>
       )}
-
-      <CompanyDetailSheet
-        company={selectedCompany}
-        applications={applications}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        onCompanyChange={handleCompanyChange}
-        onToggleIgnored={(id, ignored) => {
-          void handleToggleIgnored(id, ignored);
-        }}
-        onUpdateCompany={handleUpdateCompany}
-        onOpenApplication={onOpenApplication}
-      />
 
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent>

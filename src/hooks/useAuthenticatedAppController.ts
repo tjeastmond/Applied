@@ -5,7 +5,8 @@ import { deleteApplication, updateApplication } from "@/api";
 import { useApplicationListView } from "@/hooks/useApplicationListView";
 import { useApplicationNotesCache } from "@/hooks/useApplicationNotesCache";
 import { useApplicationStatusHistoryCache } from "@/hooks/useApplicationStatusHistoryCache";
-import { companyFilterNavigatesHome, shouldShowIncludeArchived, type AppView } from "@/lib/appView";
+import { usePathname } from "next/navigation";
+import { companyFilterNavigatesHome, isListRoutePath, shouldShowIncludeArchived, type AppView } from "@/lib/appView";
 import { removeApplication, sortApplications, upsertApplication } from "@/lib/applicationsList";
 import { applicationMatchesViewMode } from "@/lib/applicationArchive";
 import {
@@ -57,11 +58,34 @@ export function useAuthenticatedAppController({
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const pathname = usePathname();
+  // Set right before the app closes the drawer and navigates away (e.g. company link in the drawer),
+  // so the list snapshot saved on leave still records that drawer as open for Back.
+  const openApplicationForBackRef = useRef<string | null>(null);
+  const detailOpenRef = useRef(detailOpen);
+  detailOpenRef.current = detailOpen;
+  const applicationsRef = useRef(applications);
+  applicationsRef.current = applications;
+  const restoreOpenApplicationRef = useRef<(id: string) => void>(() => undefined);
+
+  const getOpenApplicationIdForSnapshot = useCallback(() => {
+    const remembered = openApplicationForBackRef.current;
+    openApplicationForBackRef.current = null;
+    if (detailOpenRef.current && selectedIdRef.current) return selectedIdRef.current;
+    return remembered;
+  }, []);
+
+  const onRestoreOpenApplication = useCallback((id: string) => {
+    restoreOpenApplicationRef.current(id);
+  }, []);
+
   const listView = useApplicationListView({
     applications,
     initialPageSize,
     initialPageSizeFromPreference,
     routeAppView,
+    getOpenApplicationId: getOpenApplicationIdForSnapshot,
+    onRestoreOpenApplication,
   });
 
   const {
@@ -194,6 +218,8 @@ export function useAuthenticatedAppController({
 
   useEffect(() => {
     if (!selectedApplication || !detailOpen) return;
+    // On company pages the drawer opens outside the list, so list filters do not apply.
+    if (pathname != null && !isListRoutePath(pathname)) return;
 
     const matchesView = applicationMatchesViewMode(selectedApplication, viewMode, includeArchived);
     const matchesBookmarks = !bookmarksOnly || selectedApplication.pinned;
@@ -201,7 +227,7 @@ export function useAuthenticatedAppController({
     if (!matchesView || !matchesBookmarks || !matchesToApply) {
       setDetailOpen(false);
     }
-  }, [bookmarksOnly, detailOpen, includeArchived, selectedApplication, toApplyOnly, viewMode]);
+  }, [bookmarksOnly, detailOpen, includeArchived, pathname, selectedApplication, toApplyOnly, viewMode]);
 
   useEffect(() => {
     prefetchMany(visibleApplicationIds);
@@ -246,6 +272,15 @@ export function useAuthenticatedAppController({
     },
     [prefetch, prefetchStatusHistory],
   );
+
+  restoreOpenApplicationRef.current = (id: string) => {
+    if (!applicationsRef.current.some((application) => application.id === id)) return;
+    handleOpenApplication(id);
+  };
+
+  const rememberOpenApplicationForBack = useCallback((id: string) => {
+    openApplicationForBackRef.current = id;
+  }, []);
 
   const handlePrefetchNotes = useCallback(
     (id: string) => {
@@ -620,6 +655,7 @@ export function useAuthenticatedAppController({
     handlePageSizeChange,
     handleCompanyFilter,
     handleCompanyFilterFromDetail,
+    rememberOpenApplicationForBack,
     handleCardMouseEnter,
     handleCardMouseLeave,
     requestDelete,
