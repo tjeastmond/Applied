@@ -35,8 +35,6 @@ export function useCompaniesController({
 }: UseCompaniesControllerOptions) {
   const [companies, setCompanies] = useState(initialCompanies);
   const [searchQuery, setSearchQuery] = useState("");
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newCompanyForm, setNewCompanyForm] = useState<NewCompanyFormState>(emptyNewCompanyForm);
   const [isCreating, setIsCreating] = useState(false);
@@ -51,16 +49,7 @@ export function useCompaniesController({
     () => filterCompanies(sortedCompanies, searchQuery, routeViewMode),
     [sortedCompanies, searchQuery, routeViewMode],
   );
-  const selectedCompany = useMemo(
-    () => companies.find((company) => company.id === selectedCompanyId) ?? null,
-    [companies, selectedCompanyId],
-  );
   const hasActiveFilters = searchQuery.trim().length > 0;
-
-  const handleOpenCompany = useCallback((id: string) => {
-    setSelectedCompanyId(id);
-    setDetailOpen(true);
-  }, []);
 
   const handleCompanyChange = useCallback((company: Company) => {
     setCompanies((current) => current.map((item) => (item.id === company.id ? company : item)));
@@ -128,8 +117,6 @@ export function useCompaniesController({
     companies,
     applications,
     visibleCompanies,
-    selectedCompany,
-    detailOpen,
     addDialogOpen,
     newCompanyForm,
     isCreating,
@@ -137,10 +124,8 @@ export function useCompaniesController({
     hasActiveFilters,
     searchInputRef,
     setSearchQuery,
-    setDetailOpen,
     setAddDialogOpen,
     setNewCompanyForm,
-    handleOpenCompany,
     handleCompanyChange,
     handleToggleIgnored,
     handleCreateCompany,

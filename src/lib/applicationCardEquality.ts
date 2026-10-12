@@ -16,6 +16,7 @@ export function applicationCardPropsEqual(
     a.linkedinUrl === b.linkedinUrl &&
     a.url === b.url &&
     a.pinned === b.pinned &&
+    a.archived === b.archived &&
     a.updatedAt === b.updatedAt &&
     (prev.keyboardHighlighted ?? false) === (next.keyboardHighlighted ?? false)
   );

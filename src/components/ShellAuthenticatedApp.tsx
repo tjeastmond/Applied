@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AnalyticsPage } from "@/components/analytics/AnalyticsPage";
 import { ApplicationListPage } from "@/components/ApplicationListPage";
 import { CompanyListPage } from "@/components/companies/CompanyListPage";
+import { CompanyPage } from "@/components/companies/CompanyPage";
 import { AuthenticatedAppOverlays } from "@/components/AuthenticatedAppOverlays";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { AppSidebar } from "@/components/shell/AppSidebar";
@@ -16,7 +17,7 @@ import { useAuthenticatedAppController } from "@/hooks/useAuthenticatedAppContro
 import { resolveCompaniesRouteViewMode, useCompaniesController } from "@/hooks/useCompaniesController";
 import { useUiShellMode } from "@/hooks/useUiShellMode";
 import { isAnalyticsRoute } from "@/lib/analytics";
-import { isCompaniesRoute } from "@/lib/companies";
+import { companyIdFromPath, companyPath, findCompanyByName, isCompaniesRoute } from "@/lib/companies";
 import { appViewToPath, computeNavCounts, isProfileRoute, pathToAppView, PROFILE_PATH } from "@/lib/appView";
 import { SHELL_LIST_EDGE_BLEED_CLASS } from "@/lib/listPageLayout";
 import type { Company, User } from "@/types";
@@ -40,6 +41,7 @@ export function ShellAuthenticatedApp({
   const routeAppView = useMemo(() => pathToAppView(pathname), [pathname]);
   const onAnalyticsRoute = isAnalyticsRoute(pathname);
   const onCompaniesRoute = isCompaniesRoute(pathname);
+  const companyId = companyIdFromPath(pathname);
   const onProfileRoute = isProfileRoute(pathname);
   const companiesRouteViewMode = useMemo(() => resolveCompaniesRouteViewMode(pathname), [pathname]);
 
@@ -69,10 +71,7 @@ export function ShellAuthenticatedApp({
   }, [initialCurrentUser]);
 
   const navCounts = useMemo(() => computeNavCounts(controller.applications), [controller.applications]);
-  const companiesCount = useMemo(
-    () => companiesController.companies.filter((company) => !company.ignored).length,
-    [companiesController.companies],
-  );
+  const companiesCount = useMemo(() => companiesController.companies.length, [companiesController.companies]);
 
   const handleOpenSettings = useCallback((section: SettingsSection = "general") => {
     setSettingsSection(section);
@@ -101,24 +100,33 @@ export function ShellAuthenticatedApp({
     setCurrentUser(user);
   }, []);
 
-  const handleOpenApplicationFromCompany = useCallback(
-    (applicationId: string) => {
-      const application = controller.applications.find((item) => item.id === applicationId);
-      if (!application) return;
-
-      if (application.archived && controller.viewMode === "active" && !controller.includeArchived) {
-        controller.handleIncludeArchivedChange(true);
+  const handleCompanyOpen = useCallback(
+    (name: string) => {
+      const company = findCompanyByName(companiesController.companies, name);
+      if (company) {
+        router.push(companyPath(company.id));
+        return;
       }
-
-      companiesController.setDetailOpen(false);
-
-      if (onCompaniesRoute) {
-        router.push(appViewToPath("applications"));
-      }
-
-      controller.handleOpenApplication(applicationId);
+      controller.handleCompanyFilter(name);
     },
-    [companiesController.setDetailOpen, controller, onCompaniesRoute, router],
+    [companiesController.companies, controller, router],
+  );
+
+  /** Drawer variant: closes the detail drawer before navigating to the company page. */
+  const handleCompanyOpenFromDetail = useCallback(
+    (name: string) => {
+      const company = findCompanyByName(companiesController.companies, name);
+      if (company) {
+        if (controller.selectedApplication) {
+          controller.rememberOpenApplicationForBack(controller.selectedApplication.id);
+        }
+        controller.handleDetailOpenChange(false);
+        router.push(companyPath(company.id));
+        return;
+      }
+      controller.handleCompanyFilterFromDetail(name);
+    },
+    [companiesController.companies, controller, router],
   );
 
   return (
@@ -142,25 +150,36 @@ export function ShellAuthenticatedApp({
               <AnalyticsPage applications={controller.applications} onAddApplication={controller.openAddForm} />
             ) : onProfileRoute ? (
               <ProfilePage user={currentUser} onUserUpdated={handleUserUpdated} onCancel={handleLeaveProfile} />
-            ) : onCompaniesRoute ? (
-              <CompanyListPage
-                {...companiesController}
+            ) : companyId ? (
+              <CompanyPage
+                companyId={companyId}
+                companies={companiesController.companies}
+                applications={controller.applications}
+                handleCompanyChange={companiesController.handleCompanyChange}
+                handleUpdateCompany={companiesController.handleUpdateCompany}
+                handleToggleIgnored={companiesController.handleToggleIgnored}
+                handleOpenApplication={controller.handleOpenApplication}
+                handlePrefetchNotes={controller.handlePrefetchNotes}
+                handleStatusChange={controller.handleStatusChange}
+                handlePinChange={controller.handlePinChange}
                 edgeBleedClassName={SHELL_LIST_EDGE_BLEED_CLASS}
-                onOpenApplication={handleOpenApplicationFromCompany}
               />
+            ) : onCompaniesRoute ? (
+              <CompanyListPage {...companiesController} edgeBleedClassName={SHELL_LIST_EDGE_BLEED_CLASS} />
             ) : (
               <ApplicationListPage
                 {...controller}
                 onBackToApplications={handleBackToApplications}
                 edgeBleedClassName={SHELL_LIST_EDGE_BLEED_CLASS}
                 showListFooter={false}
+                onCompanyOpen={handleCompanyOpen}
               />
             )}
           </main>
         </div>
       </div>
 
-      <AuthenticatedAppOverlays {...controller} />
+      <AuthenticatedAppOverlays {...controller} onCompanyOpen={handleCompanyOpenFromDetail} />
 
       <SettingsDialog
         applications={controller.applications}

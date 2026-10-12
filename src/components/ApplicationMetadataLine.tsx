@@ -16,6 +16,8 @@ type ApplicationMetadataLineProps = {
   postingUrl?: string | null;
   stopPropagation?: boolean;
   onCompanyClick?: (company: string) => void;
+  /** When true, the company button reads as a navigation link ("View") rather than a filter. */
+  companyNavigates?: boolean;
   dotSize?: MetadataDotSize;
   className?: string;
 };
@@ -28,6 +30,7 @@ export function ApplicationMetadataLine({
   postingUrl,
   stopPropagation = false,
   onCompanyClick,
+  companyNavigates = false,
   dotSize = "md",
   className,
 }: ApplicationMetadataLineProps) {
@@ -55,8 +58,8 @@ export function ApplicationMetadataLine({
                 "hover:after:scale-x-100 focus-visible:after:scale-x-100",
                 "focus-visible:ring-ring/50 rounded-sm focus-visible:ring-3 focus-visible:outline-none",
               )}
-              aria-label={`Filter by ${companyText}`}
-              title={`Filter by ${companyText}`}
+              aria-label={`${companyNavigates ? "View" : "Filter by"} ${companyText}`}
+              title={`${companyNavigates ? "View" : "Filter by"} ${companyText}`}
               onClick={handleCompanyClick}
             >
               {companyText}

@@ -60,6 +60,8 @@ type ApplicationListPageProps = Pick<
   showListFooter?: boolean;
   /** Classic UI uses a single column at all breakpoints. */
   singleColumnCards?: boolean;
+  /** Shell: navigate to the company page (takes precedence over the filter handler). */
+  onCompanyOpen?: (company: string) => void;
 };
 
 export function ApplicationListPage({
@@ -103,6 +105,7 @@ export function ApplicationListPage({
   edgeBleedClassName,
   showListFooter: showListFooterProp = true,
   singleColumnCards = false,
+  onCompanyOpen,
 }: ApplicationListPageProps) {
   const cardGridClasses = singleColumnCards
     ? APPLICATION_CARD_GRID_SINGLE_COLUMN_CLASSES
@@ -214,6 +217,7 @@ export function ApplicationListPage({
                     onStatusChange={handleStatusChange}
                     onPinChange={handlePinChange}
                     onCompanyFilter={handleCompanyFilter}
+                    onCompanyOpen={onCompanyOpen}
                     onMouseEnterCard={handleCardMouseEnter}
                     onMouseLeaveCard={handleCardMouseLeave}
                   />

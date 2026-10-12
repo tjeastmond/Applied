@@ -67,6 +67,7 @@ export function ApplicationDetailSheet({
   onStatusChange,
   onRequestDelete,
   onCompanyFilter,
+  onCompanyOpen,
 }: {
   application: JobApplication | null;
   open: boolean;
@@ -84,6 +85,7 @@ export function ApplicationDetailSheet({
   ) => JobApplication | null | void | Promise<JobApplication | null | void>;
   onRequestDelete: (id: string) => void;
   onCompanyFilter?: (company: string) => void;
+  onCompanyOpen?: (company: string) => void;
 }) {
   const [form, setForm] = useState<FormState | null>(() => (application ? applicationToForm(application) : null));
   const [newNote, setNewNote] = useState("");
@@ -547,7 +549,8 @@ export function ApplicationDetailSheet({
               appliedLabel={application ? formatDate(application.appliedAt) : ""}
               linkedinUrl={application ? companyLinkedInUrl : null}
               postingUrl={application ? postingUrl : null}
-              onCompanyClick={onCompanyFilter}
+              onCompanyClick={onCompanyOpen ?? onCompanyFilter}
+              companyNavigates={Boolean(onCompanyOpen)}
             />
           </SheetHeader>
 

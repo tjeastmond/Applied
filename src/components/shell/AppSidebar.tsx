@@ -88,7 +88,6 @@ export function AppSidebar({
   const activeView = pathToAppView(pathname);
   const { collapsed, transitionsEnabled, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar();
   const sections = buildSections(navCounts, companiesCount);
-
   function handleNavigate() {
     setMobileOpen(false);
   }
