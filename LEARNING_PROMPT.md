@@ -76,9 +76,14 @@ applied-agent applications add --url URL [--status STATUS] [--json]
 applied-agent applications get --id ID [--json]
 applied-agent applications set-status --id ID --status STATUS [--json]
 applied-agent applications add-note --id ID --content "..." [--json]
-applied-agent companies list [--search QUERY] [--json]
+applied-agent companies list [--search QUERY] [--ignored] [--json]
+applied-agent companies add --name NAME [--url URL] [--linkedin URL] [--email EMAIL] [--json]
+applied-agent companies update --id ID [--name NAME] [--url URL] [--linkedin URL] [--email EMAIL] [--json]
+applied-agent companies ignore --id ID [--json]
+applied-agent companies unignore --id ID [--json]
 applied-agent posts add --url URL [--status STATUS] [--json]
-applied-agent docs [--json]
+applied-agent docs [--json]     # server API reference (needs token + running server)
+applied-agent learn [--json]    # this learning prompt (offline, no token needed)
 ```
 
 From the repo only: prefix with `pnpm applied:agent` instead of `applied-agent`.

@@ -12,6 +12,7 @@
  * Requires AGENT_API_TOKEN and a running applied.dev server.
  */
 
+import learningPrompt from "virtual:learning-prompt";
 import {
   addApplicationNote,
   createApplication,
@@ -46,6 +47,7 @@ type GlobalOptions = {
 type ParsedCommand =
   | { kind: "help" }
   | { kind: "docs"; options: GlobalOptions }
+  | { kind: "learn"; options: GlobalOptions }
   | { kind: "applications-list"; search?: string; status?: string; options: GlobalOptions }
   | { kind: "applications-add"; url: string; status?: string; options: GlobalOptions }
   | { kind: "applications-get"; id: string; options: GlobalOptions }
@@ -78,7 +80,8 @@ function printHelp(): void {
   applied companies ignore --id ID [--json]
   applied companies unignore --id ID [--json]
   applied posts add --url URL [--status STATUS] [--json]
-  applied docs [--json]
+  applied docs [--json]            Fetch the server's API reference (needs token + running server)
+  applied learn [--json]           Print the agent learning prompt (offline, no token needed)
 
 Aliases:
   apps …              Shorthand for applications (e.g. applied apps list)
@@ -173,6 +176,10 @@ function parseCommand(argv: string[]): ParsedCommand {
     return { kind: "docs", options };
   }
 
+  if (normalizedResource === "learn") {
+    return { kind: "learn", options };
+  }
+
   if (normalizedResource === "posts" && action === "add") {
     return parseApplicationsAdd(tail, options);
   }
@@ -195,7 +202,7 @@ function parseCommand(argv: string[]): ParsedCommand {
     }
   }
 
-  if (resource === "companies") {
+  if (normalizedResource === "companies") {
     if (action === "list") {
       return parseCompaniesList(tail, options);
     }
@@ -516,6 +523,15 @@ function parseCompaniesIgnore(args: string[], options: GlobalOptions, ignored: b
 async function runCommand(command: ParsedCommand): Promise<void> {
   if (command.kind === "help") {
     printHelp();
+    return;
+  }
+
+  if (command.kind === "learn") {
+    if (command.options.json) {
+      printJson({ markdown: learningPrompt });
+    } else {
+      printMarkdown(learningPrompt);
+    }
     return;
   }
 

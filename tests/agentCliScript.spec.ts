@@ -57,4 +57,27 @@ describe("applied:agent script stdout", () => {
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("AGENT_API_TOKEN");
   });
+
+  test("learn prints the learning prompt offline without a token", () => {
+    const result = spawnSync(process.execPath, [join(root, "scripts/run-applied-agent.mjs"), "learn"], {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, AGENT_API_TOKEN: "" },
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("# Applied.dev Agent CLI and API Learning Prompt");
+    expect(result.stdout).toContain("applied-agent learn");
+  });
+
+  test("learn --json wraps the prompt in a markdown field", () => {
+    const result = spawnSync(process.execPath, [join(root, "scripts/run-applied-agent.mjs"), "learn", "--json"], {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, AGENT_API_TOKEN: "" },
+    });
+
+    expect(result.status).toBe(0);
+    expect((JSON.parse(result.stdout) as { markdown: string }).markdown).toContain("Learning Prompt");
+  });
 });

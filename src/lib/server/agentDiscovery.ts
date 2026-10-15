@@ -181,6 +181,7 @@ export const AGENT_CLI_COMMANDS = [
   "pnpm applied:agent companies ignore --id ID [--json]",
   "pnpm applied:agent companies unignore --id ID [--json]",
   "pnpm applied:agent docs [--json]",
+  "pnpm applied:agent learn [--json]",
   "pnpm applied:agent posts add --url URL [--status STATUS] [--json]",
 ] as const;
 
