@@ -8,6 +8,7 @@ export default tseslint.config(
       "bin/",
       "dist/",
       ".next/",
+      ".claude/",
       "data/",
       "node_modules/",
       "eslint.config.js",

@@ -40,8 +40,10 @@ const pathAliasPlugin = {
   },
 };
 
-/** Inlines LEARNING_PROMPT.md so `learn` works offline from any install location. */
-/** @type {import("esbuild").Plugin} */
+/**
+ * Inlines LEARNING_PROMPT.md so `learn` works offline from any install location.
+ * @type {import("esbuild").Plugin}
+ */
 const learningPromptPlugin = {
   name: "learning-prompt",
   setup(build) {

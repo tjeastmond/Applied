@@ -69,7 +69,7 @@ describe("agent API routes", () => {
       capabilities: { method: string; path: string }[];
       limitations: string[];
       errors: { codes: Record<string, string> };
-      cli: { command: string };
+      cli: { command: string; examples: string[] };
       documentationUrl: string;
       openapiUrl: string;
       interactiveDocumentationUrl: string;
@@ -84,6 +84,7 @@ describe("agent API routes", () => {
     expect(body.openapiUrl).toBe("/api/agent/openapi");
     expect(body.interactiveDocumentationUrl).toBe("/agent/docs");
     expect(body.cli.command).toBe("pnpm applied:agent");
+    expect(body.cli.examples).toContain("pnpm applied:agent learn [--json]");
     expect(body.applicationSummaryFields).toEqual([
       "id",
       "url",
