@@ -7,15 +7,15 @@ export const parseJobUrlRequestSchema = z.strictObject({
   url: requiredHttpUrlSchema,
 });
 
-const parsedJobTitleSchema = z.union([z.string(), z.null()]).transform((value) => normalizeJobTitle(value));
-
-export const parseJobUrlSuccessSchema = z.strictObject({
-  ok: z.literal(true),
-  title: parsedJobTitleSchema,
-  company: z.string().nullable(),
-  salaryRange: parsedSalaryRangeSchema.optional().default(null),
-  fullJd: z.string().nullable(),
-});
+export const parseJobUrlSuccessSchema = z
+  .strictObject({
+    ok: z.literal(true),
+    title: z.string().nullable(),
+    company: z.string().nullable(),
+    salaryRange: parsedSalaryRangeSchema.optional().default(null),
+    fullJd: z.string().nullable(),
+  })
+  .transform((value) => ({ ...value, title: normalizeJobTitle(value.title, value.company) }));
 
 export const parseJobUrlFailureSchema = z.strictObject({
   ok: z.literal(false),
