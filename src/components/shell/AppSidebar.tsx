@@ -21,7 +21,6 @@ import {
   ListTodo,
   PanelLeftClose,
   Settings,
-  Users,
 } from "lucide-react";
 
 type NavItemConfig = {
@@ -65,7 +64,6 @@ function buildSections(counts: NavCounts, companiesCount?: number): NavSection[]
     {
       heading: "Admin",
       items: [
-        { label: "Manage Users", icon: Users, href: appViewToPath("applications") },
         { label: "Backup Data", icon: DatabaseBackup, href: "#", opensSettings: "data" },
         { label: "Settings", icon: Settings, href: "#", opensSettings: "general" },
       ],

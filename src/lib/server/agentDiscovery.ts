@@ -1,3 +1,4 @@
+import { AGENT_CLI_COMMAND_SPECS } from "@/lib/agentCli/commandSpecs";
 import { APPLICATION_STATUS_OPTIONS, APPLICATION_STATUSES } from "@/lib/applicationStatus";
 
 export const AGENT_API_VERSION = 2;
@@ -169,20 +170,7 @@ export const AGENT_LIMITATIONS = [
   "No access to recruiter, contact, salary, or job-description fields in responses",
 ] as const;
 
-export const AGENT_CLI_COMMANDS = [
-  "pnpm applied:agent applications list [--search QUERY] [--status STATUS] [--json]",
-  "pnpm applied:agent applications add --url URL [--status STATUS] [--json]",
-  "pnpm applied:agent applications get --id ID [--json]",
-  "pnpm applied:agent applications set-status --id ID --status STATUS [--json]",
-  'pnpm applied:agent applications add-note --id ID --content "..." [--json]',
-  "pnpm applied:agent companies list [--search QUERY] [--ignored] [--json]",
-  "pnpm applied:agent companies add --name NAME [--url URL] [--linkedin URL] [--email EMAIL] [--json]",
-  "pnpm applied:agent companies update --id ID [--name NAME] [--url URL] [--linkedin URL] [--email EMAIL] [--json]",
-  "pnpm applied:agent companies ignore --id ID [--json]",
-  "pnpm applied:agent companies unignore --id ID [--json]",
-  "pnpm applied:agent docs [--json]",
-  "pnpm applied:agent posts add --url URL [--status STATUS] [--json]",
-] as const;
+export const AGENT_CLI_COMMANDS = AGENT_CLI_COMMAND_SPECS.map((spec) => `pnpm applied:agent ${spec.usage}`);
 
 export function buildAgentDiscoveryPayload(tokenSource: string) {
   return {

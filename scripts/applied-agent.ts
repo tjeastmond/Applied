@@ -12,6 +12,8 @@
  * Requires AGENT_API_TOKEN and a running applied.dev server.
  */
 
+import learningPrompt from "virtual:learning-prompt";
+import { AGENT_CLI_COMMAND_SPECS } from "@/lib/agentCli/commandSpecs";
 import {
   addApplicationNote,
   createApplication,
@@ -46,6 +48,7 @@ type GlobalOptions = {
 type ParsedCommand =
   | { kind: "help" }
   | { kind: "docs"; options: GlobalOptions }
+  | { kind: "learn"; options: GlobalOptions }
   | { kind: "applications-list"; search?: string; status?: string; options: GlobalOptions }
   | { kind: "applications-add"; url: string; status?: string; options: GlobalOptions }
   | { kind: "applications-get"; id: string; options: GlobalOptions }
@@ -66,19 +69,13 @@ type ParsedCommand =
   | { kind: "companies-unignore"; id: string; options: GlobalOptions };
 
 function printHelp(): void {
+  const usageLines = AGENT_CLI_COMMAND_SPECS.map((spec) => {
+    const line = `  applied ${spec.usage}`;
+    return "note" in spec ? `${line.padEnd(40)} ${spec.note}` : line;
+  }).join("\n");
+
   process.stdout.write(`Usage:
-  applied applications list [--search QUERY] [--status STATUS] [--json]
-  applied applications add --url URL [--status STATUS] [--json]
-  applied applications get --id ID [--json]
-  applied applications set-status --id ID --status STATUS [--json]
-  applied applications add-note --id ID --content "..." [--json]
-  applied companies list [--search QUERY] [--ignored] [--json]
-  applied companies add --name "Acme" [--url URL] [--linkedin URL] [--email EMAIL] [--json]
-  applied companies update --id ID [--name NAME] [--url URL] [--linkedin URL] [--email EMAIL] [--json]
-  applied companies ignore --id ID [--json]
-  applied companies unignore --id ID [--json]
-  applied posts add --url URL [--status STATUS] [--json]
-  applied docs [--json]
+${usageLines}
 
 Aliases:
   apps …              Shorthand for applications (e.g. applied apps list)
@@ -169,8 +166,13 @@ function parseCommand(argv: string[]): ParsedCommand {
   const [resource, action, ...tail] = rest;
   const normalizedResource = normalizeResource(resource ?? "");
 
-  if (normalizedResource === "docs") {
-    return { kind: "docs", options };
+  if (normalizedResource === "docs" || normalizedResource === "learn") {
+    const extra = [action, ...tail].filter((arg) => arg !== undefined);
+    if (extra.length > 0) {
+      process.stderr.write(`Unknown option: ${extra[0]}\n`);
+      process.exit(1);
+    }
+    return { kind: normalizedResource, options };
   }
 
   if (normalizedResource === "posts" && action === "add") {
@@ -195,7 +197,7 @@ function parseCommand(argv: string[]): ParsedCommand {
     }
   }
 
-  if (resource === "companies") {
+  if (normalizedResource === "companies") {
     if (action === "list") {
       return parseCompaniesList(tail, options);
     }
@@ -519,6 +521,15 @@ async function runCommand(command: ParsedCommand): Promise<void> {
     return;
   }
 
+  if (command.kind === "learn") {
+    if (command.options.json) {
+      printJson({ markdown: learningPrompt });
+    } else {
+      printMarkdown(learningPrompt);
+    }
+    return;
+  }
+
   const config = resolveAgentCliConfig({
     tokenOverride: command.options.token,
     baseUrlOverride: command.options.baseUrl,
@@ -648,6 +659,14 @@ async function runCommand(command: ParsedCommand): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  // Exit quietly when a pipe reader (head, less) closes early.
+  process.stdout.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code === "EPIPE") {
+      process.exit(0);
+    }
+    throw error;
+  });
+
   const command = parseCommand(process.argv.slice(2));
   if (command.kind === "help") {
     printHelp();

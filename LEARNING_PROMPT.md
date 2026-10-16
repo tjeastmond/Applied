@@ -76,9 +76,14 @@ applied-agent applications add --url URL [--status STATUS] [--json]
 applied-agent applications get --id ID [--json]
 applied-agent applications set-status --id ID --status STATUS [--json]
 applied-agent applications add-note --id ID --content "..." [--json]
-applied-agent companies list [--search QUERY] [--json]
+applied-agent companies list [--search QUERY] [--ignored] [--json]
+applied-agent companies add --name NAME [--url URL] [--linkedin URL] [--email EMAIL] [--json]
+applied-agent companies update --id ID [--name NAME] [--url URL] [--linkedin URL] [--email EMAIL] [--json]
+applied-agent companies ignore --id ID [--json]
+applied-agent companies unignore --id ID [--json]
 applied-agent posts add --url URL [--status STATUS] [--json]
-applied-agent docs [--json]
+applied-agent docs [--json]     # server API reference (needs token + running server)
+applied-agent learn [--json]    # this learning prompt (offline, no token needed)
 ```
 
 From the repo only: prefix with `pnpm applied:agent` instead of `applied-agent`.
@@ -89,18 +94,21 @@ Default status on create: `to_apply` ("To Apply")
 
 ## HTTP endpoints
 
-| Method | Path                                | Purpose                                  |
-| ------ | ----------------------------------- | ---------------------------------------- |
-| GET    | `/api/agent/openapi`                | OpenAPI 3.1 spec (public)                |
-| GET    | `/api/agent`                        | JSON discovery                           |
-| GET    | `/api/agent/docs`                   | Markdown reference                       |
-| GET    | `/api/agent/applications`           | List applications (`?search=`)           |
-| POST   | `/api/agent/applications`           | Create from job URL (`{ url, status? }`) |
-| GET    | `/api/agent/applications/:id`       | Get one application                      |
-| PATCH  | `/api/agent/applications/:id`       | Update status only (`{ status }`)        |
-| GET    | `/api/agent/applications/:id/notes` | List notes                               |
-| POST   | `/api/agent/applications/:id/notes` | Add note (`{ content }`)                 |
-| GET    | `/api/agent/companies`              | Distinct companies (`?search=`)          |
+| Method | Path                                | Purpose                                                 |
+| ------ | ----------------------------------- | ------------------------------------------------------- |
+| GET    | `/api/agent/openapi`                | OpenAPI 3.1 spec (public)                               |
+| GET    | `/api/agent`                        | JSON discovery                                          |
+| GET    | `/api/agent/docs`                   | Markdown reference                                      |
+| GET    | `/api/agent/applications`           | List applications (`?search=`)                          |
+| POST   | `/api/agent/applications`           | Create from job URL (`{ url, status? }`)                |
+| GET    | `/api/agent/applications/:id`       | Get one application                                     |
+| PATCH  | `/api/agent/applications/:id`       | Update status only (`{ status }`)                       |
+| GET    | `/api/agent/applications/:id/notes` | List notes                                              |
+| POST   | `/api/agent/applications/:id/notes` | Add note (`{ content }`)                                |
+| GET    | `/api/agent/companies`              | List companies (`?search=`, `?ignored=1`)               |
+| POST   | `/api/agent/companies`              | Create company (`{ name, url?, linkedinUrl?, email? }`) |
+| PATCH  | `/api/agent/companies/:id`          | Update company (name, url, linkedinUrl, email)          |
+| PATCH  | `/api/agent/companies/:id/ignore`   | Set ignored flag (`{ ignored }`)                        |
 
 Status values: `applied`, `to_apply`, `interviewing`, `waiting`, `no_response`, `rejected`, `offer`, `passed`
 

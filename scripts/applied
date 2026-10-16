@@ -33,9 +33,14 @@ Application commands (requires AGENT_API_TOKEN and a running server):
   applications get --id ID [--json]
   applications set-status --id ID --status STATUS [--json]
   applications add-note --id ID --content "..." [--json]
-  companies list [--search QUERY] [--json]
+  companies list [--search QUERY] [--ignored] [--json]
+  companies add --name NAME [--url URL] [--linkedin URL] [--email EMAIL] [--json]
+  companies update --id ID [--name NAME] [--url URL] [--linkedin URL] [--email EMAIL] [--json]
+  companies ignore --id ID [--json]
+  companies unignore --id ID [--json]
   posts add --url URL [--status STATUS] [--json]
-  docs [--json]
+  docs [--json]       Fetch the server's API reference (needs token + running server)
+  learn [--json]      Print the agent learning prompt (offline, no token needed)
 
   apps                  Alias for applications (e.g. applied apps list)
 
@@ -56,7 +61,7 @@ EOF
 
 is_agent_command() {
   case "$1" in
-    applications | apps | companies | docs | posts | --json | --token | --base-url)
+    applications | apps | companies | docs | learn | posts | --json | --token | --base-url)
       return 0
       ;;
     *)
@@ -68,11 +73,18 @@ is_agent_command() {
 cmd_agent() {
   require_project
 
+  # Prefer the checkout runner when it can rebuild (esbuild installed): it
+  # refreshes bin/ when sources change, while a global applied-agent shim runs
+  # whatever bin/ was last built. Without dependencies, fall back to the shim.
+  local runner="${APPLIED_DEV_DIR}/scripts/run-applied-agent.mjs"
+  if [[ -f "$runner" && -d "${APPLIED_DEV_DIR}/node_modules/esbuild" ]]; then
+    exec node "$runner" "$@"
+  fi
+
   if command -v applied-agent >/dev/null 2>&1; then
     exec applied-agent "$@"
   fi
 
-  local runner="${APPLIED_DEV_DIR}/scripts/run-applied-agent.mjs"
   if [[ -f "$runner" ]]; then
     exec node "$runner" "$@"
   fi
