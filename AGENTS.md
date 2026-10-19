@@ -350,7 +350,7 @@ Client component (`"use client"`). Contains the full application UI:
 ### Job URL parsing (`src/lib/server/services/parseJobUrl.ts`)
 
 1. Validates URL (http/https only)
-2. Fetches with 8s timeout, browser User-Agent
+2. Fetches with 20s timeout (Built In takes ~10s), browser User-Agent
 3. Parses HTML with linkedom
 4. **Title:** `og:title` → `<title>` → first `<h1>`
 5. **Company:** `og:site_name` → `application-name` meta → hostname heuristic

@@ -18,6 +18,10 @@ export function parseJsonLdScripts(document: Document): unknown[] {
         for (const item of data) {
           records.push(item);
         }
+      } else if (data && typeof data === "object" && Array.isArray((data as { "@graph"?: unknown })["@graph"])) {
+        for (const item of (data as { "@graph": unknown[] })["@graph"]) {
+          records.push(item);
+        }
       } else {
         records.push(data);
       }

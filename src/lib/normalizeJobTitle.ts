@@ -2,6 +2,7 @@ import { collapseWhitespace } from "@/lib/collapseWhitespace";
 
 const Y_COMBINATOR_TITLE_SUFFIX = /\s*\|\s*Y Combinator.*$/i;
 const SIMPLIFY_TITLE_SUFFIX = /\s*\|\s*Simplify\s*$/i;
+const BUILT_IN_TITLE_SUFFIX = /\s*\|\s*Built In\s*$/i;
 const AT_COMPANY_TITLE_SUFFIX = /\s+at\s+[A-Za-z0-9][\w\s.,'&-]*$/i;
 const JOB_APPLICATION_TITLE_PREFIX = /^job application for\s+/i;
 const TITLE_COMPANY_SEPARATORS = "[-\\u2013\\u2014|:]";
@@ -27,6 +28,7 @@ export function normalizeJobTitle(title: string | null | undefined, company?: st
     .replace(JOB_APPLICATION_TITLE_PREFIX, "")
     .replace(Y_COMBINATOR_TITLE_SUFFIX, "")
     .replace(SIMPLIFY_TITLE_SUFFIX, "")
+    .replace(BUILT_IN_TITLE_SUFFIX, "")
     .replace(AT_COMPANY_TITLE_SUFFIX, "");
   const collapsed = collapseWhitespace(withoutSuffix);
   return company ? collapseWhitespace(stripCompanyAffix(collapsed, company)) : collapsed;
