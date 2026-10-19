@@ -18,7 +18,7 @@ export const POST = withAppAccess(async (request: Request) => {
 
   const statuses = data.statuses ?? [...ARCHIVABLE_STATUSES];
   if (!isArchivableStatusList(statuses)) {
-    return badRequestResponse("Only rejected and passed statuses can be bulk archived");
+    return badRequestResponse("Only rejected, passed, and no response statuses can be bulk archived");
   }
 
   const result = await getRepository().bulkArchiveByStatuses(statuses);

@@ -55,15 +55,16 @@ describe("applicationMatchesViewMode", () => {
 });
 
 describe("countArchivableApplications", () => {
-  it("counts non-archived rejected and passed applications", () => {
+  it("counts non-archived rejected, passed, and no response applications", () => {
     const applications = [
       makeJobApplication({ id: "a", status: "rejected", archived: false }),
       makeJobApplication({ id: "b", status: "passed", archived: false }),
       makeJobApplication({ id: "c", status: "rejected", archived: true }),
       makeJobApplication({ id: "d", status: "applied", archived: false }),
+      makeJobApplication({ id: "e", status: "no_response", archived: false }),
     ];
 
-    expect(countArchivableApplications(applications)).toBe(2);
+    expect(countArchivableApplications(applications)).toBe(3);
   });
 });
 
@@ -76,8 +77,8 @@ describe("archive view helpers", () => {
   });
 
   it("formats bulk archive confirmation copy", () => {
-    expect(bulkArchiveConfirmDescription(1)).toContain("1 rejected or passed application");
-    expect(bulkArchiveConfirmDescription(3)).toContain("3 rejected and passed applications");
+    expect(bulkArchiveConfirmDescription(1)).toContain("1 rejected, passed, or no response application");
+    expect(bulkArchiveConfirmDescription(3)).toContain("3 rejected, passed, and no response applications");
   });
 });
 

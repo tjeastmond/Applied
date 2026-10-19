@@ -123,7 +123,7 @@ export function appKeyboardShortcuts(): KeyboardShortcutEntry[] {
     },
     {
       keys: "e",
-      description: "Archive rejected and passed applications without confirmation",
+      description: "Archive rejected, passed, and no response applications without confirmation",
       context: "Admin",
     },
     {

@@ -1,6 +1,6 @@
 import type { ApplicationStatus } from "@/lib/applicationStatus";
 
-export const ARCHIVABLE_STATUSES = ["rejected", "passed"] as const;
+export const ARCHIVABLE_STATUSES = ["rejected", "passed", "no_response"] as const;
 
 export type ArchivableStatus = (typeof ARCHIVABLE_STATUSES)[number];
 
