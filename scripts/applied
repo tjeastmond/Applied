@@ -32,6 +32,7 @@ Application commands (requires AGENT_API_TOKEN and a running server):
   applications add --url URL [--status STATUS] [--json]
   applications get --id ID [--json]
   applications set-status --id ID --status STATUS [--json]
+  applications archive-stale [--dry-run] [--json]
   applications add-note --id ID --content "..." [--json]
   companies list [--search QUERY] [--ignored] [--json]
   companies add --name NAME [--url URL] [--linkedin URL] [--email EMAIL] [--json]

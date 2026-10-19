@@ -26,6 +26,7 @@ import {
   setCompanyIgnored,
   updateCompany,
   AgentCliRequestError,
+  archiveStaleApplications,
 } from "@/lib/agentCli/client";
 import { AgentCliConfigError, normalizeAgentStatus, resolveAgentCliConfig } from "@/lib/agentCli/config";
 import {
@@ -53,6 +54,7 @@ type ParsedCommand =
   | { kind: "applications-add"; url: string; status?: string; options: GlobalOptions }
   | { kind: "applications-get"; id: string; options: GlobalOptions }
   | { kind: "applications-set-status"; id: string; status: string; options: GlobalOptions }
+  | { kind: "applications-archive-stale"; dryRun: boolean; options: GlobalOptions }
   | { kind: "applications-add-note"; id: string; content: string; options: GlobalOptions }
   | { kind: "companies-list"; search?: string; ignored?: boolean; options: GlobalOptions }
   | { kind: "companies-add"; name: string; url?: string; linkedinUrl?: string; email?: string; options: GlobalOptions }
@@ -192,6 +194,9 @@ function parseCommand(argv: string[]): ParsedCommand {
     if (action === "set-status") {
       return parseApplicationsSetStatus(tail, options);
     }
+    if (action === "archive-stale") {
+      return parseApplicationsArchiveStale(tail, options);
+    }
     if (action === "add-note") {
       return parseApplicationsAddNote(tail, options);
     }
@@ -243,6 +248,19 @@ function parseApplicationsList(args: string[], options: GlobalOptions): ParsedCo
     process.exit(1);
   }
   return { kind: "applications-list", search, status, options };
+}
+
+function parseApplicationsArchiveStale(args: string[], options: GlobalOptions): ParsedCommand {
+  let dryRun = false;
+  for (const arg of args) {
+    if (arg === "--dry-run") {
+      dryRun = true;
+      continue;
+    }
+    process.stderr.write(`Unknown option: ${arg}\n`);
+    process.exit(1);
+  }
+  return { kind: "applications-archive-stale", dryRun, options };
 }
 
 function parseApplicationsAdd(args: string[], options: GlobalOptions): ParsedCommand {
@@ -581,6 +599,20 @@ async function runCommand(command: ParsedCommand): Promise<void> {
         printJson(application);
       } else {
         printApplication(application);
+      }
+      return;
+    }
+    case "applications-archive-stale": {
+      const result = await archiveStaleApplications(config, { dryRun: command.dryRun });
+      if (command.options.json) {
+        printJson(result);
+      } else {
+        printApplications(result.applications);
+        process.stdout.write(
+          command.dryRun
+            ? `Dry run: ${result.applications.length} application(s) would be marked no_response and archived.\n`
+            : `Marked ${result.archivedCount} application(s) no_response and archived.\n`,
+        );
       }
       return;
     }

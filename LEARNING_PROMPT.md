@@ -75,6 +75,7 @@ applied-agent applications list [--search QUERY] [--status STATUS] [--json]
 applied-agent applications add --url URL [--status STATUS] [--json]
 applied-agent applications get --id ID [--json]
 applied-agent applications set-status --id ID --status STATUS [--json]
+applied-agent applications archive-stale [--dry-run] [--json]
 applied-agent applications add-note --id ID --content "..." [--json]
 applied-agent companies list [--search QUERY] [--ignored] [--json]
 applied-agent companies add --name NAME [--url URL] [--linkedin URL] [--email EMAIL] [--json]
@@ -94,21 +95,22 @@ Default status on create: `to_apply` ("To Apply")
 
 ## HTTP endpoints
 
-| Method | Path                                | Purpose                                                 |
-| ------ | ----------------------------------- | ------------------------------------------------------- |
-| GET    | `/api/agent/openapi`                | OpenAPI 3.1 spec (public)                               |
-| GET    | `/api/agent`                        | JSON discovery                                          |
-| GET    | `/api/agent/docs`                   | Markdown reference                                      |
-| GET    | `/api/agent/applications`           | List applications (`?search=`)                          |
-| POST   | `/api/agent/applications`           | Create from job URL (`{ url, status? }`)                |
-| GET    | `/api/agent/applications/:id`       | Get one application                                     |
-| PATCH  | `/api/agent/applications/:id`       | Update status only (`{ status }`)                       |
-| GET    | `/api/agent/applications/:id/notes` | List notes                                              |
-| POST   | `/api/agent/applications/:id/notes` | Add note (`{ content }`)                                |
-| GET    | `/api/agent/companies`              | List companies (`?search=`, `?ignored=1`)               |
-| POST   | `/api/agent/companies`              | Create company (`{ name, url?, linkedinUrl?, email? }`) |
-| PATCH  | `/api/agent/companies/:id`          | Update company (name, url, linkedinUrl, email)          |
-| PATCH  | `/api/agent/companies/:id/ignore`   | Set ignored flag (`{ ignored }`)                        |
+| Method | Path                                    | Purpose                                                                |
+| ------ | --------------------------------------- | ---------------------------------------------------------------------- |
+| GET    | `/api/agent/openapi`                    | OpenAPI 3.1 spec (public)                                              |
+| GET    | `/api/agent`                            | JSON discovery                                                         |
+| GET    | `/api/agent/docs`                       | Markdown reference                                                     |
+| GET    | `/api/agent/applications`               | List applications (`?search=`)                                         |
+| POST   | `/api/agent/applications`               | Create from job URL (`{ url, status? }`)                               |
+| GET    | `/api/agent/applications/:id`           | Get one application                                                    |
+| PATCH  | `/api/agent/applications/:id`           | Update status only (`{ status }`)                                      |
+| POST   | `/api/agent/applications/archive-stale` | Mark 2-month-stale apps `no_response` + archive (`?dryRun=1` previews) |
+| GET    | `/api/agent/applications/:id/notes`     | List notes                                                             |
+| POST   | `/api/agent/applications/:id/notes`     | Add note (`{ content }`)                                               |
+| GET    | `/api/agent/companies`                  | List companies (`?search=`, `?ignored=1`)                              |
+| POST   | `/api/agent/companies`                  | Create company (`{ name, url?, linkedinUrl?, email? }`)                |
+| PATCH  | `/api/agent/companies/:id`              | Update company (name, url, linkedinUrl, email)                         |
+| PATCH  | `/api/agent/companies/:id/ignore`       | Set ignored flag (`{ ignored }`)                                       |
 
 Status values: `applied`, `to_apply`, `interviewing`, `waiting`, `no_response`, `rejected`, `offer`, `passed`
 
@@ -118,6 +120,7 @@ Status values: `applied`, `to_apply`, `interviewing`, `waiting`, `no_response`, 
 - Default status is `to_apply`; pass `--status` or `{ "status": "..." }` to override
 - Status changes create an automatic status-update note, a "Updated by the CLI" audit note, and a history entry
 - Creating an application adds a "Saved by {name}: CLI" audit note; explicit `add-note` does not add an extra audit note
+- `archive-stale` marks non-archived `applied`/`waiting`/`interviewing`/`no_response` applications with no update in 2 months as `no_response` and archives them; use `--dry-run` first. Offers, passed, rejected, and to_apply are never touched
 - Archived applications are hidden from list, company, and get-by-id responses
 - If creating from a URL fails because title or company cannot be parsed, report the failure — do not invent data
 - Do not access backups, imports, user management, or unrelated app routes

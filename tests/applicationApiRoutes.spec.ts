@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { openDatabase } from "@/lib/server/db/migrate";
 import { getRepository, getNoteRepository, getStatusHistoryRepository, useTestDatabase } from "@/lib/server/db";
@@ -9,6 +9,7 @@ import { POST as createApplication } from "@/app/api/applications/route";
 import { PATCH as patchUserProfile } from "@/app/api/user/profile/route";
 import { GET as getStatusHistory } from "@/app/api/applications/[id]/status-history/route";
 import { POST as bulkArchiveApplicationsRoute } from "@/app/api/applications/bulk-archive/route";
+import { POST as archiveStaleRoute } from "@/app/api/applications/archive-stale/route";
 import { POST as bulkFetchApplicationsRoute } from "@/app/api/applications/bulk/route";
 import { authorizedAppRequest, emptyRouteContext, restoreAppAccessToken, withTestAppAccessToken } from "./testAppAuth";
 
@@ -477,7 +478,7 @@ describe("application API routes", () => {
     expect(body.pinned).toBe(false);
   });
 
-  test("bulk archive archives rejected and passed applications", async () => {
+  test("bulk archive archives rejected, passed, and no response applications", async () => {
     const rejected = await getRepository().create(
       createJobApplicationSchema.parse({
         url: "https://jobs.example.com/rejected",
@@ -486,6 +487,15 @@ describe("application API routes", () => {
         appliedAt: "2026-06-01",
         status: "rejected",
         pinned: true,
+      }),
+    );
+    const noResponse = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/no-response",
+        title: "Silent",
+        company: "Gamma",
+        appliedAt: "2026-06-03",
+        status: "no_response",
       }),
     );
     await getRepository().create(
@@ -512,7 +522,8 @@ describe("application API routes", () => {
       archivedCount: number;
       applications: { id: string; archived: boolean; pinned: boolean }[];
     };
-    expect(body.archivedCount).toBe(1);
+    expect(body.archivedCount).toBe(2);
+    expect(body.applications.find((item) => item.id === noResponse.id)?.archived).toBe(true);
     const archived = body.applications.find((item) => item.id === rejected.id);
     expect(archived?.archived).toBe(true);
     expect(archived?.pinned).toBe(false);
@@ -530,6 +541,40 @@ describe("application API routes", () => {
 
     expect(response.status).toBe(400);
     const body = (await response.json()) as { error: string };
-    expect(body.error).toBe("Only rejected and passed statuses can be bulk archived");
+    expect(body.error).toBe("Only rejected, passed, and no response statuses can be bulk archived");
+  });
+
+  test("archive-stale marks old applications no_response and archived with history", async () => {
+    const make = (url: string, status: "applied" | "offer") =>
+      getRepository().create(
+        createJobApplicationSchema.parse({ url, title: "T", company: "C", appliedAt: "2026-01-01", status }),
+      );
+    const stale = await make("https://jobs.example.com/stale", "applied");
+    const offer = await make("https://jobs.example.com/offer", "offer");
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000));
+    try {
+      const response = await archiveStaleRoute(
+        authorizedAppRequest("/api/applications/archive-stale", { method: "POST" }),
+        emptyRouteContext,
+      );
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        archivedCount: number;
+        applications: { id: string; status: string; archived: boolean }[];
+      };
+      expect(body.archivedCount).toBe(1);
+      const updated = body.applications.find((item) => item.id === stale.id);
+      expect(updated).toMatchObject({ status: "no_response", archived: true });
+      expect(body.applications.find((item) => item.id === offer.id)).toMatchObject({
+        status: "offer",
+        archived: false,
+      });
+      const history = await getStatusHistoryRepository().listByApplicationId(stale.id);
+      expect(history[0]).toMatchObject({ fromStatus: "applied", toStatus: "no_response" });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

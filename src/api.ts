@@ -155,6 +155,12 @@ export function bulkArchiveApplications(
   });
 }
 
+export function archiveStaleApplications(): Promise<{ archivedCount: number; applications: JobApplication[] }> {
+  return request<{ archivedCount: number; applications: JobApplication[] }>("/api/applications/archive-stale", {
+    method: "POST",
+  });
+}
+
 export function deleteApplication(id: string): Promise<void> {
   return request<void>(`/api/applications/${id}`, {
     method: "DELETE",

@@ -4,6 +4,10 @@ export const AGENT_CLI_COMMAND_SPECS = [
   { usage: "applications add --url URL [--status STATUS] [--json]" },
   { usage: "applications get --id ID [--json]" },
   { usage: "applications set-status --id ID --status STATUS [--json]" },
+  {
+    usage: "applications archive-stale [--dry-run] [--json]",
+    note: "Mark applications with no update in 2 months as no_response and archive them",
+  },
   { usage: 'applications add-note --id ID --content "..." [--json]' },
   { usage: "companies list [--search QUERY] [--ignored] [--json]" },
   { usage: "companies add --name NAME [--url URL] [--linkedin URL] [--email EMAIL] [--json]" },

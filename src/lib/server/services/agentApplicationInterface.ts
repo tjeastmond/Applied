@@ -8,6 +8,7 @@ import type { AgentApplicationSummary, AgentNoteSummary } from "@/lib/schemas/ag
 import { getNoteRepository, getRepository } from "@/lib/server/db";
 import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
 import { patchApplicationWithSideEffects } from "@/lib/server/services/applicationMutationService";
+import { archiveStaleApplications } from "@/lib/server/services/staleApplicationService";
 import { touchApplicationUpdatedAt } from "@/lib/server/touchApplicationUpdatedAt";
 import { ensureCompanyForApplicationName } from "@/lib/server/services/companySyncService";
 import type { JobApplication } from "@/types";
@@ -120,6 +121,23 @@ export async function updateApplicationStatusForAgent(
     ...updated,
     updatedAt: applicationUpdatedAt ?? updated.updatedAt,
   });
+}
+
+export async function archiveStaleApplicationsForAgent(
+  dryRun: boolean,
+  auditContext: AgentAuditContext,
+): Promise<{ dryRun: boolean; archivedCount: number; applications: AgentApplicationSummary[] }> {
+  const { affected } = await archiveStaleApplications({
+    dryRun,
+    onArchived: async (application) => {
+      await getNoteRepository().create(application.id, agentAuditNote("updated", auditContext));
+    },
+  });
+  return {
+    dryRun,
+    archivedCount: dryRun ? 0 : affected.length,
+    applications: affected.map(toAgentApplicationSummary),
+  };
 }
 
 export async function createApplicationFromUrlForAgent(

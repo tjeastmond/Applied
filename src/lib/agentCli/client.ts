@@ -107,6 +107,15 @@ export async function setApplicationStatus(
   });
 }
 
+export async function archiveStaleApplications(
+  config: AgentCliConfig,
+  options: { dryRun?: boolean } = {},
+): Promise<{ dryRun: boolean; archivedCount: number; applications: AgentApplicationSummary[] }> {
+  return request(config, `/api/agent/applications/archive-stale${options.dryRun ? "?dryRun=1" : ""}`, {
+    method: "POST",
+  });
+}
+
 export async function listCompanies(
   config: AgentCliConfig,
   filters: { search?: string; ignored?: boolean } = {},

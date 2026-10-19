@@ -16,6 +16,7 @@ import { GET as getAgentCompanies, POST as postAgentCompanies } from "@/app/api/
 import { PATCH as patchAgentCompany } from "@/app/api/agent/companies/[id]/route";
 import { PATCH as patchAgentCompanyIgnore } from "@/app/api/agent/companies/[id]/ignore/route";
 import * as agentApplicationsRoute from "@/app/api/agent/applications/route";
+import { POST as archiveStaleAgent } from "@/app/api/agent/applications/archive-stale/route";
 import { GET as getAgentApplication, PATCH as patchAgentApplication } from "@/app/api/agent/applications/[id]/route";
 import { GET as getAgentNotes, POST as postAgentNote } from "@/app/api/agent/applications/[id]/notes/route";
 import { parseJobUrl } from "@/lib/server/services/parseJobUrl";
@@ -100,6 +101,7 @@ describe("agent API routes", () => {
         expect.objectContaining({ method: "GET", path: "/api/agent/applications" }),
         expect.objectContaining({ method: "POST", path: "/api/agent/applications" }),
         expect.objectContaining({ method: "PATCH", path: "/api/agent/applications/:id" }),
+        expect.objectContaining({ method: "POST", path: "/api/agent/applications/archive-stale" }),
         expect.objectContaining({ method: "GET", path: "/api/agent/companies" }),
         expect.objectContaining({ method: "PATCH", path: "/api/agent/companies/:id" }),
         expect.objectContaining({ method: "GET", path: "/api/agent/docs" }),
@@ -464,6 +466,45 @@ describe("agent API routes", () => {
 
     const history = await getStatusHistoryRepository().listByApplicationId(app.id);
     expect(history.some((entry) => entry.fromStatus === "to_apply" && entry.toStatus === "applied")).toBe(true);
+  });
+
+  test("POST /api/agent/applications/archive-stale supports dry run and archives stale applications", async () => {
+    const stale = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/agent-stale",
+        title: "Stale Role",
+        company: "Acme",
+        appliedAt: "2026-01-01",
+        status: "applied",
+      }),
+    );
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000));
+    try {
+      const dry = await archiveStaleAgent(
+        authorizedRequest("/api/agent/applications/archive-stale?dryRun=1", { method: "POST" }),
+      );
+      const dryBody = (await dry.json()) as { dryRun: boolean; archivedCount: number; applications: { id: string }[] };
+      expect(dryBody).toMatchObject({ dryRun: true, archivedCount: 0 });
+      expect(dryBody.applications.map((item) => item.id)).toEqual([stale.id]);
+      expect((await getRepository().getById(stale.id))?.archived).toBe(false);
+
+      const response = await archiveStaleAgent(
+        authorizedRequest("/api/agent/applications/archive-stale", { method: "POST" }),
+      );
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { archivedCount: number; applications: { status: string }[] };
+      expect(body.archivedCount).toBe(1);
+      expect(body.applications[0]?.status).toBe("no_response");
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const saved = await getRepository().getById(stale.id);
+    expect(saved).toMatchObject({ status: "no_response", archived: true });
+    const notes = await getNoteRepository().listByApplicationId(stale.id);
+    expect(notes.some((note) => note.content === "Updated by Environment, via API")).toBe(true);
   });
 
   test("PATCH /api/agent/applications/:id returns 404 for archived application", async () => {

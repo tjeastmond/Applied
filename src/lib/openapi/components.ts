@@ -41,6 +41,14 @@ export const agentCreateNoteBodySchema = z
   })
   .meta({ id: "AgentCreateNote" });
 
+export const agentArchiveStaleResponseSchema = z
+  .object({
+    dryRun: z.boolean(),
+    archivedCount: z.number().int().meta({ description: "Applications archived (0 on dry run)" }),
+    applications: z.array(agentApplicationSummarySchema),
+  })
+  .meta({ id: "AgentArchiveStaleResponse" });
+
 export const agentApplicationsListResponseSchema = z
   .object({
     applications: z.array(agentApplicationSummarySchema),

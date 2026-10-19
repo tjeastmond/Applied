@@ -20,6 +20,7 @@ export const AGENT_REQUIRED_PATHS = [
   "/api/agent/docs",
   "/api/agent/applications",
   "/api/agent/applications/:id",
+  "/api/agent/applications/archive-stale",
   "/api/agent/applications/:id/notes",
   "/api/agent/companies",
   "/api/agent/companies/:id",
@@ -87,6 +88,26 @@ export const AGENT_CAPABILITIES = [
     behavior: [
       "Creates a status-update note and status history entry",
       'Adds audit note "Updated by {token name}, via api|cli"',
+    ],
+  },
+  {
+    name: "archive_stale_applications",
+    method: "POST",
+    path: "/api/agent/applications/archive-stale",
+    description:
+      "Mark non-archived applied, waiting, interviewing, and no_response applications with no update in the last 2 months as no_response and archive them.",
+    query: {
+      dryRun: "optional; 1 lists affected applications without changing anything",
+    },
+    response: {
+      dryRun: "boolean",
+      archivedCount: "number archived (0 on dry run)",
+      applications: APPLICATION_SUMMARY_FIELDS,
+    },
+    behavior: [
+      "Creates a status-update note and status history entry for each status change",
+      'Adds audit note "Updated by {token name}, via api|cli"',
+      "Offers, passed, rejected, and to_apply applications are never touched",
     ],
   },
   {
