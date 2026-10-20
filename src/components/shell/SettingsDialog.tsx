@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   archiveStaleConfirmDescription,
   countStaleApplications,
@@ -53,6 +54,7 @@ import {
   appKeyboardShortcuts,
   isAdminBulkArchiveShortcut,
   isAdminOpenShortcut,
+  isHomeShortcut,
   isEditableKeyboardTarget,
 } from "@/lib/keyboardShortcut";
 import { toastMessages } from "@/lib/toastMessages";
@@ -133,6 +135,7 @@ export function SettingsDialog({
   uiShellMode,
   onToggleUiShellMode,
 }: SettingsDialogProps) {
+  const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
@@ -203,6 +206,18 @@ export function SettingsDialog({
     setSection(initialSection);
     void loadTokens({ showLoading: false });
   }, [initialSection, loadTokens, open]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!isHomeShortcut(event) || open) return;
+      if (isEditableKeyboardTarget(event.target)) return;
+      event.preventDefault();
+      router.push("/");
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, router]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

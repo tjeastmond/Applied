@@ -58,6 +58,10 @@ export function isAdminOpenShortcut(event: KeyboardEvent): boolean {
   return isUnmodifiedKey(event, "a");
 }
 
+export function isHomeShortcut(event: KeyboardEvent): boolean {
+  return isUnmodifiedKey(event, "h");
+}
+
 export function isAdminBulkArchiveShortcut(event: KeyboardEvent): boolean {
   return isUnmodifiedKey(event, "e");
 }
@@ -119,6 +123,11 @@ export function appKeyboardShortcuts(): KeyboardShortcutEntry[] {
     {
       keys: "a",
       description: "Open admin/settings",
+      context: "Global",
+    },
+    {
+      keys: "h",
+      description: "Go to home listing",
       context: "Global",
     },
     {
