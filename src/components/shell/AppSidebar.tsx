@@ -54,10 +54,10 @@ function buildSections(counts: NavCounts, companiesCount?: number): NavSection[]
       heading: "Workspace",
       items: [
         { label: "Applications", icon: Briefcase, href: appViewToPath("applications"), count: counts.applications },
-        { label: "Companies", icon: Building2, href: COMPANIES_PATH, count: companiesCount },
         { label: "To Apply", icon: ListTodo, href: appViewToPath("toApply"), count: counts.toApply },
         { label: "Bookmarked", icon: Bookmark, href: appViewToPath("bookmarks"), count: counts.bookmarked },
         { label: "Archived", icon: Archive, href: appViewToPath("archived"), count: counts.archived },
+        { label: "Companies", icon: Building2, href: COMPANIES_PATH, count: companiesCount },
         { label: "Analytics", icon: BarChart3, href: ANALYTICS_PATH },
       ],
     },
