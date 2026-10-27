@@ -64,6 +64,13 @@ export function LoginPanel({
       }
     }
 
+    const trimmedAccessToken = accessToken.trim();
+    if (layout.requireSetupToken && !trimmedAccessToken) {
+      setShowValidation(true);
+      toast.error(toastMessages.loginTokenRequired);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       if (isCreateAccount) {
@@ -71,20 +78,32 @@ export function LoginPanel({
           email: trimmedEmail,
           password: trimmedPassword,
           displayName: trimmedDisplayName,
+          ...(layout.requireSetupToken ? { accessToken: trimmedAccessToken } : {}),
         });
       } else {
         await passwordLoginApp({ email: trimmedEmail, password: trimmedPassword });
       }
       setPassword("");
       setConfirmPassword("");
+      setAccessToken("");
       onAuthenticated();
     } catch (error) {
       setIsSubmitting(false);
       toast.error(errorMessage(error, toastMessages.loginFailed));
     }
-  }, [confirmPassword, displayName, email, isCreateAccount, onAuthenticated, password]);
+  }, [
+    accessToken,
+    confirmPassword,
+    displayName,
+    email,
+    isCreateAccount,
+    layout.requireSetupToken,
+    onAuthenticated,
+    password,
+  ]);
 
   const nameInvalid = showValidation && isCreateAccount && displayName.trim().length === 0;
+  const setupTokenInvalid = showValidation && layout.requireSetupToken && accessToken.trim().length === 0;
 
   const handleDevLogin = useCallback(async () => {
     setIsSubmitting(true);
@@ -192,6 +211,28 @@ export function LoginPanel({
                 }
               }}
               placeholder="Re-enter your password"
+            />
+          </div>
+        ) : null}
+
+        {layout.requireSetupToken ? (
+          <div className="grid gap-2">
+            <Label htmlFor="login-setup-access-token">Access Token</Label>
+            <Input
+              id="login-setup-access-token"
+              type="password"
+              autoComplete="off"
+              value={accessToken}
+              disabled={showLoading}
+              onChange={(event) => setAccessToken(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleCredentialSubmit();
+                }
+              }}
+              aria-invalid={setupTokenInvalid}
+              placeholder="APP_ACCESS_TOKEN from your environment"
             />
           </div>
         ) : null}

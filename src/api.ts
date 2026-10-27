@@ -63,7 +63,12 @@ export function devLoginApp(): Promise<{ ok: true }> {
   });
 }
 
-export function setupApp(input: { email: string; password: string; displayName: string }): Promise<{ ok: true }> {
+export function setupApp(input: {
+  email: string;
+  password: string;
+  displayName: string;
+  accessToken?: string;
+}): Promise<{ ok: true }> {
   return request<{ ok: true }>("/api/auth/setup", {
     method: "POST",
     body: JSON.stringify(input),

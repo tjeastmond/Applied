@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { POST as loginRoute } from "@/app/api/auth/login/route";
 import { POST as passwordLoginRoute } from "@/app/api/auth/password-login/route";
+import { POST as setupRoute } from "@/app/api/auth/setup/route";
 import { openDatabase } from "@/lib/server/db/migrate";
 import { getLoginThrottleRepository, resetDatabaseBackend, useTestDatabase } from "@/lib/server/db";
 import { SqliteLoginThrottleRepository } from "@/lib/server/db/sqliteLoginThrottleRepository";
@@ -121,5 +122,27 @@ describe("login throttle", () => {
 
     const fresh = new Request("http://localhost", { headers: { "x-forwarded-for": "192.0.2.1" } });
     expect((await checkLoginThrottle(fresh, start + 1_000))?.status).toBe(429);
+  });
+
+  test("failed setup tokens are throttled outside local dev", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const setup = (accessToken: string) =>
+      setupRoute(
+        new Request("http://localhost/api/auth/setup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-forwarded-for": "203.0.113.7" },
+          body: JSON.stringify({
+            email: "owner@example.com",
+            password: "correcthorse123",
+            displayName: "Owner",
+            accessToken,
+          }),
+        }),
+      );
+
+    for (let attempt = 0; attempt < CLIENT_LIMIT; attempt += 1) {
+      expect((await setup("wrong-token")).status).toBe(401);
+    }
+    expect((await setup(TEST_APP_ACCESS_TOKEN)).status).toBe(429);
   });
 });

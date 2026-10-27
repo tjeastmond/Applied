@@ -10,6 +10,8 @@ export const setupAccountSchema = z.strictObject({
   email: requiredEmailSchema,
   password: passwordSchema,
   displayName: requiredPlainTextSchema("Name", 100),
+  /** Required outside local SQLite dev so a fresh deployment cannot be claimed by whoever arrives first. */
+  accessToken: z.string().min(1).max(512).optional(),
 });
 
 export type SetupAccountInput = z.infer<typeof setupAccountSchema>;
