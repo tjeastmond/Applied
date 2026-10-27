@@ -14,6 +14,10 @@ function createSilentLogger(): Logger {
   return pino({ level: "silent" });
 }
 
+function createStdoutLogger(level: LogLevel): Logger {
+  return pino({ level }, pino.destination({ dest: 1, sync: true }));
+}
+
 function parseMaxBytes(maxSize: string): number {
   const match = maxSize.trim().match(/^([\d.]+)([kmgb]?)$/i);
   if (!match) return 5 * 1024 * 1024;
@@ -163,7 +167,22 @@ export async function initLogger(env: Record<string, string | undefined> = proce
         return;
       }
 
-      mkdirSync(config.dir, { recursive: true });
+      if (config.destination === "stdout") {
+        rootLogger = createStdoutLogger(config.level);
+        return;
+      }
+
+      try {
+        mkdirSync(config.dir, { recursive: true });
+      } catch (error) {
+        // A read-only filesystem must not turn every logged request into a 500.
+        rootLogger = createStdoutLogger(config.level);
+        rootLogger.warn(
+          { logDir: config.dir, error: serializeError(error) },
+          "log directory unavailable; logging to stdout",
+        );
+        return;
+      }
 
       if (env.LOG_TEST_FILE?.trim()) {
         activeLogPath = env.LOG_TEST_FILE.trim();

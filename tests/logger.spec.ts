@@ -35,6 +35,17 @@ describe("readLogConfig", () => {
     const config = readLogConfig({ VITEST: "true", LOG_ENABLED: "true" });
     expect(config.enabled).toBe(true);
   });
+
+  it("writes to files locally and to stdout on Vercel", () => {
+    expect(readLogConfig({ LOG_ENABLED: "true" }).destination).toBe("file");
+    expect(readLogConfig({ LOG_ENABLED: "true", VERCEL: "1" }).destination).toBe("stdout");
+  });
+
+  it("lets LOG_DESTINATION override the platform default", () => {
+    expect(readLogConfig({ LOG_ENABLED: "true", VERCEL: "1", LOG_DESTINATION: "file" }).destination).toBe("file");
+    expect(readLogConfig({ LOG_ENABLED: "true", LOG_DESTINATION: "STDOUT" }).destination).toBe("stdout");
+    expect(readLogConfig({ LOG_ENABLED: "true", LOG_DESTINATION: "bogus" }).destination).toBe("file");
+  });
 });
 
 describe("logger", () => {
@@ -101,5 +112,23 @@ describe("logger", () => {
     await flushLogs();
 
     expect(existsSync(testLogFile)).toBe(false);
+  });
+
+  it("writes to stdout without creating a log directory in stdout mode", async () => {
+    const logDir = join(tempDir, "never-created");
+    process.env.LOG_DESTINATION = "stdout";
+    process.env.LOG_DIR = logDir;
+    process.env.LOG_LEVEL = "warn";
+    delete process.env.LOG_TEST_FILE;
+    resetLoggerForTests();
+
+    try {
+      await initLogger();
+      log.debug("stdout mode check");
+      await flushLogs();
+      expect(existsSync(logDir)).toBe(false);
+    } finally {
+      delete process.env.LOG_DESTINATION;
+    }
   });
 });

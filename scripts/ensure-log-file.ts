@@ -13,6 +13,11 @@ if (!config.enabled) {
   process.exit(2);
 }
 
+if (config.destination === "stdout") {
+  console.error("Logs go to stdout (LOG_DESTINATION=stdout or VERCEL=1); there is no log file to tail.");
+  process.exit(2);
+}
+
 await initLogger();
 await flushLogs();
 
