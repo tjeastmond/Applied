@@ -7,6 +7,7 @@ import type { AppAccessConfigRepository } from "./repositories/appAccessConfigRe
 import type { AgentApiTokenRepository } from "./repositories/agentApiTokenRepository";
 import type { CompanyRepository } from "./repositories/companyRepository";
 import type { JobApplicationRepository } from "./repositories/jobApplicationRepository";
+import type { LoginThrottleRepository } from "./repositories/loginThrottleRepository";
 import type { UserRepository } from "./repositories/userRepository";
 import type { ImportMode, BackupJson } from "@/lib/schemas/backup";
 import type { DatabaseBackupPayload } from "./services/databaseBackupService";
@@ -22,6 +23,7 @@ export type DatabaseBackend = {
   analytics: AnalyticsRepository;
   appAccessConfig?: AppAccessConfigRepository;
   agentApiTokens?: AgentApiTokenRepository;
+  loginThrottle?: LoginThrottleRepository;
   exportJson(): Promise<BackupJson>;
   exportSql(): Promise<string>;
   importJson(raw: unknown, mode: ImportMode): Promise<ImportResult>;

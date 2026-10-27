@@ -8,6 +8,7 @@ import { getDefaultDatabasePath } from "@/lib/server/databaseConfig";
 
 export const APP_ACCESS_CONFIG_TABLE = "app_access_config";
 export const AGENT_API_TOKENS_TABLE = "agent_api_tokens";
+export const AUTH_LOGIN_THROTTLE_TABLE = "auth_login_throttle";
 
 export type DatabaseBackupPayload = {
   filename: string;
@@ -106,6 +107,7 @@ export function stripSensitiveDataFromDatabase(dbPath: string): void {
   try {
     deleteTableRowsIfExists(db, APP_ACCESS_CONFIG_TABLE);
     deleteTableRowsIfExists(db, AGENT_API_TOKENS_TABLE);
+    deleteTableRowsIfExists(db, AUTH_LOGIN_THROTTLE_TABLE);
     nullPasswordHashesIfExists(db);
   } finally {
     db.close();

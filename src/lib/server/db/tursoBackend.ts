@@ -86,6 +86,7 @@ import type { ApplicationStatusHistoryRepository } from "../repositories/applica
 import type { UserCredential, UserRepository } from "../repositories/userRepository";
 import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
 import { TursoAgentApiTokenRepository } from "./tursoAgentApiTokenRepository";
+import { TursoLoginThrottleRepository } from "./tursoLoginThrottleRepository";
 import { TursoAnalyticsRepository } from "./tursoAnalyticsRepository";
 import { nullableString, requiredNumber, requiredString, tursoFirstRow, tursoRows } from "./tursoRowHelpers";
 
@@ -719,6 +720,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
   readonly statusHistory: ApplicationStatusHistoryRepository;
   readonly analytics;
   readonly agentApiTokens;
+  readonly loginThrottle;
 
   private readonly client: Client;
   private readonly ready: Promise<void>;
@@ -735,6 +737,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     this.statusHistory = new TursoApplicationStatusHistoryRepository(this.client, this.ready, this.users);
     this.analytics = new TursoAnalyticsRepository(this.client, this.ready);
     this.agentApiTokens = new TursoAgentApiTokenRepository(this.client, this.ready);
+    this.loginThrottle = new TursoLoginThrottleRepository(this.client, this.ready);
   }
 
   get users(): UserRepository {
