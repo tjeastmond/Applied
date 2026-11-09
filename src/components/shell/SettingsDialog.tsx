@@ -1,7 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import {
+  archiveStaleConfirmDescription,
+  countStaleApplications,
+  STALE_APPLICATION_MONTHS,
+} from "@/lib/staleApplications";
 import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import {
+  archiveStaleApplications,
   bulkArchiveApplications,
   createAgentToken,
   downloadDatabaseBackup,
@@ -47,6 +54,7 @@ import {
   appKeyboardShortcuts,
   isAdminBulkArchiveShortcut,
   isAdminOpenShortcut,
+  isHomeShortcut,
   isEditableKeyboardTarget,
 } from "@/lib/keyboardShortcut";
 import { toastMessages } from "@/lib/toastMessages";
@@ -127,6 +135,7 @@ export function SettingsDialog({
   uiShellMode,
   onToggleUiShellMode,
 }: SettingsDialogProps) {
+  const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
@@ -139,6 +148,9 @@ export function SettingsDialog({
   const [isBulkArchiving, setIsBulkArchiving] = useState(false);
 
   const archivableCount = countArchivableApplications(applications);
+  const staleCount = countStaleApplications(applications);
+  const [pendingArchiveStale, setPendingArchiveStale] = useState(false);
+  const [isArchivingStale, setIsArchivingStale] = useState(false);
 
   const [tokens, setTokens] = useState<AgentApiTokenSummary[]>([]);
   const [envTokenConfigured, setEnvTokenConfigured] = useState(false);
@@ -194,6 +206,18 @@ export function SettingsDialog({
     setSection(initialSection);
     void loadTokens({ showLoading: false });
   }, [initialSection, loadTokens, open]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!isHomeShortcut(event) || open) return;
+      if (isEditableKeyboardTarget(event.target)) return;
+      event.preventDefault();
+      router.push("/");
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, router]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -336,6 +360,24 @@ export function SettingsDialog({
       toast.error(toastMessages.allJobUrlsCopyFailed);
     }
   }
+
+  const handleConfirmArchiveStale = useCallback(async () => {
+    setIsArchivingStale(true);
+    try {
+      const result = await archiveStaleApplications();
+      onApplicationsUpdated(result.applications);
+      if (result.archivedCount === 0) {
+        toast.info(toastMessages.archiveStaleNothing);
+      } else {
+        toast.success(toastMessages.archiveStaleSuccess(result.archivedCount));
+      }
+      setPendingArchiveStale(false);
+    } catch (error) {
+      toast.error(errorMessage(error, toastMessages.archiveStaleFailed));
+    } finally {
+      setIsArchivingStale(false);
+    }
+  }, [onApplicationsUpdated]);
 
   const handleConfirmBulkArchive = useCallback(async () => {
     setIsBulkArchiving(true);
@@ -525,6 +567,26 @@ export function SettingsDialog({
                       Copy All URLs
                     </Button>
                   </div>
+
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-medium">Archive Stale Applications</h3>
+                      <p className="text-muted-foreground text-xs">
+                        Mark applications with no update in the last {STALE_APPLICATION_MONTHS} months as No Response
+                        and archive them.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn("header-toolbar-outline w-fit", FILTER_CONTROL_HEIGHT_CLASS)}
+                      disabled={staleCount === 0}
+                      onClick={() => setPendingArchiveStale(true)}
+                    >
+                      <ArchiveIcon data-icon="inline-start" />
+                      Archive Stale
+                    </Button>
+                  </div>
                 </div>
               ) : null}
 
@@ -533,7 +595,7 @@ export function SettingsDialog({
                   <div className="space-y-1">
                     <h3 className="text-sm font-medium">Bulk Archive</h3>
                     <p className="text-muted-foreground text-xs">
-                      Move rejected and passed applications out of the active list.
+                      Move rejected, passed, and no response applications out of the active list.
                     </p>
                   </div>
                   <Button
@@ -762,6 +824,30 @@ export function SettingsDialog({
       </Dialog>
 
       <BackupImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={onImported} />
+
+      <AlertDialog
+        open={pendingArchiveStale}
+        onOpenChange={(nextOpen) => !nextOpen && !isArchivingStale && setPendingArchiveStale(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Stale Applications?</AlertDialogTitle>
+            <AlertDialogDescription>{archiveStaleConfirmDescription(staleCount)}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isArchivingStale} variant="cancelOutline">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isArchivingStale}
+              variant="save"
+              onClick={() => void handleConfirmArchiveStale()}
+            >
+              {isArchivingStale ? "Archiving…" : "Archive Stale"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={pendingBulkArchive}

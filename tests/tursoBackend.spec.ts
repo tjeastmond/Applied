@@ -101,6 +101,31 @@ describe("TursoDatabaseBackend", () => {
     }
   });
 
+  test("loginThrottle counts failures in fixed windows and clears keys", async () => {
+    const tursoConfig = requireTursoTestConfig();
+    const backend = new TursoDatabaseBackend({
+      provider: "turso",
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
+    });
+    const key = `test:${crypto.randomUUID()}`;
+
+    try {
+      await backend.loginThrottle.recordFailure(key, 1_000, 0);
+      await backend.loginThrottle.recordFailure(key, 2_000, 0);
+      expect(await backend.loginThrottle.get(key)).toEqual({ failures: 2, windowStartedAt: 1_000 });
+
+      await backend.loginThrottle.recordFailure(key, 5_000, 1_000);
+      expect(await backend.loginThrottle.get(key)).toEqual({ failures: 1, windowStartedAt: 5_000 });
+
+      await backend.loginThrottle.clear(key);
+      expect(await backend.loginThrottle.get(key)).toBeNull();
+    } finally {
+      await backend.loginThrottle.clear(key);
+      backend.reset();
+    }
+  });
+
   test("agentApiTokens supports create, validate, and revoke", async () => {
     const tursoConfig = requireTursoTestConfig();
     const backend = new TursoDatabaseBackend({

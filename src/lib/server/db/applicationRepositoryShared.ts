@@ -145,7 +145,7 @@ export function buildApplicationInsertRow(
     id,
     url: input.url.trim(),
     linkedin_url: trimOrNull(input.linkedinUrl),
-    title: normalizeJobTitle(input.title?.trim()) ?? "",
+    title: normalizeJobTitle(input.title?.trim(), input.company?.trim()) ?? "",
     company: input.company?.trim() ?? "",
     applied_at: input.appliedAt?.trim() ?? todayIsoDate(),
     via_recruiter: viaRecruiter ? 1 : 0,
@@ -178,7 +178,10 @@ export function buildApplicationUpdateRow(
     ...existing,
     url: input.url !== undefined ? input.url.trim() : existing.url,
     linkedin_url: input.linkedinUrl !== undefined ? trimOrNull(input.linkedinUrl) : existing.linkedin_url,
-    title: input.title !== undefined ? normalizeJobTitle(trimOrNull(input.title)) : existing.title,
+    title:
+      input.title !== undefined
+        ? normalizeJobTitle(trimOrNull(input.title), input.company !== undefined ? input.company : existing.company)
+        : existing.title,
     company: input.company !== undefined ? trimOrNull(input.company) : existing.company,
     applied_at: input.appliedAt ?? existing.applied_at,
     via_recruiter: viaRecruiter ? 1 : 0,

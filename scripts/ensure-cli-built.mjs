@@ -16,6 +16,7 @@ const sourcePaths = [
   join(root, "scripts/build-cli.mjs"),
   join(root, "src/lib/agentCli"),
   join(root, "src/lib/server/loadEnvFile.ts"),
+  join(root, "LEARNING_PROMPT.md"),
 ];
 
 /** @param {string} dir */
@@ -29,7 +30,7 @@ function latestMtimeFromDir(dir) {
       continue;
     }
 
-    if (/\.(ts|tsx|mjs|js)$/.test(entry.name)) {
+    if (/\.(ts|tsx|mjs|js|md)$/.test(entry.name)) {
       latest = Math.max(latest, statSync(fullPath).mtimeMs);
     }
   }

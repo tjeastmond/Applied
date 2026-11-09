@@ -22,7 +22,7 @@ import { fetchAshbyJobPostingFallback } from "./fetchAshbyJobPosting";
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-const FETCH_TIMEOUT_MS = 8000;
+const FETCH_TIMEOUT_MS = 20000;
 
 function getMetaContent(document: Document, property: string): string | null {
   const byProperty = document.querySelector(`meta[property="${property}"]`);
@@ -150,10 +150,12 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
       isGenericAshbyTitle(document.querySelector("title")?.textContent?.trim() ?? null) &&
       !ashbyRole?.descriptionHtml;
 
+    // Extract salary before buildFullJd, which strips scripts from the document.
+    let { salaryRange } = parseParsedApplicationSalaryFields(extractJobSalary(currentUrl, document, html));
+
     let fullJd = ashbySparseShell
       ? null
       : (buildFullJd(document, metaDescription) ?? ashbyRole?.descriptionHtml ?? null);
-    let { salaryRange } = parseParsedApplicationSalaryFields(extractJobSalary(currentUrl, document, html));
 
     if (isAshbyHost(currentUrl.hostname) && !title) {
       const ashbyFallback = await fetchAshbyJobPostingFallback(currentUrl);

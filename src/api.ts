@@ -63,7 +63,12 @@ export function devLoginApp(): Promise<{ ok: true }> {
   });
 }
 
-export function setupApp(input: { email: string; password: string; displayName: string }): Promise<{ ok: true }> {
+export function setupApp(input: {
+  email: string;
+  password: string;
+  displayName: string;
+  accessToken?: string;
+}): Promise<{ ok: true }> {
   return request<{ ok: true }>("/api/auth/setup", {
     method: "POST",
     body: JSON.stringify(input),
@@ -152,6 +157,12 @@ export function bulkArchiveApplications(
   return request<{ archivedCount: number; applications: JobApplication[] }>("/api/applications/bulk-archive", {
     method: "POST",
     body: JSON.stringify(statuses && statuses.length > 0 ? { statuses } : {}),
+  });
+}
+
+export function archiveStaleApplications(): Promise<{ archivedCount: number; applications: JobApplication[] }> {
+  return request<{ archivedCount: number; applications: JobApplication[] }>("/api/applications/archive-stale", {
+    method: "POST",
   });
 }
 

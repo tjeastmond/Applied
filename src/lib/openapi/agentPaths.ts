@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   agentApplicationSummarySchema,
   agentApplicationsListResponseSchema,
+  agentArchiveStaleResponseSchema,
   agentCompaniesListResponseSchema,
   agentCompanySummarySchema,
   agentCreateNoteBodySchema,
@@ -76,6 +77,28 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
             schema: agentApplicationSummarySchema,
           },
         },
+      },
+      ...agentErrorResponses,
+    },
+  });
+
+  registry.registerPath({
+    method: "post",
+    path: "/api/agent/applications/archive-stale",
+    tags: ["Applications"],
+    summary: "Archive stale applications as no_response",
+    description:
+      'Marks non-archived applied, waiting, interviewing, and no_response applications with no update in the last 2 months as no_response and archives them. Records status history, status-update note, and audit note "Updated by {token name}, via api|cli". Pass dryRun=1 to preview.',
+    security: agentSecurity,
+    request: {
+      query: z.object({
+        dryRun: z.enum(["0", "1"]).optional().meta({ description: "1 to list affected applications without changes" }),
+      }),
+    },
+    responses: {
+      200: {
+        description: "Affected applications",
+        content: { "application/json": { schema: agentArchiveStaleResponseSchema } },
       },
       ...agentErrorResponses,
     },

@@ -14,6 +14,7 @@ import { SqliteAgentApiTokenRepository } from "./sqliteAgentApiTokenRepository";
 import { SqliteApplicationNoteRepository } from "./sqliteApplicationNoteRepository";
 import { SqliteApplicationStatusHistoryRepository } from "./sqliteApplicationStatusHistoryRepository";
 import { SqliteCompanyRepository } from "./sqliteCompanyRepository";
+import { SqliteLoginThrottleRepository } from "./sqliteLoginThrottleRepository";
 import { SqliteJobApplicationRepository } from "./sqliteRepository";
 import { SqliteUserRepository } from "./sqliteUserRepository";
 import type { UserRepository } from "../repositories/userRepository";
@@ -34,6 +35,7 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
   readonly analytics;
   readonly appAccessConfig;
   readonly agentApiTokens;
+  readonly loginThrottle;
 
   private readonly db: Database.Database;
   private readonly path: string;
@@ -47,6 +49,7 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
     this.db = db ?? openDatabase(this.path);
     this.appAccessConfig = new SqliteAppAccessConfigRepository(this.db);
     this.agentApiTokens = new SqliteAgentApiTokenRepository(this.db);
+    this.loginThrottle = new SqliteLoginThrottleRepository(this.db);
     hydrateAppAccessTokenFromDatabase(this.appAccessConfig.getToken());
     this.applications = new SqliteJobApplicationRepository(this.db);
     this.companies = new SqliteCompanyRepository(this.db);

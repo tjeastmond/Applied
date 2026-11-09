@@ -227,7 +227,7 @@ export function mergeParseResult(
   form: FormState,
   result: Pick<ParseJobUrlSuccess, "title" | "company" | "fullJd"> & ParsedApplicationSalaryFields,
 ): FormState {
-  const parsedTitle = result.title != null ? normalizeJobTitle(result.title) : null;
+  const parsedTitle = result.title != null ? normalizeJobTitle(result.title, result.company ?? form.company) : null;
   return {
     ...form,
     title: parsedTitle ?? form.title,

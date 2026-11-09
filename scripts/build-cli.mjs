@@ -2,7 +2,7 @@
 /* global process */
 
 import * as esbuild from "esbuild";
-import { chmodSync, mkdirSync, statSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -40,6 +40,25 @@ const pathAliasPlugin = {
   },
 };
 
+/**
+ * Inlines LEARNING_PROMPT.md so `learn` works offline from any install location.
+ * @type {import("esbuild").Plugin}
+ */
+const learningPromptPlugin = {
+  name: "learning-prompt",
+  setup(build) {
+    build.onResolve({ filter: /^virtual:learning-prompt$/ }, () => ({
+      path: "learning-prompt",
+      namespace: "learning-prompt",
+    }));
+    build.onLoad({ filter: /.*/, namespace: "learning-prompt" }, () => ({
+      contents: `export default ${JSON.stringify(readFileSync(join(root, "LEARNING_PROMPT.md"), "utf8"))};`,
+      loader: "js",
+      watchFiles: [join(root, "LEARNING_PROMPT.md")],
+    }));
+  },
+};
+
 mkdirSync(dirname(outfile), { recursive: true });
 
 const quiet = process.argv.includes("--quiet");
@@ -51,7 +70,7 @@ await esbuild.build({
   platform: "node",
   format: "esm",
   target: "node22",
-  plugins: [pathAliasPlugin],
+  plugins: [pathAliasPlugin, learningPromptPlugin],
   logLevel: quiet ? "silent" : "info",
 });
 

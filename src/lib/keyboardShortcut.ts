@@ -58,6 +58,10 @@ export function isAdminOpenShortcut(event: KeyboardEvent): boolean {
   return isUnmodifiedKey(event, "a");
 }
 
+export function isHomeShortcut(event: KeyboardEvent): boolean {
+  return isUnmodifiedKey(event, "h");
+}
+
 export function isAdminBulkArchiveShortcut(event: KeyboardEvent): boolean {
   return isUnmodifiedKey(event, "e");
 }
@@ -122,8 +126,13 @@ export function appKeyboardShortcuts(): KeyboardShortcutEntry[] {
       context: "Global",
     },
     {
+      keys: "h",
+      description: "Go to home listing",
+      context: "Global",
+    },
+    {
       keys: "e",
-      description: "Archive rejected and passed applications without confirmation",
+      description: "Archive rejected, passed, and no response applications without confirmation",
       context: "Admin",
     },
     {

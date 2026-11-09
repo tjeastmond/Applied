@@ -34,7 +34,9 @@ const httpUrlSchema = z
 
 export const requiredHttpUrlSchema = httpUrlSchema;
 
-export const optionalHttpUrlSchema = z.preprocess(emptyToNull, z.union([httpUrlSchema, z.null()]).optional());
+export const optionalHttpUrlSchema = z
+  .preprocess(emptyToNull, z.union([httpUrlSchema, z.null()]).optional())
+  .transform((value) => value ?? null);
 
 export function requiredPlainTextSchema(label: string, maxLength: number) {
   return z

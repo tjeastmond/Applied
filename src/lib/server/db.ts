@@ -12,6 +12,7 @@ import type { AppAccessConfigRepository } from "./repositories/appAccessConfigRe
 import type { AgentApiTokenRepository } from "./repositories/agentApiTokenRepository";
 import type { CompanyRepository } from "./repositories/companyRepository";
 import type { JobApplicationRepository } from "./repositories/jobApplicationRepository";
+import type { LoginThrottleRepository } from "./repositories/loginThrottleRepository";
 import type { UserRepository } from "./repositories/userRepository";
 
 const globalForDb = globalThis as unknown as {
@@ -85,6 +86,10 @@ export function getAppAccessConfigRepository(): AppAccessConfigRepository | null
 
 export function getAgentApiTokenRepository(): AgentApiTokenRepository | null {
   return getDatabaseBackend().agentApiTokens ?? null;
+}
+
+export function getLoginThrottleRepository(): LoginThrottleRepository | null {
+  return getDatabaseBackend().loginThrottle ?? null;
 }
 
 export function getDatabase(): Database.Database {

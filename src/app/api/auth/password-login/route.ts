@@ -2,6 +2,7 @@ import { badRequestResponse } from "@/lib/server/applicationRouteHelpers";
 import { getUserRepository } from "@/lib/server/db";
 import { issueAppSessionResponse } from "@/lib/server/issueAppSession";
 import { log } from "@/lib/server/logging/logger";
+import { checkLoginThrottle, clearLoginFailures, recordLoginFailure } from "@/lib/server/loginThrottle";
 import { runDummyPasswordVerify, verifyPassword } from "@/lib/server/passwordHash";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
 import { passwordLoginSchema } from "@/lib/schemas/auth";
@@ -17,21 +18,30 @@ export async function POST(request: Request) {
     return badRequestResponse(parsed.error);
   }
 
+  const throttled = await checkLoginThrottle(request);
+  if (throttled) {
+    log.warn("app login throttled", { route: "/api/auth/password-login", method: "POST" });
+    return throttled;
+  }
+
   const { email, password } = parsed.data;
   const users = getUserRepository();
   const credential = await users.getCredentialByEmail(email);
 
   if (!credential) {
     await runDummyPasswordVerify(password);
+    await recordLoginFailure(request);
     log.warn("app login failed", { route: "/api/auth/password-login", method: "POST", reason: "invalid credentials" });
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
 
   const valid = await verifyPassword(password, credential.passwordHash);
   if (!valid) {
+    await recordLoginFailure(request);
     log.warn("app login failed", { route: "/api/auth/password-login", method: "POST", reason: "invalid credentials" });
     return NextResponse.json(UNAUTHORIZED_BODY, { status: 401 });
   }
 
+  await clearLoginFailures(request);
   return issueAppSessionResponse("password", "/api/auth/password-login");
 }

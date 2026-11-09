@@ -52,6 +52,13 @@ CREATE TABLE IF NOT EXISTS agent_api_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_agent_api_tokens_active ON agent_api_tokens (revoked_at, created_at DESC);
 
+-- Failed sign-in counters (fixed windows, epoch ms). Local auth state; never backed up or synced.
+CREATE TABLE IF NOT EXISTS auth_login_throttle (
+  key TEXT PRIMARY KEY,
+  failures INTEGER NOT NULL,
+  window_started_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,

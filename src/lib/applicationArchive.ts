@@ -76,11 +76,11 @@ export function countArchivableApplications(applications: JobApplication[]): num
 }
 
 export function bulkArchiveConfirmTitle(): string {
-  return "Archive rejected and passed applications?";
+  return "Archive rejected, passed, and no response applications?";
 }
 
 export function bulkArchiveConfirmDescription(count: number): string {
   return count === 1
-    ? "Archive 1 rejected or passed application? It will move to the archived view."
-    : `Archive ${count} rejected and passed applications? They will move to the archived view.`;
+    ? "Archive 1 rejected, passed, or no response application? It will move to the archived view."
+    : `Archive ${count} rejected, passed, and no response applications? They will move to the archived view.`;
 }

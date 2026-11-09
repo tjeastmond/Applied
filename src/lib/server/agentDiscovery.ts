@@ -1,3 +1,4 @@
+import { AGENT_CLI_COMMAND_SPECS } from "@/lib/agentCli/commandSpecs";
 import { APPLICATION_STATUS_OPTIONS, APPLICATION_STATUSES } from "@/lib/applicationStatus";
 
 export const AGENT_API_VERSION = 2;
@@ -19,6 +20,7 @@ export const AGENT_REQUIRED_PATHS = [
   "/api/agent/docs",
   "/api/agent/applications",
   "/api/agent/applications/:id",
+  "/api/agent/applications/archive-stale",
   "/api/agent/applications/:id/notes",
   "/api/agent/companies",
   "/api/agent/companies/:id",
@@ -86,6 +88,26 @@ export const AGENT_CAPABILITIES = [
     behavior: [
       "Creates a status-update note and status history entry",
       'Adds audit note "Updated by {token name}, via api|cli"',
+    ],
+  },
+  {
+    name: "archive_stale_applications",
+    method: "POST",
+    path: "/api/agent/applications/archive-stale",
+    description:
+      "Mark non-archived applied, waiting, interviewing, and no_response applications with no update in the last 2 months as no_response and archive them.",
+    query: {
+      dryRun: "optional; 1 lists affected applications without changing anything",
+    },
+    response: {
+      dryRun: "boolean",
+      archivedCount: "number archived (0 on dry run)",
+      applications: APPLICATION_SUMMARY_FIELDS,
+    },
+    behavior: [
+      "Creates a status-update note and status history entry for each status change",
+      'Adds audit note "Updated by {token name}, via api|cli"',
+      "Offers, passed, rejected, and to_apply applications are never touched",
     ],
   },
   {
@@ -169,20 +191,7 @@ export const AGENT_LIMITATIONS = [
   "No access to recruiter, contact, salary, or job-description fields in responses",
 ] as const;
 
-export const AGENT_CLI_COMMANDS = [
-  "pnpm applied:agent applications list [--search QUERY] [--status STATUS] [--json]",
-  "pnpm applied:agent applications add --url URL [--status STATUS] [--json]",
-  "pnpm applied:agent applications get --id ID [--json]",
-  "pnpm applied:agent applications set-status --id ID --status STATUS [--json]",
-  'pnpm applied:agent applications add-note --id ID --content "..." [--json]',
-  "pnpm applied:agent companies list [--search QUERY] [--ignored] [--json]",
-  "pnpm applied:agent companies add --name NAME [--url URL] [--linkedin URL] [--email EMAIL] [--json]",
-  "pnpm applied:agent companies update --id ID [--name NAME] [--url URL] [--linkedin URL] [--email EMAIL] [--json]",
-  "pnpm applied:agent companies ignore --id ID [--json]",
-  "pnpm applied:agent companies unignore --id ID [--json]",
-  "pnpm applied:agent docs [--json]",
-  "pnpm applied:agent posts add --url URL [--status STATUS] [--json]",
-] as const;
+export const AGENT_CLI_COMMANDS = AGENT_CLI_COMMAND_SPECS.map((spec) => `pnpm applied:agent ${spec.usage}`);
 
 export function buildAgentDiscoveryPayload(tokenSource: string) {
   return {

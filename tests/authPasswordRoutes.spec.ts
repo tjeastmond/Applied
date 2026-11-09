@@ -245,16 +245,67 @@ describe("password auth API routes", () => {
     reopened.close();
     rmSync(dbPath, { force: true });
   });
+
+  describe("outside local dev", () => {
+    function setupRequest(body: Record<string, unknown>, headers: Record<string, string> = {}) {
+      return new Request("http://localhost/api/auth/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD, displayName: "Owner", ...body }),
+      });
+    }
+
+    beforeEach(() => {
+      vi.stubEnv("NODE_ENV", "production");
+    });
+
+    test("setup returns 503 when no app access token is configured", async () => {
+      const response = await setupRoute(setupRequest({ accessToken: "anything" }));
+      expect(response.status).toBe(503);
+      expect(await getUserRepository().getCredentialByEmail(TEST_EMAIL)).toBeNull();
+    });
+
+    test("setup rejects requests without a valid access token", async () => {
+      withTestAppAccessToken();
+
+      const missing = await setupRoute(setupRequest({}));
+      expect(missing.status).toBe(401);
+
+      const wrong = await setupRoute(setupRequest({ accessToken: "not-the-token" }));
+      expect(wrong.status).toBe(401);
+
+      expect(await getUserRepository().getCredentialByEmail(TEST_EMAIL)).toBeNull();
+      expect((await getAuthStatus(new Request("http://localhost/api/auth/status"))).setupRequired).toBe(true);
+    });
+
+    test("setup succeeds with the access token in the body", async () => {
+      withTestAppAccessToken();
+
+      const response = await setupRoute(setupRequest({ accessToken: TEST_APP_ACCESS_TOKEN }));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Set-Cookie")).toContain(APP_SESSION_COOKIE);
+      expect(await getUserRepository().getCredentialByEmail(TEST_EMAIL)).not.toBeNull();
+    });
+
+    test("setup succeeds with a bearer access token", async () => {
+      withTestAppAccessToken();
+
+      const response = await setupRoute(setupRequest({}, { Authorization: `Bearer ${TEST_APP_ACCESS_TOKEN}` }));
+      expect(response.status).toBe(200);
+    });
+  });
 });
 
 describe("auth status with password login", () => {
   beforeEach(() => {
     delete process.env.APP_ACCESS_TOKEN;
+    vi.stubEnv("NODE_ENV", "development");
     useTestDatabase(openDatabase(":memory:"));
   });
 
   afterEach(() => {
     restoreAppAccessToken(originalAppAccessToken);
+    vi.unstubAllEnvs();
     resetDatabaseBackend();
   });
 
