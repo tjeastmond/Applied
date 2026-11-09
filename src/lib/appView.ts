@@ -23,6 +23,10 @@ export function appViewToPath(view: AppView): string {
   return APP_VIEW_PATHS[view];
 }
 
+export function isListRoutePath(pathname: string | null | undefined): boolean {
+  return pathname != null && Object.values(APP_VIEW_PATHS).includes(pathname);
+}
+
 export function isProfileRoute(pathname: string): boolean {
   return pathname === PROFILE_PATH;
 }

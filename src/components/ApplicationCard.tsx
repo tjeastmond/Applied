@@ -23,6 +23,8 @@ type ApplicationCardProps = {
   onStatusChange: (id: string, status: ApplicationStatus) => void;
   onPinChange: (id: string, pinned: boolean) => void;
   onCompanyFilter?: (company: string) => void;
+  /** Takes precedence over onCompanyFilter: navigates to the company page. */
+  onCompanyOpen?: (company: string) => void;
   onMouseEnterCard?: (id: string) => void;
   onMouseLeaveCard?: () => void;
 };
@@ -35,6 +37,7 @@ export const ApplicationCard = memo(function ApplicationCard({
   onStatusChange,
   onPinChange,
   onCompanyFilter,
+  onCompanyOpen,
   onMouseEnterCard,
   onMouseLeaveCard,
 }: ApplicationCardProps) {
@@ -121,7 +124,8 @@ export const ApplicationCard = memo(function ApplicationCard({
                 linkedinUrl={application.linkedinUrl}
                 postingUrl={postingUrl}
                 stopPropagation
-                onCompanyClick={onCompanyFilter}
+                onCompanyClick={onCompanyOpen ?? onCompanyFilter}
+                companyNavigates={Boolean(onCompanyOpen)}
                 className="min-w-0 flex-1"
               />
             </div>

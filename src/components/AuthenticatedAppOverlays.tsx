@@ -36,7 +36,10 @@ type AuthenticatedAppOverlaysProps = Pick<
   | "isDeleting"
   | "handleDeleteDialogOpenChange"
   | "confirmDelete"
->;
+> & {
+  /** Shell: navigate to the company page (takes precedence over the filter handler). */
+  onCompanyOpen?: (company: string) => void;
+};
 
 export function AuthenticatedAppOverlays({
   formOpen,
@@ -59,6 +62,7 @@ export function AuthenticatedAppOverlays({
   isDeleting,
   handleDeleteDialogOpenChange,
   confirmDelete,
+  onCompanyOpen,
 }: AuthenticatedAppOverlaysProps) {
   return (
     <>
@@ -78,6 +82,7 @@ export function AuthenticatedAppOverlays({
         onStatusChange={handleStatusChange}
         onRequestDelete={requestDelete}
         onCompanyFilter={handleCompanyFilterFromDetail}
+        onCompanyOpen={onCompanyOpen}
       />
 
       <AlertDialog open={pendingDeleteId !== null} onOpenChange={handleDeleteDialogOpenChange}>

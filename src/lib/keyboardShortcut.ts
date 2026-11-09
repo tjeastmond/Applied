@@ -33,8 +33,8 @@ export function modSShortcutLabel(): string {
   return modKeyLabel("S");
 }
 
-export function modSShortcutDescription(): string {
-  return modKeyDescription("S", "saves application changes");
+export function modSShortcutDescription(subject = "application"): string {
+  return modKeyDescription("S", `saves ${subject} changes`);
 }
 
 export function modEnterShortcutLabel(): string {

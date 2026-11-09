@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { appViewToQuery, type AppView } from "@/lib/appView";
+import { usePathname } from "next/navigation";
+import { appViewToQuery, isListRoutePath, type AppView } from "@/lib/appView";
+import {
+  consumeHistoryNavigation,
+  currentHistoryEntryKey,
+  installHistoryNavigationListener,
+  listRouteSnapshotKey,
+  readListRouteSnapshot,
+  saveListRouteSnapshot,
+} from "@/lib/listRouteSnapshots";
 import {
   nextViewMode,
   persistApplicationViewMode,
@@ -70,6 +79,10 @@ type UseApplicationListViewOptions = {
   initialPageSize: ApplicationPageSize;
   initialPageSizeFromPreference: boolean;
   routeAppView?: AppView;
+  /** Id of the application whose drawer should be remembered when leaving a list route. */
+  getOpenApplicationId?: () => string | null;
+  /** Called when Back/Forward restores a snapshot that had a drawer open. */
+  onRestoreOpenApplication?: (id: string) => void;
 };
 
 export function useApplicationListView({
@@ -77,7 +90,10 @@ export function useApplicationListView({
   initialPageSize,
   initialPageSizeFromPreference,
   routeAppView,
+  getOpenApplicationId,
+  onRestoreOpenApplication,
 }: UseApplicationListViewOptions) {
+  const pathname = usePathname();
   const routeQuery = routeAppView ? appViewToQuery(routeAppView) : null;
   const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(() => {
     if (routeAppView !== "applications") return new Set();
@@ -124,6 +140,25 @@ export function useApplicationListView({
   );
 
   const previousListQueryRef = useRef(listQuery);
+  const lastPathnameRef = useRef<string | null | undefined>(undefined);
+  const lastHistoryEntryKeyRef = useRef<string | null>(null);
+  const latestStateRef = useRef({
+    selectedCompanies,
+    selectedStatuses,
+    searchQuery,
+    includeArchived,
+    viewMode,
+    currentPage,
+  });
+  latestStateRef.current = { selectedCompanies, selectedStatuses, searchQuery, includeArchived, viewMode, currentPage };
+  const getOpenApplicationIdRef = useRef(getOpenApplicationId);
+  getOpenApplicationIdRef.current = getOpenApplicationId;
+  const onRestoreOpenApplicationRef = useRef(onRestoreOpenApplication);
+  onRestoreOpenApplicationRef.current = onRestoreOpenApplication;
+
+  useEffect(() => {
+    installHistoryNavigationListener();
+  }, []);
 
   const snapshot = useMemo(
     () =>
@@ -155,6 +190,70 @@ export function useApplicationListView({
   }, [initialPageSizeFromPreference]);
 
   useLayoutEffect(() => {
+    const previousPathname = lastPathnameRef.current;
+    lastPathnameRef.current = pathname;
+    const previousEntryKey = lastHistoryEntryKeyRef.current;
+    const entryKey = currentHistoryEntryKey();
+    lastHistoryEntryKeyRef.current = entryKey;
+
+    if (routeAppView && pathname != null && previousPathname != null && previousPathname !== pathname) {
+      const wasHistoryNavigation = consumeHistoryNavigation();
+
+      if (isListRoutePath(previousPathname)) {
+        const latest = latestStateRef.current;
+        saveListRouteSnapshot(listRouteSnapshotKey(previousPathname, previousEntryKey), {
+          selectedCompanies: [...latest.selectedCompanies],
+          selectedStatuses: [...latest.selectedStatuses],
+          searchQuery: latest.searchQuery,
+          includeArchived: latest.includeArchived,
+          viewMode: latest.viewMode,
+          currentPage: latest.currentPage,
+          openApplicationId: getOpenApplicationIdRef.current?.() ?? null,
+        });
+      }
+
+      // Non-list routes (companies, profile) do not use list state; leave it untouched.
+      if (!isListRoutePath(pathname)) return;
+
+      // With an entry key, a snapshot exists only for entries we already visited (Back/Forward);
+      // without one, fall back to the popstate flag.
+      const saved =
+        entryKey !== null
+          ? readListRouteSnapshot(listRouteSnapshotKey(pathname, entryKey))
+          : wasHistoryNavigation
+            ? readListRouteSnapshot(pathname)
+            : null;
+      if (saved && peekPendingCompanyFilter() === null) {
+        const query = appViewToQuery(routeAppView);
+        const restored = {
+          viewMode: saved.viewMode,
+          includeArchived: saved.includeArchived,
+          bookmarksOnly: query.bookmarksOnly,
+          toApplyOnly: query.toApplyOnly,
+          selectedCompanies: new Set(saved.selectedCompanies),
+          selectedStatuses: new Set(saved.selectedStatuses),
+          searchQuery: saved.searchQuery,
+          dedicatedArchivedView: routeAppView === "archived",
+        };
+        // Pre-seed so the "query changed -> page 1" effect does not clobber the restored page.
+        previousListQueryRef.current = restored;
+        setViewMode(restored.viewMode);
+        setBookmarksOnly(restored.bookmarksOnly);
+        setToApplyOnly(restored.toApplyOnly);
+        setSearchQuery(restored.searchQuery);
+        setSelectedCompanies(restored.selectedCompanies);
+        setSelectedStatuses(restored.selectedStatuses);
+        setIncludeArchived(restored.includeArchived);
+        setCurrentPage(saved.currentPage);
+        persistApplicationViewMode(restored.viewMode);
+        sessionListPrefs.includeArchivedRestored = true;
+        if (saved.openApplicationId) {
+          onRestoreOpenApplicationRef.current?.(saved.openApplicationId);
+        }
+        return;
+      }
+    }
+
     if (routeAppView) {
       const query = appViewToQuery(routeAppView);
       const { applyCompany, retainPending } = resolvePendingCompanyOnRouteChange(
@@ -193,7 +292,7 @@ export function useApplicationListView({
     }
 
     sessionListPrefs.viewModeRestored = true;
-  }, [routeAppView]);
+  }, [routeAppView, pathname]);
 
   useLayoutEffect(() => {
     if (sessionListPrefs.includeArchivedRestored) {
