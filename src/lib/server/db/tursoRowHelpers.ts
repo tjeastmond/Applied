@@ -1,4 +1,18 @@
-import type { Client, InValue, Row } from "@tursodatabase/serverless/compat";
+import type { Client, InStatement, InValue, Row } from "@tursodatabase/serverless/compat";
+
+/** Runs statements sequentially in one write transaction (not client.batch(), which mis-binds positional args). */
+export async function tursoWriteTransaction(client: Client, statements: InStatement[]): Promise<void> {
+  const tx = await client.transaction("write");
+  try {
+    for (const statement of statements) await tx.execute(statement);
+    await tx.commit();
+  } catch (error) {
+    if (!tx.closed) await tx.rollback().catch(() => undefined);
+    throw error;
+  } finally {
+    tx.close();
+  }
+}
 
 export type NamedArgs = Record<string, InValue>;
 
