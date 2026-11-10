@@ -39,6 +39,21 @@ describe("appAuth", () => {
     expect(response).toBeNull();
   });
 
+  test("isAppAccessAuthorized rejects tampered cookie signature and wrong-length bearer", async () => {
+    const good = await signSessionCookie(TEST_APP_ACCESS_TOKEN, Date.now() + 60_000);
+    const cookies = [`${good}x`, `${good.slice(0, -2)}AA`];
+    for (const value of cookies) {
+      const request = new Request("http://localhost/api/applications", {
+        headers: { Cookie: `${APP_SESSION_COOKIE}=${value}` },
+      });
+      expect(await isAppAccessAuthorized(request)).toBe(false);
+    }
+    const shortBearer = new Request("http://localhost/api/applications", {
+      headers: { Authorization: `Bearer ${TEST_APP_ACCESS_TOKEN}x` },
+    });
+    expect(await isAppAccessAuthorized(shortBearer)).toBe(false);
+  });
+
   test("isAccessTokenValid compares tokens in constant time", () => {
     expect(isAccessTokenValid(TEST_APP_ACCESS_TOKEN)).toBe(true);
     expect(isAccessTokenValid("wrong-token")).toBe(false);
