@@ -75,7 +75,7 @@ export class SqliteUserRepository implements UserRepository {
 
   getCredentialByEmail(email: string): Promise<UserCredential | null> {
     const row = this.getCredentialByEmailStmt.get(email.toLowerCase()) as UserCredentialRow | undefined;
-    if (!row) {
+    if (!row?.password_hash) {
       return Promise.resolve(null);
     }
     return Promise.resolve({ id: row.id, passwordHash: row.password_hash });
@@ -83,7 +83,7 @@ export class SqliteUserRepository implements UserRepository {
 
   getCredentialById(id: string): Promise<UserCredential | null> {
     const row = this.getCredentialByIdStmt.get(id) as UserCredentialRow | undefined;
-    if (!row) {
+    if (!row?.password_hash) {
       return Promise.resolve(null);
     }
     return Promise.resolve({ id: row.id, passwordHash: row.password_hash });

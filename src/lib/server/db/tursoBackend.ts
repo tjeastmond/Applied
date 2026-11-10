@@ -410,7 +410,7 @@ function rowToStatusHistoryRow(row: Row): StatusHistoryRow {
   };
 }
 
-class TursoUserRepository implements UserRepository {
+export class TursoUserRepository implements UserRepository {
   constructor(
     private readonly client: Client,
     private readonly ready: Promise<void>,
@@ -461,25 +461,23 @@ class TursoUserRepository implements UserRepository {
   async getCredentialByEmail(email: string): Promise<UserCredential | null> {
     await this.ready;
     const row = await tursoFirstRow(this.client, GET_CREDENTIAL_BY_EMAIL_SQL, [email.toLowerCase()]);
-    if (!row) {
+    // A passwordless owner has password_hash = NULL: no credential (matches SQLite).
+    const passwordHash = row ? nullableString(row, "password_hash") : null;
+    if (!row || !passwordHash) {
       return null;
     }
-    return {
-      id: requiredString(row, "id"),
-      passwordHash: requiredString(row, "password_hash"),
-    };
+    return { id: requiredString(row, "id"), passwordHash };
   }
 
   async getCredentialById(id: string): Promise<UserCredential | null> {
     await this.ready;
     const row = await tursoFirstRow(this.client, GET_CREDENTIAL_BY_ID_SQL, [id]);
-    if (!row) {
+    // A passwordless owner has password_hash = NULL: no credential (matches SQLite).
+    const passwordHash = row ? nullableString(row, "password_hash") : null;
+    if (!row || !passwordHash) {
       return null;
     }
-    return {
-      id: requiredString(row, "id"),
-      passwordHash: requiredString(row, "password_hash"),
-    };
+    return { id: requiredString(row, "id"), passwordHash };
   }
 
   async setOwnerPassword(input: SetOwnerPasswordInput): Promise<boolean> {
