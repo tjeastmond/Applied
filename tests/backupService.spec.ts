@@ -10,7 +10,13 @@ import { SqliteApplicationNoteRepository } from "@/lib/server/db/sqliteApplicati
 import { SqliteCompanyRepository } from "@/lib/server/db/sqliteCompanyRepository";
 import { SqliteJobApplicationRepository } from "@/lib/server/db/sqliteRepository";
 import { stripSensitiveDataFromDatabase } from "@/lib/server/services/databaseBackupService";
-import { exportJson, exportSql, importJson, importSql } from "@/lib/server/services/backupService";
+import {
+  assertSqlBackupIsSafe,
+  exportJson,
+  exportSql,
+  importJson,
+  importSql,
+} from "@/lib/server/services/backupService";
 
 async function seedSampleData(db: ReturnType<typeof openDatabase>) {
   const appRepo = new SqliteJobApplicationRepository(db);
@@ -143,7 +149,43 @@ describe("backupService", () => {
         `ATTACH DATABASE '/tmp/evil.db' AS evil; INSERT INTO applications (id, url, applied_at, status, created_at, updated_at) VALUES ('x', 'https://example.com', '2026-06-01', 'applied', '2026-06-01', '2026-06-01');`,
         "replace",
       ),
-    ).toThrow("forbidden");
+    ).toThrow("unsupported");
+  });
+
+  test("rejects an ATTACH smuggled after a quoted value", () => {
+    const db = openDatabase(":memory:");
+    expect(() =>
+      importSql(
+        db,
+        `INSERT INTO users (id, display_name, created_at, updated_at) VALUES ('u', 'it''s', 'a', 'a'); ATTACH DATABASE '/tmp/evil.db' AS evil;`,
+        "upsert",
+      ),
+    ).toThrow("unsupported");
+  });
+
+  const ins = `INSERT INTO users (id, display_name, created_at, updated_at) VALUES ('u', 'n', 'a', 'a')`;
+  test.each([
+    ["block comment apostrophe", `${ins} /* ' */; ALTER TABLE users ADD COLUMN hacked TEXT; ${ins} /* ' */`],
+    ["double-quoted apostrophe", `${ins} "it's"; ALTER TABLE users ADD COLUMN hacked TEXT; ${ins} "it's"`],
+    ["backtick apostrophe", `${ins} \`it's\`; ALTER TABLE users ADD COLUMN hacked TEXT; ${ins} \`it's\``],
+    ["bracket apostrophe", `${ins} [it's]; ALTER TABLE users ADD COLUMN hacked TEXT; ${ins} [it's]`],
+  ])("rejects smuggled statements hidden by %s", (_name, sql) => {
+    expect(() => assertSqlBackupIsSafe(sql)).toThrow("unsupported");
+  });
+
+  test.each(["replace", "upsert"] as const)("round-trips awkward string content through SQL (%s)", async (mode) => {
+    const db = openDatabase(":memory:");
+    const application = await seedSampleData(db);
+    const noteRepo = new SqliteApplicationNoteRepository(db);
+    const content = "Salary: 100k; remote\nR&amp;D team, don't forget; please attach your resume\n-- not a comment\n';";
+    await noteRepo.create(application.id, content);
+
+    const sql = exportSql(db);
+    const result = importSql(db, sql, mode);
+
+    expect(result.imported.notes).toBe(2);
+    const notes = await noteRepo.listByApplicationId(application.id);
+    expect(notes.map((note) => note.content)).toContain(content);
   });
 
   test("rejects malicious SQL containing DROP TABLE outside backup format", () => {
