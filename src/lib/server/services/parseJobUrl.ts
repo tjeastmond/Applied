@@ -23,6 +23,30 @@ const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 const FETCH_TIMEOUT_MS = 20000;
+const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
+
+/** Reads the body as text, returning null once it exceeds MAX_RESPONSE_BYTES. */
+async function readCappedText(response: Response): Promise<string | null> {
+  const declared = Number(response.headers.get("content-length"));
+  if (declared > MAX_RESPONSE_BYTES) return null;
+  if (!response.body) return "";
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let received = 0;
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > MAX_RESPONSE_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
+}
 
 function getMetaContent(document: Document, property: string): string | null {
   const byProperty = document.querySelector(`meta[property="${property}"]`);
@@ -113,7 +137,10 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
       return { ok: false, error: "Response is not HTML" };
     }
 
-    const html = await response.text();
+    const html = await readCappedText(response);
+    if (html === null) {
+      return { ok: false, error: "Job posting is too large" };
+    }
     const { document } = parseHTML(html);
 
     const paraformRole = isParaformHost(currentUrl.hostname) ? extractParaformRole(document) : null;
