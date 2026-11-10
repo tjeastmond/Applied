@@ -24,15 +24,17 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
           appliedAt: "2026-06-01",
         }),
       );
+      const incoming = { ...kept, id: crypto.randomUUID(), title: "Incoming" };
+      const now = new Date().toISOString();
       const entry = {
         id: crypto.randomUUID(),
-        applicationId: kept.id,
+        applicationId: incoming.id,
         userId: DEFAULT_USER_ID,
         fromStatus: null,
         toStatus: "applied" as const,
         changedAt: new Date().toISOString(),
       };
-      const incoming = { ...kept, id: crypto.randomUUID(), title: "Incoming" };
+      const users = [{ id: DEFAULT_USER_ID, displayName: "You", email: null, createdAt: now, updatedAt: now }];
 
       await expect(
         backend.importJson(
@@ -41,7 +43,7 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
             exportedAt: new Date().toISOString(),
             applications: [incoming],
             notes: [],
-            users: [],
+            users,
             // Duplicate primary key: the last INSERT fails after the DROPs and earlier INSERTs ran.
             statusHistory: [entry, entry],
             companies: [],
@@ -54,6 +56,13 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
       expect((await backend.applications.list()).map((a) => a.id)).toEqual([kept.id]);
       const pragma = await backend.getTursoClient().execute("PRAGMA foreign_keys");
       expect(Number(pragma.rows[0]?.[0])).toBe(1);
+
+      // An orphan note is rejected before the DB is touched.
+      const orphanNote = { id: crypto.randomUUID(), applicationId: crypto.randomUUID(), content: "x", createdAt: now };
+      await expect(
+        backend.importJson({ ...empty, applications: [incoming], notes: [orphanNote] }, "replace"),
+      ).rejects.toThrow(/missing applications or users/);
+      expect((await backend.applications.list()).map((a) => a.id)).toEqual([kept.id]);
 
       // A successful replace must leave the migrated schema (password_hash) in place without a reset.
       await backend.importJson(empty, "replace");

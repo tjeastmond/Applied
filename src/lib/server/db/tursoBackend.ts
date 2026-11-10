@@ -826,6 +826,15 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     const data = parseBackupJson(raw);
 
     if (mode === "replace") {
+      // The script runs with foreign keys off, so reject dangling references up front.
+      const appIds = new Set(data.applications.map((a) => a.id));
+      const userIds = new Set(data.users.map((u) => u.id));
+      if (
+        data.notes.some((n) => !appIds.has(n.applicationId)) ||
+        data.statusHistory.some((h) => !appIds.has(h.applicationId) || !userIds.has(h.userId))
+      ) {
+        throw new Error("Backup has notes or status history that reference missing applications or users");
+      }
       // One executeMultiple request (BEGIN..COMMIT script) so a failure cannot leave the DB empty or half full.
       await this.importSql(
         exportSqlFromRecords(data.applications, data.notes, data.users, data.statusHistory, data.companies),
