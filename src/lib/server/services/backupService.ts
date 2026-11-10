@@ -9,6 +9,7 @@ import {
   type ApplicationRow,
 } from "../db/applicationRepositoryShared";
 import { backfillCompaniesFromApplications, backfillMissingStatusHistory } from "../db/migrate";
+import { sanitizeStoredHtml } from "./extractFullJd";
 import { readBackupSchemaSql } from "../db/schema";
 import type { CompanyRow } from "../db/companyRepositoryShared";
 import type { UserRow } from "../db/userRepositoryShared";
@@ -16,6 +17,7 @@ import type { UserRow } from "../db/userRepositoryShared";
 import {
   UPSERT_APPLICATION_SQL,
   UPSERT_COMPANY_SQL,
+  UPSERT_CONFLICT_CLAUSES,
   UPSERT_NOTE_SQL,
   UPSERT_STATUS_HISTORY_SQL,
   UPSERT_USER_SQL,
@@ -223,7 +225,14 @@ export function parseBackupJson(raw: unknown): BackupJson {
     throw new Error("Invalid backup JSON format");
   }
 
-  return parsed.data;
+  // Backups are untrusted input; fullJd is rendered as HTML, so sanitize like every other write.
+  return {
+    ...parsed.data,
+    applications: parsed.data.applications.map((a) => ({
+      ...a,
+      fullJd: a.fullJd ? sanitizeStoredHtml(a.fullJd) : a.fullJd,
+    })),
+  };
 }
 
 export function exportJson(db: Database.Database): BackupJson {
@@ -595,64 +604,12 @@ function sqlInsertTablePriority(insert: string): number {
 
 function insertToUpsertStatement(insert: string): string {
   const normalized = insert.replace(/^INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO/i, "INSERT INTO").trim();
-
-  if (/^INSERT INTO users\b/i.test(normalized)) {
-    return `${normalized}
-ON CONFLICT(id) DO UPDATE SET
-  display_name = excluded.display_name,
-  email = excluded.email,
-  updated_at = excluded.updated_at;`;
+  const table = /^INSERT INTO (\w+)\b/i.exec(normalized)?.[1]?.toLowerCase() ?? "";
+  if (!Object.hasOwn(UPSERT_CONFLICT_CLAUSES, table)) {
+    throw new Error("Unsupported INSERT statement in SQL backup");
   }
 
-  if (/^INSERT INTO companies\b/i.test(normalized)) {
-    return `${normalized}
-ON CONFLICT(id) DO UPDATE SET
-  name = excluded.name,
-  ignored = excluded.ignored,
-  updated_at = excluded.updated_at;`;
-  }
-
-  if (/^INSERT INTO applications\b/i.test(normalized)) {
-    return `${normalized}
-ON CONFLICT(id) DO UPDATE SET
-  url = excluded.url,
-  linkedin_url = excluded.linkedin_url,
-  title = excluded.title,
-  company = excluded.company,
-  applied_at = excluded.applied_at,
-  via_recruiter = excluded.via_recruiter,
-  recruiter_name = excluded.recruiter_name,
-  recruiter_firm = excluded.recruiter_firm,
-  contact_email = excluded.contact_email,
-  contact_phone = excluded.contact_phone,
-  salary_range = excluded.salary_range,
-  desired_salary = excluded.desired_salary,
-  notes = excluded.notes,
-  full_jd = excluded.full_jd,
-  status = excluded.status,
-  archived = excluded.archived,
-  pinned = excluded.pinned,
-  updated_at = excluded.updated_at;`;
-  }
-
-  if (/^INSERT INTO application_notes\b/i.test(normalized)) {
-    return `${normalized}
-ON CONFLICT(id) DO UPDATE SET
-  application_id = excluded.application_id,
-  content = excluded.content;`;
-  }
-
-  if (/^INSERT INTO application_status_history\b/i.test(normalized)) {
-    return `${normalized}
-ON CONFLICT(id) DO UPDATE SET
-  application_id = excluded.application_id,
-  user_id = excluded.user_id,
-  from_status = excluded.from_status,
-  to_status = excluded.to_status,
-  changed_at = excluded.changed_at;`;
-  }
-
-  throw new Error("Unsupported INSERT statement in SQL backup");
+  return `${normalized}\n${UPSERT_CONFLICT_CLAUSES[table as keyof typeof UPSERT_CONFLICT_CLAUSES]};`;
 }
 
 export function prepareSqlUpsertStatements(sql: string): string[] {

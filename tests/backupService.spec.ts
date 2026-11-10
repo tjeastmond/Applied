@@ -48,6 +48,21 @@ describe("backupService", () => {
     expect(result.applications[0]?.company).toBe("Acme");
   });
 
+  test("sanitizes fullJd HTML on JSON import", async () => {
+    const db = openDatabase(":memory:");
+    await seedSampleData(db);
+    const exported = exportJson(db);
+    const fullJd = '<p onclick="x()">hi</p><img src=x onerror=alert(1)><script>alert(1)</script>';
+
+    const result = importJson(
+      db,
+      { ...exported, applications: exported.applications.map((a) => ({ ...a, fullJd })) },
+      "replace",
+    );
+
+    expect(result.applications[0]?.fullJd).toBe("<p>hi</p>");
+  });
+
   test("imports JSON with upsert mode without removing existing records", async () => {
     const db = openDatabase(":memory:");
     const original = await seedSampleData(db);
@@ -296,6 +311,30 @@ describe("backupService", () => {
       url: "https://acme.example/",
       linkedinUrl: "https://linkedin.com/company/acme",
       email: "hello@acme.example",
+    });
+  });
+
+  test("SQL upsert import updates company contact fields on conflict", async () => {
+    const db = openDatabase(":memory:");
+    const companyRepo = new SqliteCompanyRepository(db);
+    const created = await companyRepo.create({ name: "Acme", url: "https://old.example/" });
+    const sql = exportSql(db);
+    await companyRepo.update(created.id, { url: "https://stale.example/", email: "stale@example.com" });
+    const backup = sql
+      .replace("https://old.example/", "https://new.example/")
+      .replace(
+        /(INSERT INTO companies[^;]*?VALUES \([^;]*?)NULL, NULL, /,
+        "$1'https://linkedin.com/company/acme', 'new@example.com', ",
+      );
+
+    importSql(db, backup, "upsert");
+
+    const [company] = exportJson(db).companies;
+    expect(company).toMatchObject({
+      id: created.id,
+      url: "https://new.example/",
+      linkedinUrl: "https://linkedin.com/company/acme",
+      email: "new@example.com",
     });
   });
 

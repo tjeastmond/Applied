@@ -34,6 +34,7 @@ import {
   buildBulkArchiveByStatusesSql,
   CLEAR_PINNED_ON_ARCHIVED_SQL,
   DELETE_APPLICATION_SQL,
+  TOUCH_APPLICATION_SQL,
   GET_APPLICATION_BY_ID_SQL,
   INSERT_APPLICATION_SQL,
   LIST_APPLICATIONS_SQL,
@@ -88,7 +89,14 @@ import { APPLICATION_LEGACY_COLUMNS, readSchemaSql } from "./schema";
 import { TursoAgentApiTokenRepository } from "./tursoAgentApiTokenRepository";
 import { TursoLoginThrottleRepository } from "./tursoLoginThrottleRepository";
 import { TursoAnalyticsRepository } from "./tursoAnalyticsRepository";
-import { nullableString, requiredNumber, requiredString, tursoFirstRow, tursoRows } from "./tursoRowHelpers";
+import {
+  nullableString,
+  requiredNumber,
+  requiredString,
+  tursoFirstRow,
+  tursoRows,
+  tursoWriteTransaction,
+} from "./tursoRowHelpers";
 
 function applicationStatus(row: Row): JobApplication["status"] {
   const parsed = applicationStatusSchema.safeParse(requiredString(row, "status"));
@@ -585,25 +593,21 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
       changedAt: created.created_at,
     });
 
-    await this.client.execute({
-      sql: INSERT_DEFAULT_USER_SQL,
-      args: buildDefaultUserInsertArgs(),
-    });
-    await this.client.execute({
-      sql: INSERT_APPLICATION_SQL,
-      args: created,
-    });
-    await this.client.execute({
-      sql: INSERT_STATUS_HISTORY_SQL,
-      args: [
-        history.id,
-        history.applicationId,
-        history.userId,
-        history.fromStatus,
-        history.toStatus,
-        history.changedAt,
-      ],
-    });
+    await tursoWriteTransaction(this.client, [
+      { sql: INSERT_DEFAULT_USER_SQL, args: buildDefaultUserInsertArgs() },
+      { sql: INSERT_APPLICATION_SQL, args: created },
+      {
+        sql: INSERT_STATUS_HISTORY_SQL,
+        args: [
+          history.id,
+          history.applicationId,
+          history.userId,
+          history.fromStatus,
+          history.toStatus,
+          history.changedAt,
+        ],
+      },
+    ]);
 
     const row = await this.getById(created.id);
     if (!row) {
@@ -647,6 +651,13 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
       archivedCount: result.rowsAffected,
       applications: await this.list(),
     };
+  }
+
+  async touch(id: string): Promise<string | null> {
+    await this.ready;
+    const updatedAt = nowIso();
+    const result = await this.client.execute({ sql: TOUCH_APPLICATION_SQL, args: [updatedAt, id] });
+    return result.rowsAffected > 0 ? updatedAt : null;
   }
 
   async delete(id: string): Promise<boolean> {

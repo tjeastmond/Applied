@@ -12,6 +12,7 @@ export interface JobApplicationRepository {
   getById(id: string): Promise<JobApplication | null>;
   create(input: ParsedCreateJobApplicationInput): Promise<JobApplication>;
   update(id: string, input: Partial<ParsedCreateJobApplicationInput>): Promise<JobApplication | null>;
+  touch(id: string): Promise<string | null>;
   delete(id: string): Promise<boolean>;
   bulkArchiveByStatuses(statuses: readonly ApplicationStatus[]): Promise<BulkArchiveResult>;
 }
