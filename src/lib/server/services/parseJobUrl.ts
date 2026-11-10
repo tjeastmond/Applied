@@ -28,7 +28,10 @@ const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
 /** Reads the body as text, returning null once it exceeds MAX_RESPONSE_BYTES. */
 async function readCappedText(response: Response): Promise<string | null> {
   const declared = Number(response.headers.get("content-length"));
-  if (declared > MAX_RESPONSE_BYTES) return null;
+  if (declared > MAX_RESPONSE_BYTES) {
+    await response.body?.cancel().catch(() => undefined);
+    return null;
+  }
   if (!response.body) return "";
 
   const reader = response.body.getReader();

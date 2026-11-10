@@ -86,10 +86,12 @@ describe("parseJobUrl", () => {
   });
 
   it("rejects oversized content-length", async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream({ cancel });
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response("<html></html>", {
+        new Response(body, {
           status: 200,
           headers: { "content-type": "text/html", "content-length": String(10 * 1024 * 1024) },
         }),
@@ -98,6 +100,7 @@ describe("parseJobUrl", () => {
 
     const result = await parseJobUrl("https://jobs.example.com/huge");
     expect(result).toEqual({ ok: false, error: "Job posting is too large" });
+    expect(cancel).toHaveBeenCalled();
   });
 
   it("returns an error for invalid URLs", async () => {
