@@ -824,35 +824,14 @@ export class TursoDatabaseBackend implements DatabaseBackend {
   async importJson(raw: unknown, mode: ImportMode) {
     await this.ready;
     const data = parseBackupJson(raw);
-    await this.invalidateSyncReceipt();
 
     if (mode === "replace") {
-      await this.client.execute("DELETE FROM application_status_history");
-      await this.client.execute("DELETE FROM application_notes");
-      await this.client.execute("DELETE FROM applications");
-      await this.client.execute("DELETE FROM companies");
-      await this.client.execute("DELETE FROM users");
-    }
-
-    for (const user of data.users) {
-      await this.client.execute({ sql: UPSERT_USER_SQL, args: userToRow(user) });
-    }
-
-    for (const company of data.companies) {
-      await this.client.execute({ sql: UPSERT_COMPANY_SQL, args: companyToRow(company) });
-    }
-
-    for (const application of data.applications) {
-      await this.client.execute({ sql: UPSERT_APPLICATION_SQL, args: applicationToRow(application) });
-    }
-
-    for (const note of data.notes) {
-      await this.client.execute({ sql: UPSERT_NOTE_SQL, args: noteToRow(note) });
-    }
-
-    for (const entry of data.statusHistory) {
-      await this.client.execute({ sql: UPSERT_STATUS_HISTORY_SQL, args: statusHistoryToRow(entry) });
-    }
+      // One executeMultiple request (BEGIN..COMMIT script) so a failure cannot leave the DB empty or half full.
+      await this.importSql(
+        exportSqlFromRecords(data.applications, data.notes, data.users, data.statusHistory, data.companies),
+        "replace",
+      );
+    } else await this.importJsonUpsert(data);
 
     if (data.statusHistory.length === 0) {
       await migrateInitialStatusHistory(this.client);
@@ -874,6 +853,30 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     };
   }
 
+  private async importJsonUpsert(data: BackupJson): Promise<void> {
+    await this.invalidateSyncReceipt();
+
+    for (const user of data.users) {
+      await this.client.execute({ sql: UPSERT_USER_SQL, args: userToRow(user) });
+    }
+
+    for (const company of data.companies) {
+      await this.client.execute({ sql: UPSERT_COMPANY_SQL, args: companyToRow(company) });
+    }
+
+    for (const application of data.applications) {
+      await this.client.execute({ sql: UPSERT_APPLICATION_SQL, args: applicationToRow(application) });
+    }
+
+    for (const note of data.notes) {
+      await this.client.execute({ sql: UPSERT_NOTE_SQL, args: noteToRow(note) });
+    }
+
+    for (const entry of data.statusHistory) {
+      await this.client.execute({ sql: UPSERT_STATUS_HISTORY_SQL, args: statusHistoryToRow(entry) });
+    }
+  }
+
   async importSql(sql: string, mode: ImportMode) {
     assertSqlBackupIsSafe(sql);
     await this.ready;
@@ -890,7 +893,13 @@ export class TursoDatabaseBackend implements DatabaseBackend {
         prepareSqlUpsertStatements(trimmed).map((sql) => ({ sql })),
       );
     } else {
-      await this.client.executeMultiple(trimmed);
+      try {
+        await this.client.executeMultiple(trimmed);
+      } catch (error) {
+        // The script's BEGIN stays open on the stream after a failed statement; roll back so old data survives.
+        await this.client.execute("ROLLBACK").catch(() => undefined);
+        throw error;
+      }
       await this.ready;
     }
 
