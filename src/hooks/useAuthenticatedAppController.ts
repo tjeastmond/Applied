@@ -457,7 +457,10 @@ export function useAuthenticatedAppController({
   );
 
   const handleApplicationsUpdated = useCallback((nextApplications: JobApplication[]) => {
-    setApplications(sortApplications(nextApplications));
+    setApplications((prev) => {
+      const byId = new Map(prev.map((item) => [item.id, item]));
+      return sortApplications(nextApplications.map((item) => ({ ...byId.get(item.id), ...item })));
+    });
   }, []);
 
   const handleNotesChange = useCallback(

@@ -1,6 +1,7 @@
 import { getRepository } from "@/lib/server/db";
 import { withAppAccess } from "@/lib/server/appAuth";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
+import { omitFullJd } from "@/lib/server/listApplication";
 import { bulkFetchApplicationsSchema } from "@/lib/schemas/application";
 import { NextResponse } from "next/server";
 
@@ -20,5 +21,5 @@ export const POST = withAppAccess(async (request: Request) => {
 
   const applications = data.ids && data.ids.length > 0 ? await repository.listByIds(data.ids) : await repository.list();
 
-  return NextResponse.json({ applications });
+  return NextResponse.json({ applications: applications.map(omitFullJd) });
 });

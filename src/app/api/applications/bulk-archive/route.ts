@@ -2,6 +2,7 @@ import { ARCHIVABLE_STATUSES, isArchivableStatusList } from "@/lib/archivableSta
 import { withAppAccess } from "@/lib/server/appAuth";
 import { badRequestResponse } from "@/lib/server/applicationRouteHelpers";
 import { getRepository } from "@/lib/server/db";
+import { omitFullJd } from "@/lib/server/listApplication";
 import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { bulkArchiveApplicationsSchema } from "@/lib/schemas/application";
@@ -32,5 +33,5 @@ export const POST = withAppAccess(async (request: Request) => {
     });
   }
 
-  return NextResponse.json(result);
+  return NextResponse.json({ ...result, applications: result.applications.map(omitFullJd) });
 });

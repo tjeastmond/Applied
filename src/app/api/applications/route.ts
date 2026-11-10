@@ -2,6 +2,7 @@ import { formatApplicationAuditNote } from "@/lib/applicationAuditNote";
 import { resolveCurrentUser } from "@/lib/server/currentUser";
 import { getRepository, getNoteRepository } from "@/lib/server/db";
 import { withAppAccess } from "@/lib/server/appAuth";
+import { omitFullJd } from "@/lib/server/listApplication";
 import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
@@ -14,7 +15,7 @@ export const runtime = "nodejs";
 
 export const GET = withAppAccess(async () => {
   const applications = await getRepository().list();
-  return NextResponse.json(applications);
+  return NextResponse.json(applications.map(omitFullJd));
 });
 
 export const POST = withAppAccess(async (request: Request) => {

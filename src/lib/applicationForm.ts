@@ -283,3 +283,12 @@ export function applicationToForm(application: JobApplication): FormState {
     status: application.status,
   };
 }
+
+/** True when a saved record carries a JD the form/baseline never hydrated (lazy GET lost the race to a PATCH). */
+export function shouldHydrateFullJd(
+  form: FormState,
+  baseline: JobApplication | null | undefined,
+  saved: JobApplication,
+): boolean {
+  return Boolean(saved.fullJd) && !form.fullJd && !baseline?.fullJd;
+}

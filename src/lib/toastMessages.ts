@@ -11,6 +11,7 @@ export const toastMessages = {
   deleteApplicationFailed: "Failed to delete application",
   statusUpdateFailed: "Failed to update status",
   statusHistoryLoadFailed: "Failed to load status history",
+  jobDescriptionLoadFailed: "Failed to load job description",
   notesLoadFailed: "Failed to load notes",
   applicationsLoadFailed: "Failed to load applications",
   analyticsLoadFailed: "Failed to load analytics",
