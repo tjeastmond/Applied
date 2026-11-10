@@ -7,6 +7,7 @@ import {
   buildApplicationUpdateRow,
   buildBulkArchiveByStatusesSql,
   DELETE_APPLICATION_SQL,
+  TOUCH_APPLICATION_SQL,
   GET_APPLICATION_BY_ID_SQL,
   INSERT_APPLICATION_SQL,
   LIST_APPLICATIONS_SQL,
@@ -24,6 +25,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
   private readonly insertStmt;
   private readonly updateStmt;
   private readonly deleteStmt;
+  private readonly touchStmt;
 
   constructor(db: Database.Database) {
     this.db = db;
@@ -32,6 +34,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
     this.insertStmt = db.prepare(INSERT_APPLICATION_SQL);
     this.updateStmt = db.prepare(UPDATE_APPLICATION_SQL);
     this.deleteStmt = db.prepare(DELETE_APPLICATION_SQL);
+    this.touchStmt = db.prepare(TOUCH_APPLICATION_SQL);
   }
 
   async list(): Promise<JobApplication[]> {
@@ -132,6 +135,11 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
       archivedCount: result.changes,
       applications: await this.list(),
     };
+  }
+
+  async touch(id: string): Promise<string | null> {
+    const updatedAt = nowIso();
+    return this.touchStmt.run(updatedAt, id).changes > 0 ? updatedAt : null;
   }
 
   async delete(id: string): Promise<boolean> {

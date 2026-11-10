@@ -13,6 +13,7 @@ import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput"
 import type { PatchJobApplicationInput } from "@/lib/schemas/application";
 import type { JobApplication } from "@/types";
 import type { Client } from "@tursodatabase/serverless/compat";
+import { tursoWriteTransaction } from "@/lib/server/db/tursoRowHelpers";
 import {
   buildStatusHistoryEntry,
   INSERT_STATUS_HISTORY_SQL,
@@ -98,22 +99,22 @@ async function patchApplicationStatusChangeTurso(
     changedAt: note.createdAt,
   });
 
-  await client.execute({
-    sql: INSERT_DEFAULT_USER_SQL,
-    args: buildDefaultUserInsertArgs(),
-  });
-  await client.execute({
-    sql: UPDATE_APPLICATION_SQL,
-    args: applicationRowToUpdateArgs(updated),
-  });
-  await client.execute({
-    sql: INSERT_NOTE_SQL,
-    args: [note.id, note.applicationId, note.content, note.createdAt],
-  });
-  await client.execute({
-    sql: INSERT_STATUS_HISTORY_SQL,
-    args: [history.id, history.applicationId, history.userId, history.fromStatus, history.toStatus, history.changedAt],
-  });
+  await tursoWriteTransaction(client, [
+    { sql: INSERT_DEFAULT_USER_SQL, args: buildDefaultUserInsertArgs() },
+    { sql: UPDATE_APPLICATION_SQL, args: applicationRowToUpdateArgs(updated) },
+    { sql: INSERT_NOTE_SQL, args: [note.id, note.applicationId, note.content, note.createdAt] },
+    {
+      sql: INSERT_STATUS_HISTORY_SQL,
+      args: [
+        history.id,
+        history.applicationId,
+        history.userId,
+        history.fromStatus,
+        history.toStatus,
+        history.changedAt,
+      ],
+    },
+  ]);
 
   return rowToApplication(updated);
 }

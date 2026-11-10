@@ -67,6 +67,42 @@ describe("parseJobUrl", () => {
     expect(result.fullJd).toContain("<li>TypeScript</li>");
   });
 
+  it("rejects oversized responses", async () => {
+    const chunk = new Uint8Array(1024 * 1024).fill(97);
+    let sent = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent++ < 8) controller.enqueue(chunk);
+        else controller.close();
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(body, { status: 200, headers: { "content-type": "text/html" } })),
+    );
+
+    const result = await parseJobUrl("https://jobs.example.com/huge");
+    expect(result).toEqual({ ok: false, error: "Job posting is too large" });
+  });
+
+  it("rejects oversized content-length", async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream({ cancel });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(body, {
+          status: 200,
+          headers: { "content-type": "text/html", "content-length": String(10 * 1024 * 1024) },
+        }),
+      ),
+    );
+
+    const result = await parseJobUrl("https://jobs.example.com/huge");
+    expect(result).toEqual({ ok: false, error: "Job posting is too large" });
+    expect(cancel).toHaveBeenCalled();
+  });
+
   it("returns an error for invalid URLs", async () => {
     const result = await parseJobUrl("not-a-url");
     expect(result).toEqual({ ok: false, error: "Invalid URL" });
