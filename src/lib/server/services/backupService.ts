@@ -626,6 +626,19 @@ export function prepareSqlUpsertStatements(sql: string): string[] {
     .map((insert) => insertToUpsertStatement(insert));
 }
 
+/** Rows whose stored full_jd changes when sanitized; SQL imports bypass parseBackupJson's sanitizing. */
+export function fullJdSanitizeUpdates(
+  rows: { id: string; full_jd: string | null }[],
+): { id: string; fullJd: string | null }[] {
+  const updates: { id: string; fullJd: string | null }[] = [];
+  for (const row of rows) {
+    if (!row.full_jd) continue;
+    const fullJd = sanitizeStoredHtml(row.full_jd);
+    if (fullJd !== row.full_jd) updates.push({ id: row.id, fullJd });
+  }
+  return updates;
+}
+
 function importSqlStatements(db: Database.Database, sql: string, mode: ImportMode): ImportResult {
   assertSqlBackupIsSafe(sql);
   const upserts = prepareSqlUpsertStatements(sql);
@@ -639,6 +652,13 @@ function importSqlStatements(db: Database.Database, sql: string, mode: ImportMod
     for (const upsert of upserts) {
       db.exec(upsert);
     }
+
+    const rows = db.prepare("SELECT id, full_jd FROM applications WHERE full_jd IS NOT NULL").all() as {
+      id: string;
+      full_jd: string | null;
+    }[];
+    const update = db.prepare("UPDATE applications SET full_jd = ? WHERE id = ?");
+    for (const { id, fullJd } of fullJdSanitizeUpdates(rows)) update.run(fullJd, id);
   });
 
   run();
