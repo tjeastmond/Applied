@@ -900,7 +900,8 @@ export class TursoDatabaseBackend implements DatabaseBackend {
         await this.client.execute("ROLLBACK").catch(() => undefined);
         throw error;
       }
-      await this.ready;
+      // The script recreated tables from the backup schema; re-add password_hash, indexes and other migrated columns.
+      await migrateTurso(this.client);
     }
 
     const stored = await this.client.execute("SELECT id, full_jd FROM applications WHERE full_jd IS NOT NULL");

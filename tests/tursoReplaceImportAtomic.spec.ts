@@ -50,6 +50,11 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
         ),
       ).rejects.toThrow();
 
+      // A successful replace must leave the migrated schema (password_hash) in place without a reset.
+      await backend.importJson(empty, "replace");
+      await expect(backend.users.hasPasswordLogin()).resolves.toBe(false);
+      await backend.importJson({ ...empty, applications: [kept], notes: [] }, "replace");
+
       const after = await backend.applications.list();
       expect(after.map((a) => a.id)).toEqual([kept.id]);
     } finally {
