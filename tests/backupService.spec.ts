@@ -314,6 +314,30 @@ describe("backupService", () => {
     });
   });
 
+  test("SQL upsert import updates company contact fields on conflict", async () => {
+    const db = openDatabase(":memory:");
+    const companyRepo = new SqliteCompanyRepository(db);
+    const created = await companyRepo.create({ name: "Acme", url: "https://old.example/" });
+    const sql = exportSql(db);
+    await companyRepo.update(created.id, { url: "https://stale.example/", email: "stale@example.com" });
+    const backup = sql
+      .replace("https://old.example/", "https://new.example/")
+      .replace(
+        /(INSERT INTO companies[^;]*?VALUES \([^;]*?)NULL, NULL, /,
+        "$1'https://linkedin.com/company/acme', 'new@example.com', ",
+      );
+
+    importSql(db, backup, "upsert");
+
+    const [company] = exportJson(db).companies;
+    expect(company).toMatchObject({
+      id: created.id,
+      url: "https://new.example/",
+      linkedinUrl: "https://linkedin.com/company/acme",
+      email: "new@example.com",
+    });
+  });
+
   test("stripSensitiveDataFromDatabase nulls password hashes", () => {
     const dbPath = join(tmpdir(), `applied-backup-strip-${randomUUID()}.db`);
     const db = openDatabase(dbPath);
