@@ -9,6 +9,7 @@ import {
   type ApplicationRow,
 } from "../db/applicationRepositoryShared";
 import { backfillCompaniesFromApplications, backfillMissingStatusHistory } from "../db/migrate";
+import { sanitizeStoredHtml } from "./extractFullJd";
 import { readBackupSchemaSql } from "../db/schema";
 import type { CompanyRow } from "../db/companyRepositoryShared";
 import type { UserRow } from "../db/userRepositoryShared";
@@ -223,7 +224,14 @@ export function parseBackupJson(raw: unknown): BackupJson {
     throw new Error("Invalid backup JSON format");
   }
 
-  return parsed.data;
+  // Backups are untrusted input; fullJd is rendered as HTML, so sanitize like every other write.
+  return {
+    ...parsed.data,
+    applications: parsed.data.applications.map((a) => ({
+      ...a,
+      fullJd: a.fullJd ? sanitizeStoredHtml(a.fullJd) : a.fullJd,
+    })),
+  };
 }
 
 export function exportJson(db: Database.Database): BackupJson {
