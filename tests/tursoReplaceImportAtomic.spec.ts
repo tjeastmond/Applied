@@ -50,13 +50,14 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
         ),
       ).rejects.toThrow();
 
+      // Old data survives the failed import and foreign keys are enforced again.
+      expect((await backend.applications.list()).map((a) => a.id)).toEqual([kept.id]);
+      const pragma = await backend.getTursoClient().execute("PRAGMA foreign_keys");
+      expect(Number(pragma.rows[0]?.[0])).toBe(1);
+
       // A successful replace must leave the migrated schema (password_hash) in place without a reset.
       await backend.importJson(empty, "replace");
       await expect(backend.users.hasPasswordLogin()).resolves.toBe(false);
-      await backend.importJson({ ...empty, applications: [kept], notes: [] }, "replace");
-
-      const after = await backend.applications.list();
-      expect(after.map((a) => a.id)).toEqual([kept.id]);
     } finally {
       await backend.importJson(empty, "replace");
       backend.reset();

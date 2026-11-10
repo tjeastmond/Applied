@@ -898,6 +898,8 @@ export class TursoDatabaseBackend implements DatabaseBackend {
       } catch (error) {
         // The script's BEGIN stays open on the stream after a failed statement; roll back so old data survives.
         await this.client.execute("ROLLBACK").catch(() => undefined);
+        // The script's PRAGMA foreign_keys = OFF survives ROLLBACK; restore it.
+        await this.client.execute("PRAGMA foreign_keys = ON").catch(() => undefined);
         throw error;
       }
       // The script recreated tables from the backup schema; re-add password_hash, indexes and other migrated columns.
