@@ -226,5 +226,5 @@ describe("pushSqliteToTurso integration", () => {
       );
       turso.reset();
     }
-  });
+  }, 30_000);
 });

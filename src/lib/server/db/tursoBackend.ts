@@ -824,35 +824,23 @@ export class TursoDatabaseBackend implements DatabaseBackend {
   async importJson(raw: unknown, mode: ImportMode) {
     await this.ready;
     const data = parseBackupJson(raw);
-    await this.invalidateSyncReceipt();
 
     if (mode === "replace") {
-      await this.client.execute("DELETE FROM application_status_history");
-      await this.client.execute("DELETE FROM application_notes");
-      await this.client.execute("DELETE FROM applications");
-      await this.client.execute("DELETE FROM companies");
-      await this.client.execute("DELETE FROM users");
-    }
-
-    for (const user of data.users) {
-      await this.client.execute({ sql: UPSERT_USER_SQL, args: userToRow(user) });
-    }
-
-    for (const company of data.companies) {
-      await this.client.execute({ sql: UPSERT_COMPANY_SQL, args: companyToRow(company) });
-    }
-
-    for (const application of data.applications) {
-      await this.client.execute({ sql: UPSERT_APPLICATION_SQL, args: applicationToRow(application) });
-    }
-
-    for (const note of data.notes) {
-      await this.client.execute({ sql: UPSERT_NOTE_SQL, args: noteToRow(note) });
-    }
-
-    for (const entry of data.statusHistory) {
-      await this.client.execute({ sql: UPSERT_STATUS_HISTORY_SQL, args: statusHistoryToRow(entry) });
-    }
+      // The script runs with foreign keys off, so reject dangling references up front.
+      const appIds = new Set(data.applications.map((a) => a.id));
+      const userIds = new Set(data.users.map((u) => u.id));
+      if (
+        data.notes.some((n) => !appIds.has(n.applicationId)) ||
+        data.statusHistory.some((h) => !appIds.has(h.applicationId) || !userIds.has(h.userId))
+      ) {
+        throw new Error("Backup has notes or status history that reference missing applications or users");
+      }
+      // One executeMultiple request (BEGIN..COMMIT script) so a failure cannot leave the DB empty or half full.
+      await this.importSql(
+        exportSqlFromRecords(data.applications, data.notes, data.users, data.statusHistory, data.companies),
+        "replace",
+      );
+    } else await this.importJsonUpsert(data);
 
     if (data.statusHistory.length === 0) {
       await migrateInitialStatusHistory(this.client);
@@ -874,6 +862,30 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     };
   }
 
+  private async importJsonUpsert(data: BackupJson): Promise<void> {
+    await this.invalidateSyncReceipt();
+
+    for (const user of data.users) {
+      await this.client.execute({ sql: UPSERT_USER_SQL, args: userToRow(user) });
+    }
+
+    for (const company of data.companies) {
+      await this.client.execute({ sql: UPSERT_COMPANY_SQL, args: companyToRow(company) });
+    }
+
+    for (const application of data.applications) {
+      await this.client.execute({ sql: UPSERT_APPLICATION_SQL, args: applicationToRow(application) });
+    }
+
+    for (const note of data.notes) {
+      await this.client.execute({ sql: UPSERT_NOTE_SQL, args: noteToRow(note) });
+    }
+
+    for (const entry of data.statusHistory) {
+      await this.client.execute({ sql: UPSERT_STATUS_HISTORY_SQL, args: statusHistoryToRow(entry) });
+    }
+  }
+
   async importSql(sql: string, mode: ImportMode) {
     assertSqlBackupIsSafe(sql);
     await this.ready;
@@ -890,8 +902,17 @@ export class TursoDatabaseBackend implements DatabaseBackend {
         prepareSqlUpsertStatements(trimmed).map((sql) => ({ sql })),
       );
     } else {
-      await this.client.executeMultiple(trimmed);
-      await this.ready;
+      try {
+        await this.client.executeMultiple(trimmed);
+      } catch (error) {
+        // The script's BEGIN stays open on the stream after a failed statement; roll back so old data survives.
+        await this.client.execute("ROLLBACK").catch(() => undefined);
+        // The script's PRAGMA foreign_keys = OFF survives ROLLBACK; restore it.
+        await this.client.execute("PRAGMA foreign_keys = ON").catch(() => undefined);
+        throw error;
+      }
+      // The script recreated tables from the backup schema; re-add password_hash, indexes and other migrated columns.
+      await migrateTurso(this.client);
     }
 
     const stored = await this.client.execute("SELECT id, full_jd FROM applications WHERE full_jd IS NOT NULL");
