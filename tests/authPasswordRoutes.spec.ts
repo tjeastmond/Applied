@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { APP_SESSION_COOKIE, signSessionCookie } from "@/lib/appAccessAuth";
+import { getSessionSecret } from "@/lib/server/sessionSecret";
 import { getAuthStatus } from "@/lib/server/authStatus";
 import { GET as authStatusRoute } from "@/app/api/auth/status/route";
 import { POST as devLoginRoute } from "@/app/api/auth/dev-login/route";
 import { POST as loginRoute } from "@/app/api/auth/login/route";
 import { POST as passwordLoginRoute } from "@/app/api/auth/password-login/route";
+import { POST as changeUserPassword } from "@/app/api/user/password/route";
 import { POST as setupRoute } from "@/app/api/auth/setup/route";
 import { GET as listApplicationsRoute } from "@/app/api/applications/route";
 import { openDatabase } from "@/lib/server/db/migrate";
@@ -312,7 +314,7 @@ describe("auth status with password login", () => {
   test("authenticated session cookie still works after password setup", async () => {
     await setupOwnerAccount();
     const token = getAppAccessConfigRepository()!.ensureToken();
-    const sessionValue = await signSessionCookie(token, Date.now() + 60_000);
+    const sessionValue = await signSessionCookie(await getSessionSecret(token), Date.now() + 60_000);
     const status = await getAuthStatus(
       new Request("http://localhost/api/auth/status", {
         headers: { Cookie: `${APP_SESSION_COOKIE}=${sessionValue}` },
@@ -320,5 +322,39 @@ describe("auth status with password login", () => {
     );
     expect(status.authenticated).toBe(true);
     expect(status.setupRequired).toBe(false);
+  });
+});
+
+describe("session invalidation on password change", () => {
+  beforeEach(() => {
+    delete process.env.APP_ACCESS_TOKEN;
+    vi.stubEnv("NODE_ENV", "development");
+    useTestDatabase(openDatabase(":memory:"));
+  });
+
+  afterEach(() => {
+    restoreAppAccessToken(originalAppAccessToken);
+    vi.unstubAllEnvs();
+    resetDatabaseBackend();
+  });
+
+  test("old session is rejected after a password change and the fresh cookie is accepted", async () => {
+    const oldCookie = (await setupOwnerAccount())!.split(";")[0];
+    const authed = (cookie: string) => new Request("http://localhost/api/auth/status", { headers: { Cookie: cookie } });
+    expect((await getAuthStatus(authed(oldCookie))).authenticated).toBe(true);
+
+    const response = await changeUserPassword(
+      new Request("http://localhost/api/user/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: oldCookie },
+        body: JSON.stringify({ currentPassword: TEST_PASSWORD, newPassword: "newcorrecthorse456" }),
+      }),
+      emptyRouteContext,
+    );
+    expect(response.status).toBe(200);
+    const newCookie = response.headers.get("Set-Cookie")!.split(";")[0];
+
+    expect((await getAuthStatus(authed(oldCookie))).authenticated).toBe(false);
+    expect((await getAuthStatus(authed(newCookie))).authenticated).toBe(true);
   });
 });
