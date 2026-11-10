@@ -48,6 +48,21 @@ describe("backupService", () => {
     expect(result.applications[0]?.company).toBe("Acme");
   });
 
+  test("sanitizes fullJd HTML on JSON import", async () => {
+    const db = openDatabase(":memory:");
+    await seedSampleData(db);
+    const exported = exportJson(db);
+    const fullJd = '<p onclick="x()">hi</p><img src=x onerror=alert(1)><script>alert(1)</script>';
+
+    const result = importJson(
+      db,
+      { ...exported, applications: exported.applications.map((a) => ({ ...a, fullJd })) },
+      "replace",
+    );
+
+    expect(result.applications[0]?.fullJd).toBe("<p>hi</p>");
+  });
+
   test("imports JSON with upsert mode without removing existing records", async () => {
     const db = openDatabase(":memory:");
     const original = await seedSampleData(db);

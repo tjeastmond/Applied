@@ -115,6 +115,25 @@ describe("SqliteJobApplicationRepository", () => {
     expect(listed.map((item) => item.id)).toEqual([second.id, first.id]);
   });
 
+  test("touch bumps only updated_at and returns null for unknown ids", async () => {
+    const repository = new SqliteJobApplicationRepository(openDatabase(":memory:"));
+    const created = await repository.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/touch",
+        title: "Touch",
+        company: "Acme",
+        appliedAt: "2026-06-01",
+      }),
+    );
+
+    const touchedAt = await repository.touch(created.id);
+    const after = await repository.getById(created.id);
+
+    expect(touchedAt).not.toBeNull();
+    expect(after).toEqual({ ...created, updatedAt: touchedAt });
+    expect(await repository.touch("missing")).toBeNull();
+  });
+
   test("listByIds returns empty array for empty ids", async () => {
     const db = openDatabase(":memory:");
     const repository = new SqliteJobApplicationRepository(db);
