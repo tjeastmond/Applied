@@ -41,7 +41,7 @@ describe("appAuth", () => {
 
   test("isAppAccessAuthorized rejects tampered cookie signature and wrong-length bearer", async () => {
     const good = await signSessionCookie(TEST_APP_ACCESS_TOKEN, Date.now() + 60_000);
-    const cookies = [`${good}x`, `${good.slice(0, -2)}AA`];
+    const cookies = [`${good}x`, `${good.slice(0, -1)}${good.endsWith("A") ? "B" : "A"}`];
     for (const value of cookies) {
       const request = new Request("http://localhost/api/applications", {
         headers: { Cookie: `${APP_SESSION_COOKIE}=${value}` },
