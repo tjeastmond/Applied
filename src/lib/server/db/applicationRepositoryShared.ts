@@ -68,6 +68,7 @@ export const UPDATE_APPLICATION_SQL = `UPDATE applications SET
 WHERE id = @id`;
 
 export const DELETE_APPLICATION_SQL = `DELETE FROM applications WHERE id = ?`;
+export const TOUCH_APPLICATION_SQL = `UPDATE applications SET updated_at = ? WHERE id = ?`;
 
 export function trimOrNull(value: string | null | undefined): string | null {
   if (value == null) return null;

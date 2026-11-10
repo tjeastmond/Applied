@@ -34,6 +34,7 @@ import {
   buildBulkArchiveByStatusesSql,
   CLEAR_PINNED_ON_ARCHIVED_SQL,
   DELETE_APPLICATION_SQL,
+  TOUCH_APPLICATION_SQL,
   GET_APPLICATION_BY_ID_SQL,
   INSERT_APPLICATION_SQL,
   LIST_APPLICATIONS_SQL,
@@ -647,6 +648,13 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
       archivedCount: result.rowsAffected,
       applications: await this.list(),
     };
+  }
+
+  async touch(id: string): Promise<string | null> {
+    await this.ready;
+    const updatedAt = nowIso();
+    const result = await this.client.execute({ sql: TOUCH_APPLICATION_SQL, args: [updatedAt, id] });
+    return result.rowsAffected > 0 ? updatedAt : null;
   }
 
   async delete(id: string): Promise<boolean> {
