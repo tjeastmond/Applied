@@ -95,6 +95,7 @@ export function ApplicationDetailSheet({
   onCompanyOpen?: (company: string) => void;
 }) {
   const [form, setForm] = useState<FormState | null>(() => (application ? applicationToForm(application) : null));
+  const [jdLoadFailedId, setJdLoadFailedId] = useState<string | null>(null);
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [pendingNoteId, setPendingNoteId] = useState<string | null>(null);
@@ -221,7 +222,9 @@ export function ApplicationDetailSheet({
         if (latest?.id === full.id) onApplicationChange({ ...latest, fullJd: full.fullJd ?? null });
       })
       .catch(() => {
-        if (!cancelled) toast.error(toastMessages.jobDescriptionLoadFailed);
+        if (cancelled) return;
+        setJdLoadFailedId(applicationId);
+        toast.error(toastMessages.jobDescriptionLoadFailed);
       });
     return () => {
       cancelled = true;
@@ -770,7 +773,9 @@ export function ApplicationDetailSheet({
                         ) : (
                           <p className="text-muted-foreground text-sm">
                             {application?.fullJd === undefined
-                              ? "Loading job description..."
+                              ? jdLoadFailedId === applicationId
+                                ? "Could not load job description."
+                                : "Loading job description..."
                               : "No parsed job description. Use Parse on the job URL to fetch one."}
                           </p>
                         )}
