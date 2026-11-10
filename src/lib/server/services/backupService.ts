@@ -436,35 +436,42 @@ export function importJson(db: Database.Database, raw: unknown, mode: ImportMode
   return importJsonData(db, parseBackupJson(raw), mode);
 }
 
-export function extractInsertStatements(sql: string): string[] {
-  return sql
-    .split(";")
-    .map((statement) => statement.trim())
-    .filter((statement) => /^INSERT\s+INTO\s+/i.test(statement));
-}
-
+// Splits on `;` outside '...' literals ('' is an escaped quote) and drops `--` line comments outside them.
 function splitSqlStatements(sql: string): string[] {
-  return sql
-    .split(";")
-    .map((statement) => statement.trim())
-    .filter((statement) => statement.length > 0);
+  const statements: string[] = [];
+  let current = "";
+  let inString = false;
+  for (let i = 0; i < sql.length; i++) {
+    const ch = sql[i];
+    if (inString) {
+      current += ch;
+      if (ch === "'") {
+        if (sql[i + 1] === "'") current += sql[++i];
+        else inString = false;
+      }
+    } else if (ch === "'") {
+      inString = true;
+      current += ch;
+    } else if (ch === "-" && sql[i + 1] === "-") {
+      while (i < sql.length && sql[i] !== "\n") i++;
+      current += "\n";
+    } else if (ch === ";") {
+      statements.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  statements.push(current);
+  return statements.map((statement) => statement.trim()).filter((statement) => statement.length > 0);
 }
 
-function stripSqlComments(statement: string): string {
-  return statement
-    .split("\n")
-    .filter((line) => !line.trim().startsWith("--"))
-    .join("\n")
-    .trim();
+export function extractInsertStatements(sql: string): string[] {
+  return splitSqlStatements(sql).filter((statement) => /^INSERT\s+INTO\s+/i.test(statement));
 }
 
 function isAllowedSqlBackupStatement(statement: string): boolean {
-  const withoutComments = stripSqlComments(statement);
-  if (withoutComments.length === 0) {
-    return true;
-  }
-
-  const normalized = withoutComments.replace(/\s+/g, " ").trim();
+  const normalized = statement.replace(/\s+/g, " ").trim();
 
   if (/^PRAGMA\s+foreign_keys\s*=\s*(ON|OFF)$/i.test(normalized)) {
     return true;
@@ -520,16 +527,7 @@ function isAllowedSqlBackupStatement(statement: string): boolean {
 }
 
 export function assertSqlBackupIsSafe(sql: string): void {
-  const forbiddenPattern = /\b(?:ATTACH|DETACH|ALTER)\b/i;
-  if (forbiddenPattern.test(sql)) {
-    throw new Error("SQL backup contains forbidden statements");
-  }
-
   for (const statement of splitSqlStatements(sql)) {
-    if (forbiddenPattern.test(statement)) {
-      throw new Error("SQL backup contains forbidden statements");
-    }
-
     if (
       /^PRAGMA\b/i.test(statement) &&
       !/^PRAGMA\s+foreign_keys\s*=\s*(?:ON|OFF)\s*$/i.test(statement.replace(/\s+/g, " ").trim())
