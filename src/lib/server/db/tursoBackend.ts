@@ -17,6 +17,7 @@ import {
   exportSqlFromRecords,
   noteToRow,
   parseBackupJson,
+  assertSqlBackupIsSafe,
   prepareSqlUpsertStatements,
   UPSERT_APPLICATION_SQL,
   UPSERT_COMPANY_SQL,
@@ -875,6 +876,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
   }
 
   async importSql(sql: string, mode: ImportMode) {
+    assertSqlBackupIsSafe(sql);
     await this.ready;
     await this.invalidateSyncReceipt();
     const trimmed = sql.trim();
