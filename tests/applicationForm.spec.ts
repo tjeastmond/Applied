@@ -13,6 +13,7 @@ import {
   normalizeClipboardOnlyJobUrl,
   normalizePastedJobUrl,
   safeFormToInput,
+  shouldHydrateFullJd,
 } from "../src/lib/applicationForm";
 import type { JobApplication } from "../src/types";
 
@@ -271,5 +272,27 @@ describe("formToInput", () => {
     form.appliedAt = "2026-06-01";
 
     expect(formToInput(form).title).toBe("Founding Engineer");
+  });
+});
+
+describe("shouldHydrateFullJd", () => {
+  const base = {
+    id: "a",
+    url: "u",
+    title: "t",
+    company: "c",
+    appliedAt: "2026-01-01",
+    status: "applied",
+  } as JobApplication;
+  const form = { ...applicationToForm(base), fullJd: "" };
+
+  it("hydrates when a PATCH response brings the JD before the form has it", () => {
+    expect(shouldHydrateFullJd(form, base, { ...base, fullJd: "<p>jd</p>" })).toBe(true);
+  });
+
+  it("does not hydrate once form or baseline has a JD, or the response has none", () => {
+    expect(shouldHydrateFullJd({ ...form, fullJd: "x" }, base, { ...base, fullJd: "<p>jd</p>" })).toBe(false);
+    expect(shouldHydrateFullJd(form, { ...base, fullJd: "old" }, { ...base, fullJd: "<p>jd</p>" })).toBe(false);
+    expect(shouldHydrateFullJd(form, base, { ...base, fullJd: undefined })).toBe(false);
   });
 });

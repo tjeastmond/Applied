@@ -37,6 +37,7 @@ import {
   isManualSaveFormDirty,
   isStatusOnlyFormChange,
   type FormState,
+  shouldHydrateFullJd,
 } from "@/lib/applicationForm";
 import { errorMessage } from "@/lib/errorMessage";
 import {
@@ -215,7 +216,9 @@ export function ApplicationDetailSheet({
         setForm((current) =>
           current?.id === full.id && !current.fullJd ? { ...current, fullJd: full.fullJd ?? "" } : current,
         );
-        onApplicationChange(full);
+        // Merge only the JD: the snapshot predates any status/pin edit made while the GET was pending.
+        const latest = applicationRef.current;
+        if (latest?.id === full.id) onApplicationChange({ ...latest, fullJd: full.fullJd ?? null });
       })
       .catch(() => {
         if (!cancelled) toast.error(toastMessages.jobDescriptionLoadFailed);
@@ -228,8 +231,16 @@ export function ApplicationDetailSheet({
   const syncFormFromSavedApplication = useCallback(
     (saved: JobApplication) => {
       if (applicationRef.current?.id !== saved.id) return;
-      const currentForm = formRef.current;
+      let currentForm = formRef.current;
       if (!currentForm || currentForm.id !== saved.id) return;
+
+      // A save response can carry the JD before the lazy GET lands: hydrate it so the form is not "dirty" and Save cannot blank it.
+      const prior = manualSaveBaselineRef.current;
+      if (shouldHydrateFullJd(currentForm, prior, saved)) {
+        currentForm = { ...currentForm, fullJd: saved.fullJd ?? "" };
+        setForm(currentForm);
+        if (prior?.id === saved.id) updateManualSaveBaseline({ ...prior, fullJd: saved.fullJd ?? null });
+      }
 
       if (isManualSaveFormDirty(currentForm, saved)) {
         const baseline = manualSaveBaselineRef.current;
