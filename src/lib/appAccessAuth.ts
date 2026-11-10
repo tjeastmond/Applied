@@ -1,4 +1,4 @@
-import { bearerTokenFromRequest } from "@/lib/server/bearerAuth";
+import { bearerTokenFromRequest, constantTimeEquals } from "@/lib/server/bearerAuth";
 
 export const APP_SESSION_COOKIE = "applied-session";
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
@@ -6,15 +6,6 @@ export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 export function getAppAccessToken(): string | undefined {
   const token = process.env.APP_ACCESS_TOKEN?.trim();
   return token && token.length > 0 ? token : undefined;
-}
-
-function constantTimeEqual(left: string, right: string): boolean {
-  if (left.length !== right.length) return false;
-  let result = 0;
-  for (let index = 0; index < left.length; index += 1) {
-    result |= left.charCodeAt(index) ^ right.charCodeAt(index);
-  }
-  return result === 0;
 }
 
 async function hmacSha256Base64Url(secret: string, payload: string): Promise<string> {
@@ -54,20 +45,7 @@ export async function verifySessionCookie(secret: string, value: string | undefi
 
   const payload = `v1.${expiresAtRaw}`;
   const expected = await hmacSha256Base64Url(secret, payload);
-  return constantTimeEqual(signature, expected);
-}
-
-export function isBearerTokenValid(request: Request, configuredToken: string): boolean {
-  const token = bearerTokenFromRequest(request);
-  if (!token) return false;
-
-  if (token.length !== configuredToken.length) return false;
-
-  let result = 0;
-  for (let index = 0; index < token.length; index += 1) {
-    result |= token.charCodeAt(index) ^ configuredToken.charCodeAt(index);
-  }
-  return result === 0;
+  return constantTimeEquals(signature, expected);
 }
 
 export function sessionCookieFromRequest(request: Request): string | undefined {
@@ -88,7 +66,8 @@ export async function isAppAccessAuthorized(request: Request): Promise<boolean> 
   const configuredToken = getAppAccessToken();
   if (!configuredToken) return false;
 
-  if (isBearerTokenValid(request, configuredToken)) {
+  const bearer = bearerTokenFromRequest(request);
+  if (bearer !== null && constantTimeEquals(bearer, configuredToken)) {
     return true;
   }
 
