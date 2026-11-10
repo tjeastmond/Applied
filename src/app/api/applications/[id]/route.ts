@@ -15,6 +15,15 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+export const GET = withAppAccess<ApplicationIdRouteContext>(async (_request: Request, context) => {
+  const routeContext = await requireApplicationRouteContext(context);
+  if (routeContext instanceof Response) {
+    return routeContext;
+  }
+  const application = await getRepository().getById(routeContext.id);
+  return application ? NextResponse.json(application) : applicationNotFoundResponse();
+});
+
 export const PATCH = withAppAccess<ApplicationIdRouteContext>(async (request: Request, context) => {
   const routeContext = await requireApplicationRouteContext(context);
   if (routeContext instanceof Response) {

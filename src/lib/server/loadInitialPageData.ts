@@ -1,5 +1,6 @@
 import { sortApplications } from "@/lib/applicationsList";
 import { sortCompanies } from "@/lib/companies";
+import { omitFullJd } from "@/lib/server/listApplication";
 import { getCompanyRepository, getNoteRepository, getRepository, getUserRepository } from "@/lib/server/db";
 import type { ApplicationNote, Company, JobApplication, User } from "@/types";
 
@@ -32,7 +33,7 @@ export async function loadInitialPageData(): Promise<InitialPageData> {
     getNoteRepository().listAll(),
     getUserRepository().ensureDefaultUser(),
   ]);
-  const sortedApplications = sortApplications(applications);
+  const sortedApplications = sortApplications(applications.map(omitFullJd));
   const sortedCompanies = sortCompanies(companies);
   const groupedNotes = groupNotesByApplicationId(notes);
 

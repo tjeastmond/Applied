@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createApplicationNote, deleteApplicationNote, updateApplication, updateApplicationNote } from "@/api";
+import {
+  createApplicationNote,
+  deleteApplicationNote,
+  getApplication,
+  updateApplication,
+  updateApplicationNote,
+} from "@/api";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
 import { ApplicationMetadataLine } from "@/components/ApplicationMetadataLine";
 import { ApplicationStatusHistorySection } from "@/components/ApplicationStatusHistorySection";
@@ -31,6 +37,7 @@ import {
   isManualSaveFormDirty,
   isStatusOnlyFormChange,
   type FormState,
+  shouldHydrateFullJd,
 } from "@/lib/applicationForm";
 import { errorMessage } from "@/lib/errorMessage";
 import {
@@ -137,7 +144,9 @@ export function ApplicationDetailSheet({
       requireId: true,
       onSave: async (input, currentForm) => {
         if (!currentForm.id) return;
-        return updateApplication(currentForm.id, input);
+        // JD not loaded yet and not parsed in the form: omit it so the save cannot blank the stored JD.
+        const jdUnloaded = applicationRef.current?.fullJd === undefined && !currentForm.fullJd;
+        return updateApplication(currentForm.id, jdUnloaded ? { ...input, fullJd: undefined } : input);
       },
       onApplicationChange: (updated) => {
         if (applicationRef.current?.id !== updated.id) return;
@@ -195,11 +204,43 @@ export function ApplicationDetailSheet({
     syncedUpdatedAtRef.current = application.updatedAt;
   }, [application, applicationId, applicationUpdatedAt, open, updateManualSaveBaseline]);
 
+  const needsFullJd = open && applicationId !== null && application?.fullJd === undefined;
+  useEffect(() => {
+    if (!needsFullJd || !applicationId) return;
+    let cancelled = false;
+    getApplication(applicationId)
+      .then((full) => {
+        if (cancelled) return;
+        const baseline = manualSaveBaselineRef.current;
+        if (baseline?.id === full.id) updateManualSaveBaseline({ ...baseline, fullJd: full.fullJd ?? null });
+        setForm((current) =>
+          current?.id === full.id && !current.fullJd ? { ...current, fullJd: full.fullJd ?? "" } : current,
+        );
+        // Merge only the JD: the snapshot predates any status/pin edit made while the GET was pending.
+        const latest = applicationRef.current;
+        if (latest?.id === full.id) onApplicationChange({ ...latest, fullJd: full.fullJd ?? null });
+      })
+      .catch(() => {
+        if (!cancelled) toast.error(toastMessages.jobDescriptionLoadFailed);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsFullJd, applicationId, updateManualSaveBaseline]);
+
   const syncFormFromSavedApplication = useCallback(
     (saved: JobApplication) => {
       if (applicationRef.current?.id !== saved.id) return;
-      const currentForm = formRef.current;
+      let currentForm = formRef.current;
       if (!currentForm || currentForm.id !== saved.id) return;
+
+      // A save response can carry the JD before the lazy GET lands: hydrate it so the form is not "dirty" and Save cannot blank it.
+      const prior = manualSaveBaselineRef.current;
+      if (shouldHydrateFullJd(currentForm, prior, saved)) {
+        currentForm = { ...currentForm, fullJd: saved.fullJd ?? "" };
+        setForm(currentForm);
+        if (prior?.id === saved.id) updateManualSaveBaseline({ ...prior, fullJd: saved.fullJd ?? null });
+      }
 
       if (isManualSaveFormDirty(currentForm, saved)) {
         const baseline = manualSaveBaselineRef.current;
@@ -728,7 +769,9 @@ export function ApplicationDetailSheet({
                           />
                         ) : (
                           <p className="text-muted-foreground text-sm">
-                            No parsed job description. Use Parse on the job URL to fetch one.
+                            {application?.fullJd === undefined
+                              ? "Loading job description..."
+                              : "No parsed job description. Use Parse on the job URL to fetch one."}
                           </p>
                         )}
                       </CollapsibleContent>

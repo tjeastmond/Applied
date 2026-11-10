@@ -1,4 +1,5 @@
 import { withAppAccess } from "@/lib/server/appAuth";
+import { omitFullJd } from "@/lib/server/listApplication";
 import { getRepository } from "@/lib/server/db";
 import { log } from "@/lib/server/logging/logger";
 import { archiveStaleApplications } from "@/lib/server/services/staleApplicationService";
@@ -18,5 +19,5 @@ export const POST = withAppAccess(async () => {
     });
   }
 
-  return NextResponse.json({ archivedCount, applications: await getRepository().list() });
+  return NextResponse.json({ archivedCount, applications: (await getRepository().list()).map(omitFullJd) });
 });

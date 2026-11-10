@@ -4,8 +4,8 @@ import { openDatabase } from "@/lib/server/db/migrate";
 import { getRepository, getNoteRepository, getStatusHistoryRepository, useTestDatabase } from "@/lib/server/db";
 import { GET as getNotes, POST as postNote } from "@/app/api/applications/[id]/notes/route";
 import { DELETE as deleteNote, PATCH as patchNote } from "@/app/api/applications/[id]/notes/[noteId]/route";
-import { PATCH as patchApplication } from "@/app/api/applications/[id]/route";
-import { POST as createApplication } from "@/app/api/applications/route";
+import { GET as getApplication, PATCH as patchApplication } from "@/app/api/applications/[id]/route";
+import { GET as listApplications, POST as createApplication } from "@/app/api/applications/route";
 import { PATCH as patchUserProfile } from "@/app/api/user/profile/route";
 import { GET as getStatusHistory } from "@/app/api/applications/[id]/status-history/route";
 import { POST as bulkArchiveApplicationsRoute } from "@/app/api/applications/bulk-archive/route";
@@ -39,6 +39,38 @@ describe("application API routes", () => {
     expect(response.status).toBe(404);
     const body = (await response.json()) as { error: string };
     expect(body.error).toBe("Application not found");
+  });
+
+  test("list endpoints omit fullJd and single GET includes it", async () => {
+    const app = await getRepository().create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/jd",
+        title: "JD",
+        company: "Co",
+        appliedAt: "2026-06-02",
+        fullJd: "<p>Description</p>",
+      }),
+    );
+
+    const list = (await (
+      await listApplications(authorizedAppRequest("/api/applications"), emptyRouteContext)
+    ).json()) as {
+      id: string;
+      fullJd?: string | null;
+    }[];
+    expect(list).toHaveLength(1);
+    expect("fullJd" in list[0]).toBe(false);
+
+    const single = await getApplication(authorizedAppRequest(`/api/applications/${app.id}`), {
+      params: Promise.resolve({ id: app.id }),
+    });
+    expect(single.status).toBe(200);
+    expect(((await single.json()) as { fullJd: string }).fullJd).toBe("<p>Description</p>");
+
+    const missing = await getApplication(authorizedAppRequest("/api/applications/x"), {
+      params: Promise.resolve({ id: missingApplicationId }),
+    });
+    expect(missing.status).toBe(404);
   });
 
   test("notes GET, POST, and scoped DELETE", async () => {

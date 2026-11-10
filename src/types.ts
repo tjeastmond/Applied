@@ -25,7 +25,8 @@ export interface JobApplication extends ApplicationSalaryFields {
   recruiterFirm: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
-  fullJd: string | null;
+  /** Omitted from list responses; loaded on demand via GET /api/applications/:id. */
+  fullJd?: string | null;
   status: ApplicationStatus;
   archived: boolean;
   pinned: boolean;

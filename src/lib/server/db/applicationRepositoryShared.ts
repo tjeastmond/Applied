@@ -99,7 +99,7 @@ export function jobApplicationToApplicationRow(application: JobApplication): App
     contact_phone: application.contactPhone,
     salary_range: application.salaryRange,
     desired_salary: application.desiredSalary,
-    full_jd: application.fullJd,
+    full_jd: application.fullJd ?? null,
     status: application.status,
     archived: application.archived ? 1 : 0,
     pinned: application.pinned ? 1 : 0,
