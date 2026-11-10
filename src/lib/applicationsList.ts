@@ -11,8 +11,10 @@ export function sortApplications(applications: JobApplication[]): JobApplication
 }
 
 export function upsertApplication(applications: JobApplication[], application: JobApplication): JobApplication[] {
+  const existing = applications.find((item) => item.id === application.id);
   const without = applications.filter((item) => item.id !== application.id);
-  return sortApplications([application, ...without]);
+  // Keep a loaded fullJd when the incoming record is a list payload that omits it.
+  return sortApplications([existing ? { ...existing, ...application } : application, ...without]);
 }
 
 export function removeApplication(applications: JobApplication[], id: string): JobApplication[] {

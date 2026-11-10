@@ -137,6 +137,10 @@ export function bulkFetchApplications(ids?: string[]): Promise<JobApplication[]>
   }).then((result) => result.applications);
 }
 
+export function getApplication(id: string): Promise<JobApplication> {
+  return request<JobApplication>(`/api/applications/${id}`);
+}
+
 export function createApplication(input: CreateJobApplicationInput): Promise<JobApplication> {
   return request<JobApplication>("/api/applications", {
     method: "POST",

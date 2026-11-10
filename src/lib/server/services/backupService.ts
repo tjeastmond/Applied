@@ -209,7 +209,7 @@ export function createBackupJson(
   return {
     version: BACKUP_JSON_VERSION,
     exportedAt: new Date().toISOString(),
-    applications,
+    applications: applications.map((application) => ({ ...application, fullJd: application.fullJd ?? null })),
     notes,
     users,
     statusHistory,
@@ -245,7 +245,7 @@ function applicationToSqlRow(application: JobApplication): ApplicationBackupRow 
     contactPhone: application.contactPhone,
     salaryRange: application.salaryRange,
     desiredSalary: application.desiredSalary,
-    fullJd: application.fullJd,
+    fullJd: application.fullJd ?? null,
     status: application.status,
     archived: application.archived,
     pinned: application.pinned,

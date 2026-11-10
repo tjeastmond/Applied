@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createApplicationNote, deleteApplicationNote, updateApplication, updateApplicationNote } from "@/api";
+import {
+  createApplicationNote,
+  deleteApplicationNote,
+  getApplication,
+  updateApplication,
+  updateApplicationNote,
+} from "@/api";
 import { ApplicationFormFields } from "@/components/ApplicationFormFields";
 import { ApplicationMetadataLine } from "@/components/ApplicationMetadataLine";
 import { ApplicationStatusHistorySection } from "@/components/ApplicationStatusHistorySection";
@@ -137,7 +143,9 @@ export function ApplicationDetailSheet({
       requireId: true,
       onSave: async (input, currentForm) => {
         if (!currentForm.id) return;
-        return updateApplication(currentForm.id, input);
+        // JD not loaded yet and not parsed in the form: omit it so the save cannot blank the stored JD.
+        const jdUnloaded = applicationRef.current?.fullJd === undefined && !currentForm.fullJd;
+        return updateApplication(currentForm.id, jdUnloaded ? { ...input, fullJd: undefined } : input);
       },
       onApplicationChange: (updated) => {
         if (applicationRef.current?.id !== updated.id) return;
@@ -194,6 +202,28 @@ export function ApplicationDetailSheet({
     }
     syncedUpdatedAtRef.current = application.updatedAt;
   }, [application, applicationId, applicationUpdatedAt, open, updateManualSaveBaseline]);
+
+  const needsFullJd = open && applicationId !== null && application?.fullJd === undefined;
+  useEffect(() => {
+    if (!needsFullJd || !applicationId) return;
+    let cancelled = false;
+    getApplication(applicationId)
+      .then((full) => {
+        if (cancelled) return;
+        const baseline = manualSaveBaselineRef.current;
+        if (baseline?.id === full.id) updateManualSaveBaseline({ ...baseline, fullJd: full.fullJd ?? null });
+        setForm((current) =>
+          current?.id === full.id && !current.fullJd ? { ...current, fullJd: full.fullJd ?? "" } : current,
+        );
+        onApplicationChange(full);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error(toastMessages.jobDescriptionLoadFailed);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsFullJd, applicationId, updateManualSaveBaseline]);
 
   const syncFormFromSavedApplication = useCallback(
     (saved: JobApplication) => {
@@ -728,7 +758,9 @@ export function ApplicationDetailSheet({
                           />
                         ) : (
                           <p className="text-muted-foreground text-sm">
-                            No parsed job description. Use Parse on the job URL to fetch one.
+                            {application?.fullJd === undefined
+                              ? "Loading job description..."
+                              : "No parsed job description. Use Parse on the job URL to fetch one."}
                           </p>
                         )}
                       </CollapsibleContent>

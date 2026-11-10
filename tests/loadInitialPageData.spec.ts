@@ -20,6 +20,7 @@ describe("loadInitialPageData", () => {
         title: "Engineer",
         company: "Acme",
         appliedAt: "2026-06-01",
+        fullJd: "<p>JD</p>",
       }),
     );
     const secondApplication = await applications.create(
@@ -45,6 +46,7 @@ describe("loadInitialPageData", () => {
       earlierNote.id,
     ]);
     expect(data.notesByApplicationId[firstApplication.id]).toEqual([]);
+    expect(data.applications.every((application) => !("fullJd" in application))).toBe(true);
     expect(data.currentUser.displayName).toBe(DEFAULT_USER_DISPLAY_NAME);
   });
 });
