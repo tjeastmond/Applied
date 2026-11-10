@@ -121,6 +121,19 @@ describe("backupService", () => {
     expect(result.applications[0]?.title).toBe("Engineer");
   });
 
+  test("sanitizes full_jd on SQL import", async () => {
+    const db = openDatabase(":memory:");
+    await seedSampleData(db);
+    db.prepare("UPDATE applications SET full_jd = ?").run("<p>ok</p><img src=x onerror=alert(1)>");
+    const sql = exportSql(db);
+    db.prepare("UPDATE applications SET full_jd = NULL").run();
+
+    const result = importSql(db, sql, "replace");
+    const fullJd = result.applications[0]?.fullJd ?? "";
+    expect(fullJd).toContain("ok");
+    expect(fullJd).not.toMatch(/onerror|<img/i);
+  });
+
   test("imports SQL with upsert mode", async () => {
     const db = openDatabase(":memory:");
     await seedSampleData(db);

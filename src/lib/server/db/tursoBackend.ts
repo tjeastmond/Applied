@@ -13,6 +13,7 @@ import { createSqlBackupZip } from "../services/databaseBackupService";
 import {
   applicationToRow,
   countSqlInserts,
+  fullJdSanitizeUpdates,
   createBackupJson,
   exportSqlFromRecords,
   noteToRow,
@@ -892,6 +893,14 @@ export class TursoDatabaseBackend implements DatabaseBackend {
       await this.client.executeMultiple(trimmed);
       await this.ready;
     }
+
+    const stored = await this.client.execute("SELECT id, full_jd FROM applications WHERE full_jd IS NOT NULL");
+    await executeStatementsSequentially(
+      this.client,
+      fullJdSanitizeUpdates(stored.rows as unknown as { id: string; full_jd: string | null }[]).map(
+        ({ id, fullJd }) => ({ sql: "UPDATE applications SET full_jd = ? WHERE id = ?", args: [fullJd, id] }),
+      ),
+    );
 
     return {
       applications: await this.applications.list(),
