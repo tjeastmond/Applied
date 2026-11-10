@@ -228,6 +228,7 @@ export function ApplicationDetailSheet({
       });
     return () => {
       cancelled = true;
+      setJdLoadFailedId(null); // a re-run is a retry; avoids a sync setState in the effect body
     };
   }, [needsFullJd, applicationId, updateManualSaveBaseline]);
 
