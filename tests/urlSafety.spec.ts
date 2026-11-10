@@ -22,4 +22,20 @@ describe("urlSafety", () => {
   test("blocks loopback hostnames resolved to private addresses", async () => {
     await expect(assertSafeFetchUrl(new URL("http://localhost/"))).rejects.toThrow(UnsafeFetchUrlError);
   });
+
+  test.each(["http://[::ffff:127.0.0.1]/", "http://[::ffff:169.254.169.254]/", "http://[::]/"])(
+    "blocks IPv6 literal %s",
+    async (url) => {
+      await expect(assertSafeFetchUrl(new URL(url))).rejects.toThrow(UnsafeFetchUrlError);
+    },
+  );
+
+  test("blocks dotted IPv4-mapped IPv6 private addresses", () => {
+    expect(() => assertPrivateIpAddressIsBlocked("::ffff:10.0.0.1")).toThrow(UnsafeFetchUrlError);
+  });
+
+  test("allows public IPv4-mapped IPv6 addresses", () => {
+    expect(() => assertPrivateIpAddressIsBlocked("::ffff:8.8.8.8")).not.toThrow();
+    expect(() => assertPrivateIpAddressIsBlocked("::ffff:808:808")).not.toThrow();
+  });
 });

@@ -38,7 +38,14 @@ function isPrivateIpv4(address: string): boolean {
 
 function isPrivateIpv6(address: string): boolean {
   const normalized = address.toLowerCase();
-  if (normalized === "::1") return true;
+  if (normalized === "::1" || normalized === "::") return true;
+  const mapped = /^::ffff:(?:(\d+\.\d+\.\d+\.\d+)|([0-9a-f]{1,4}):([0-9a-f]{1,4}))$/.exec(normalized);
+  if (mapped) {
+    if (mapped[1]) return isPrivateIpv4(mapped[1]);
+    const hi = parseInt(mapped[2], 16);
+    const lo = parseInt(mapped[3], 16);
+    return isPrivateIpv4(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
+  }
   if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true;
   if (normalized.startsWith("fe80:")) return true;
 
