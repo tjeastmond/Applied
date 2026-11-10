@@ -1,7 +1,7 @@
-import { buildSessionSetCookieHeader, SESSION_MAX_AGE_SECONDS, signSessionCookie } from "@/lib/appAccessAuth";
 import { syncAppAccessTokenToEnv } from "@/lib/server/appAccessToken";
 import { getAppAccessConfigRepository } from "@/lib/server/db";
 import { isDevQuickLoginAvailable } from "@/lib/server/devAuth";
+import { buildSessionCookieHeader } from "@/lib/server/sessionSecret";
 import { log } from "@/lib/server/logging/logger";
 import { NextResponse } from "next/server";
 
@@ -21,10 +21,7 @@ export async function POST(request: Request) {
   const accessToken = repository.ensureToken();
   syncAppAccessTokenToEnv(accessToken);
 
-  const expiresAt = Date.now() + SESSION_MAX_AGE_SECONDS * 1000;
-  const sessionValue = await signSessionCookie(accessToken, expiresAt);
-
   log.info("app login succeeded", { route: "/api/auth/dev-login", method: "POST", source: "dev" });
 
-  return NextResponse.json({ ok: true }, { headers: { "Set-Cookie": buildSessionSetCookieHeader(sessionValue) } });
+  return NextResponse.json({ ok: true }, { headers: { "Set-Cookie": await buildSessionCookieHeader(accessToken) } });
 }

@@ -1,8 +1,10 @@
+import { getAppAccessToken } from "@/lib/appAccessAuth";
 import { badRequestResponse, jsonError } from "@/lib/server/applicationRouteHelpers";
 import { getUserRepository } from "@/lib/server/db";
 import { withAppAccess } from "@/lib/server/appAuth";
 import { resolveCurrentUserId } from "@/lib/server/currentUser";
 import { log } from "@/lib/server/logging/logger";
+import { buildSessionCookieHeader } from "@/lib/server/sessionSecret";
 import { hashPassword, verifyPassword } from "@/lib/server/passwordHash";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { changePasswordSchema } from "@/lib/schemas/auth";
@@ -58,5 +60,8 @@ export const POST = withAppAccess(async (request: Request) => {
     userId,
   });
 
-  return NextResponse.json({ ok: true as const });
+  // Old cookies no longer verify; re-issue so the caller stays signed in.
+  const accessToken = getAppAccessToken();
+  const headers = accessToken ? { "Set-Cookie": await buildSessionCookieHeader(accessToken) } : undefined;
+  return NextResponse.json({ ok: true as const }, { headers });
 });
