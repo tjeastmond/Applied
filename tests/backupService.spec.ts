@@ -7,6 +7,8 @@ import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { openDatabase } from "@/lib/server/db/migrate";
 import { SqliteAppAccessConfigRepository } from "@/lib/server/db/sqliteAppAccessConfigRepository";
 import { SqliteApplicationNoteRepository } from "@/lib/server/db/sqliteApplicationNoteRepository";
+import { SqliteUserRepository } from "@/lib/server/db/sqliteUserRepository";
+import { DEFAULT_USER_ID } from "@/lib/server/defaultUser";
 import { SqliteCompanyRepository } from "@/lib/server/db/sqliteCompanyRepository";
 import { SqliteJobApplicationRepository } from "@/lib/server/db/sqliteRepository";
 import { stripSensitiveDataFromDatabase } from "@/lib/server/services/databaseBackupService";
@@ -52,6 +54,22 @@ describe("backupService", () => {
     expect(result.imported.notes).toBe(1);
     expect(result.applications).toHaveLength(1);
     expect(result.applications[0]?.company).toBe("Acme");
+  });
+
+  test.each(["json", "sql"] as const)("replace %s import keeps the owner password hash", async (format) => {
+    const db = openDatabase(":memory:");
+    await seedSampleData(db);
+    const users = new SqliteUserRepository(db);
+    await users.ensureDefaultUser();
+    await users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
+    const before = await users.getCredentialById(DEFAULT_USER_ID);
+    expect(before?.passwordHash).toBe("scrypt$hash");
+
+    if (format === "json") importJson(db, exportJson(db), "replace");
+    else importSql(db, exportSql(db), "replace");
+
+    await expect(users.hasPasswordLogin()).resolves.toBe(true);
+    expect((await users.getCredentialById(DEFAULT_USER_ID))?.passwordHash).toBe("scrypt$hash");
   });
 
   test("sanitizes fullJd HTML on JSON import", async () => {

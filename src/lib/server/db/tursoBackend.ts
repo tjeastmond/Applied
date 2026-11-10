@@ -902,6 +902,9 @@ export class TursoDatabaseBackend implements DatabaseBackend {
         prepareSqlUpsertStatements(trimmed).map((sql) => ({ sql })),
       );
     } else {
+      // Backups exclude password hashes; carry them over for users that still exist after the restore.
+      const hashes = (await this.client.execute("SELECT id, password_hash FROM users WHERE password_hash IS NOT NULL"))
+        .rows;
       try {
         await this.client.executeMultiple(trimmed);
       } catch (error) {
@@ -913,6 +916,12 @@ export class TursoDatabaseBackend implements DatabaseBackend {
       }
       // The script recreated tables from the backup schema; re-add password_hash, indexes and other migrated columns.
       await migrateTurso(this.client);
+      for (const row of hashes) {
+        await this.client.execute({
+          sql: "UPDATE users SET password_hash = ? WHERE id = ?",
+          args: [row.password_hash, row.id],
+        });
+      }
     }
 
     const stored = await this.client.execute("SELECT id, full_jd FROM applications WHERE full_jd IS NOT NULL");

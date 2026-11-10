@@ -380,10 +380,22 @@ export function exportSql(db: Database.Database): string {
   );
 }
 
-function clearAllData(db: Database.Database): void {
+type PasswordHashes = { id: string; password_hash: string }[];
+
+// Backups exclude password hashes, so a replace restore must carry them over for users that still exist.
+function clearAllData(db: Database.Database): PasswordHashes {
+  const hashes = db
+    .prepare("SELECT id, password_hash FROM users WHERE password_hash IS NOT NULL")
+    .all() as PasswordHashes;
   db.exec(
     `DELETE FROM application_status_history; DELETE FROM application_notes; DELETE FROM applications; DELETE FROM companies; DELETE FROM users;`,
   );
+  return hashes;
+}
+
+function restorePasswordHashes(db: Database.Database, hashes: PasswordHashes): void {
+  const update = db.prepare("UPDATE users SET password_hash = ? WHERE id = ?");
+  for (const { id, password_hash } of hashes) update.run(password_hash, id);
 }
 
 function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMode): ImportResult {
@@ -394,9 +406,7 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
   const upsertCompany = db.prepare(UPSERT_COMPANY_SQL);
 
   const run = db.transaction(() => {
-    if (mode === "replace") {
-      clearAllData(db);
-    }
+    const hashes = mode === "replace" ? clearAllData(db) : [];
 
     for (const user of data.users) {
       upsertUser.run(userToRow(user));
@@ -417,6 +427,8 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
     for (const entry of data.statusHistory) {
       upsertStatusHistory.run(statusHistoryToRow(entry));
     }
+
+    restorePasswordHashes(db, hashes);
   });
 
   run();
@@ -645,13 +657,13 @@ function importSqlStatements(db: Database.Database, sql: string, mode: ImportMod
   const imported = countSqlInserts(sql);
 
   const run = db.transaction(() => {
-    if (mode === "replace") {
-      clearAllData(db);
-    }
+    const hashes = mode === "replace" ? clearAllData(db) : [];
 
     for (const upsert of upserts) {
       db.exec(upsert);
     }
+
+    restorePasswordHashes(db, hashes);
 
     const rows = db.prepare("SELECT id, full_jd FROM applications WHERE full_jd IS NOT NULL").all() as {
       id: string;

@@ -66,9 +66,19 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
 
       // A successful replace must leave the migrated schema (password_hash) in place without a reset.
       await backend.importJson(empty, "replace");
+      // Other specs may leave an owner hash behind, and replace imports now preserve it.
+      await backend.getTursoClient().execute("UPDATE users SET password_hash = NULL");
       await expect(backend.users.hasPasswordLogin()).resolves.toBe(false);
+
+      // A replace restore keeps the password hash of a user that still exists in the backup.
+      await backend.users.ensureDefaultUser();
+      await backend.users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
+      await backend.importJson({ ...empty, version: 3, users, statusHistory: [], companies: [] }, "replace");
+      await expect(backend.users.hasPasswordLogin()).resolves.toBe(true);
     } finally {
       await backend.importJson(empty, "replace");
+      // The default owner survives replace imports with its hash; clear it so other specs see a passwordless DB.
+      await backend.getTursoClient().execute("UPDATE users SET password_hash = NULL");
       backend.reset();
     }
   }, 30_000);
