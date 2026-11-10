@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { APP_SESSION_COOKIE, getAppAccessToken, isAppAccessAuthorized, signSessionCookie } from "@/lib/appAccessAuth";
+import { openDatabase } from "@/lib/server/db/migrate";
+import { resetDatabaseBackend, useTestDatabase } from "@/lib/server/db";
+import { getSessionSecret } from "@/lib/server/sessionSecret";
 import { isAccessTokenValid, requireAppAccess } from "@/lib/server/appAuth";
 import { restoreAppAccessToken, TEST_APP_ACCESS_TOKEN, withTestAppAccessToken } from "./testAppAuth";
 
@@ -8,10 +11,12 @@ const originalAppAccessToken = process.env.APP_ACCESS_TOKEN;
 describe("appAuth", () => {
   beforeEach(() => {
     withTestAppAccessToken();
+    useTestDatabase(openDatabase(":memory:"));
   });
 
   afterEach(() => {
     restoreAppAccessToken(originalAppAccessToken);
+    resetDatabaseBackend();
   });
 
   test("requireAppAccess rejects missing bearer token", async () => {
@@ -30,7 +35,7 @@ describe("appAuth", () => {
 
   test("requireAppAccess accepts valid session cookie", async () => {
     const expiresAt = Date.now() + 60_000;
-    const sessionValue = await signSessionCookie(TEST_APP_ACCESS_TOKEN, expiresAt);
+    const sessionValue = await signSessionCookie(await getSessionSecret(TEST_APP_ACCESS_TOKEN), expiresAt);
     const response = await requireAppAccess(
       new Request("http://localhost/api/applications", {
         headers: { Cookie: `${APP_SESSION_COOKIE}=${sessionValue}` },
@@ -40,7 +45,7 @@ describe("appAuth", () => {
   });
 
   test("isAppAccessAuthorized rejects tampered cookie signature and wrong-length bearer", async () => {
-    const good = await signSessionCookie(TEST_APP_ACCESS_TOKEN, Date.now() + 60_000);
+    const good = await signSessionCookie(await getSessionSecret(TEST_APP_ACCESS_TOKEN), Date.now() + 60_000);
     const cookies = [`${good}x`, `${good.slice(0, -1)}${good.endsWith("A") ? "B" : "A"}`];
     for (const value of cookies) {
       const request = new Request("http://localhost/api/applications", {

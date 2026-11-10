@@ -72,7 +72,11 @@ export async function isAppAccessAuthorized(request: Request): Promise<boolean> 
     return true;
   }
 
-  return verifySessionCookie(await getSessionSecret(configuredToken), sessionCookieFromRequest(request));
+  // Reject missing/malformed cookies before any DB lookup for the session secret.
+  const cookie = sessionCookieFromRequest(request);
+  if (!cookie?.startsWith("v1.") || cookie.split(".").length !== 3) return false;
+
+  return verifySessionCookie(await getSessionSecret(configuredToken), cookie);
 }
 
 export function buildSessionSetCookieHeader(value: string): string {
