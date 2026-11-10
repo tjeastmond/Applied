@@ -9,7 +9,6 @@ import {
 } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
-import { sanitizeApplicationInput } from "@/lib/server/sanitizeApplicationInput";
 import { ensureCompanyForApplicationName } from "@/lib/server/services/companySyncService";
 import { patchJobApplicationSchema } from "@/lib/schemas/application";
 import { NextResponse } from "next/server";
@@ -40,18 +39,14 @@ export const PATCH = withAppAccess<ApplicationIdRouteContext>(async (request: Re
     return badRequestResponse("recruiter fields require viaRecruiter: true");
   }
 
-  const sanitized = sanitizeApplicationInput(data);
-  const statusChanging = sanitized.status !== undefined && sanitized.status !== existing.status;
+  const statusChanging = data.status !== undefined && data.status !== existing.status;
 
-  const updated =
-    statusChanging && sanitized.status
-      ? await patchApplicationWithSideEffects(id, data, existing)
-      : await getRepository().update(id, sanitized);
+  const updated = await patchApplicationWithSideEffects(id, data, existing);
   if (!updated) {
     return applicationNotFoundResponse();
   }
 
-  if (sanitized.company !== undefined) {
+  if (data.company !== undefined) {
     await ensureCompanyForApplicationName(updated.company);
   }
 
