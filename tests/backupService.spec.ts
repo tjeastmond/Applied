@@ -10,7 +10,13 @@ import { SqliteApplicationNoteRepository } from "@/lib/server/db/sqliteApplicati
 import { SqliteCompanyRepository } from "@/lib/server/db/sqliteCompanyRepository";
 import { SqliteJobApplicationRepository } from "@/lib/server/db/sqliteRepository";
 import { stripSensitiveDataFromDatabase } from "@/lib/server/services/databaseBackupService";
-import { exportJson, exportSql, importJson, importSql } from "@/lib/server/services/backupService";
+import {
+  assertSqlBackupIsSafe,
+  exportJson,
+  exportSql,
+  importJson,
+  importSql,
+} from "@/lib/server/services/backupService";
 
 async function seedSampleData(db: ReturnType<typeof openDatabase>) {
   const appRepo = new SqliteJobApplicationRepository(db);
@@ -155,6 +161,16 @@ describe("backupService", () => {
         "upsert",
       ),
     ).toThrow("unsupported");
+  });
+
+  const ins = `INSERT INTO users (id, display_name, created_at, updated_at) VALUES ('u', 'n', 'a', 'a')`;
+  test.each([
+    ["block comment apostrophe", `${ins} /* ' */; ALTER TABLE users ADD COLUMN hacked TEXT; ${ins} /* ' */`],
+    ["double-quoted apostrophe", `${ins} "it's"; ALTER TABLE users ADD COLUMN hacked TEXT; ${ins} "it's"`],
+    ["backtick apostrophe", `${ins} \`it's\`; ALTER TABLE users ADD COLUMN hacked TEXT; ${ins} \`it's\``],
+    ["bracket apostrophe", `${ins} [it's]; ALTER TABLE users ADD COLUMN hacked TEXT; ${ins} [it's]`],
+  ])("rejects smuggled statements hidden by %s", (_name, sql) => {
+    expect(() => assertSqlBackupIsSafe(sql)).toThrow("unsupported");
   });
 
   test.each(["replace", "upsert"] as const)("round-trips awkward string content through SQL (%s)", async (mode) => {

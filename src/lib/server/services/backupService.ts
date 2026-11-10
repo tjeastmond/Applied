@@ -445,25 +445,30 @@ export function importJson(db: Database.Database, raw: unknown, mode: ImportMode
   return importJsonData(db, parseBackupJson(raw), mode);
 }
 
-// Splits on `;` outside '...' literals ('' is an escaped quote) and drops `--` line comments outside them.
+// Mirrors SQLite's lexer: splits on `;` outside '...', "...", `...` (doubled delimiter escapes) and [...] spans,
+// drops `--` line comments, and replaces /* */ block comments (unterminated runs to EOF) with a space.
 function splitSqlStatements(sql: string): string[] {
   const statements: string[] = [];
   let current = "";
-  let inString = false;
+  let quote = "";
   for (let i = 0; i < sql.length; i++) {
     const ch = sql[i];
-    if (inString) {
+    if (quote) {
       current += ch;
-      if (ch === "'") {
-        if (sql[i + 1] === "'") current += sql[++i];
-        else inString = false;
+      if (ch === quote) {
+        if (quote !== "]" && sql[i + 1] === quote) current += sql[++i];
+        else quote = "";
       }
-    } else if (ch === "'") {
-      inString = true;
+    } else if (ch === "'" || ch === '"' || ch === "`" || ch === "[") {
+      quote = ch === "[" ? "]" : ch;
       current += ch;
     } else if (ch === "-" && sql[i + 1] === "-") {
       while (i < sql.length && sql[i] !== "\n") i++;
       current += "\n";
+    } else if (ch === "/" && sql[i + 1] === "*") {
+      const end = sql.indexOf("*/", i + 2);
+      i = end === -1 ? sql.length : end + 1;
+      current += " ";
     } else if (ch === ";") {
       statements.push(current);
       current = "";
