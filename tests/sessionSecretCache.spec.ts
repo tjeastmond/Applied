@@ -18,6 +18,17 @@ describe("getSessionSecret cache", () => {
     expect(getCredentialById).toHaveBeenCalledTimes(1);
   });
 
+  test("an in-flight read that finishes after a clear is not cached", async () => {
+    let resolveStale!: (v: { passwordHash: string }) => void;
+    getCredentialById.mockReturnValueOnce(new Promise((r) => (resolveStale = r)));
+    const stale = getSessionSecret("tok");
+    clearSessionSecretCache();
+    resolveStale({ passwordHash: "old" });
+    expect(await stale).toBe("tok:old");
+    expect(await getSessionSecret("tok")).toBe("tok:h1");
+    expect(getCredentialById).toHaveBeenCalledTimes(2);
+  });
+
   test("clear forces a fresh read", async () => {
     await getSessionSecret("tok");
     getCredentialById.mockResolvedValue({ passwordHash: "h2" });
