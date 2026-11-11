@@ -1,4 +1,3 @@
-import { createClient } from "@tursodatabase/serverless/compat";
 import { describe, expect, test, vi } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { TursoDatabaseBackend } from "@/lib/server/db/tursoBackend";
@@ -167,8 +166,7 @@ describe("TursoDatabaseBackend", { timeout: 30_000 }, () => {
     });
 
     // Shared test DB: clear owner credentials before and after so runs are repeatable.
-    const cleanup = createClient({ url: tursoConfig.url, authToken: tursoConfig.authToken });
-    const clearOwner = () => cleanup.execute("UPDATE users SET password_hash = NULL, email = NULL");
+    const clearOwner = () => backend.getTursoClient().execute("UPDATE users SET password_hash = NULL, email = NULL");
 
     try {
       await backend.users.hasPasswordLogin();
