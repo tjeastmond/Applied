@@ -44,8 +44,3 @@ export async function setCompanyIgnoredForAgent(id: string, ignored: boolean): P
   const company = await getCompanyRepository().setIgnored(id, ignored);
   return company ? toAgentCompanySummary(company) : null;
 }
-
-export async function getCompanyForAgent(id: string): Promise<AgentCompanySummary | null> {
-  const company = await getCompanyRepository().getById(id);
-  return company ? toAgentCompanySummary(company) : null;
-}

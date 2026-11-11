@@ -110,8 +110,7 @@ function maybeRotateLogFile(logDir: string, baseFile: string, maxBytes: number, 
   const size = statSync(activePath).size;
   if (size < maxBytes) return activePath;
 
-  const nextPath = rotateLogFiles(logDir, baseFile, maxFiles);
-  return nextPath;
+  return rotateLogFiles(logDir, baseFile, maxFiles);
 }
 
 function createFileTransport(logDir: string, baseFile: string, maxBytes: number, maxFiles: number): DestinationStream {
@@ -132,25 +131,7 @@ async function writeAsync(level: LogLevel, message: string, context?: LogContext
   await initLogger();
   if (level === "silent") return;
 
-  const payload = context ?? {};
-  switch (level) {
-    case "debug":
-      rootLogger.debug(payload, message);
-      break;
-    case "info":
-      rootLogger.info(payload, message);
-      break;
-    case "warn":
-      rootLogger.warn(payload, message);
-      break;
-    case "error":
-      rootLogger.error(payload, message);
-      break;
-    default: {
-      const _exhaustive: never = level;
-      return _exhaustive;
-    }
-  }
+  rootLogger[level](context ?? {}, message);
 }
 
 export async function initLogger(env: Record<string, string | undefined> = process.env): Promise<void> {

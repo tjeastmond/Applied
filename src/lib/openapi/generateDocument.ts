@@ -31,8 +31,3 @@ export function buildAgentOpenApiDocument() {
     servers: [{ url: "/", description: "Current host" }],
   });
 }
-
-/** Test-only reset so Vitest can rebuild the registry between cases if needed. */
-export function resetAgentOpenApiRegistrationForTests() {
-  initialized = false;
-}

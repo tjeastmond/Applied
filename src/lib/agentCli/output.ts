@@ -62,18 +62,6 @@ export function printNote(note: AgentNoteSummary & { applicationUpdatedAt?: stri
   process.stdout.write(`${note.content}\n`);
 }
 
-export function printNotes(notes: AgentNoteSummary[]): void {
-  if (notes.length === 0) {
-    process.stdout.write("No notes found.\n");
-    return;
-  }
-
-  for (const note of notes) {
-    printNote(note);
-    process.stdout.write("\n");
-  }
-}
-
 export function printMarkdown(markdown: string): void {
   process.stdout.write(markdown.endsWith("\n") ? markdown : `${markdown}\n`);
 }

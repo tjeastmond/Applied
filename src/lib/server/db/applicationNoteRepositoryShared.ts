@@ -13,7 +13,6 @@ export const LIST_NOTES_BY_APPLICATION_SQL = `SELECT * FROM application_notes WH
 export const INSERT_NOTE_SQL = `INSERT INTO application_notes (id, application_id, content, created_at) VALUES (?, ?, ?, ?)`;
 export const GET_NOTE_FOR_APPLICATION_SQL = `SELECT * FROM application_notes WHERE id = ? AND application_id = ?`;
 export const UPDATE_NOTE_FOR_APPLICATION_SQL = `UPDATE application_notes SET content = ? WHERE id = ? AND application_id = ?`;
-export const DELETE_NOTE_SQL = `DELETE FROM application_notes WHERE id = ?`;
 export const DELETE_NOTE_FOR_APPLICATION_SQL = `DELETE FROM application_notes WHERE id = ? AND application_id = ?`;
 
 export function rowToNote(row: NoteRow): ApplicationNote {

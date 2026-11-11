@@ -1,14 +1,6 @@
 /** Active agent API tokens (external AI/agent tools) allowed per deployment. Does not include the app login token. */
 export const MAX_ACTIVE_AGENT_API_TOKENS = 5;
 
-/**
- * Future multi-tenant caps (not enforced until users/orgs exist):
- * - 5 active tokens per user
- * - 6 active tokens per organization
- */
-export const FUTURE_MAX_AGENT_TOKENS_PER_USER = 5;
-export const FUTURE_MAX_AGENT_TOKENS_PER_ORG = 6;
-
 export type AgentTokenSource = "env" | "database" | "both" | "none";
 
 export function resolveAgentTokenSource(envConfigured: boolean, dbHasActiveTokens: boolean): AgentTokenSource {

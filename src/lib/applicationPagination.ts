@@ -24,15 +24,6 @@ export function isApplicationNumericPageSize(value: number): value is Applicatio
   return (APPLICATION_PAGE_SIZE_OPTIONS as readonly number[]).includes(value);
 }
 
-export function isApplicationPageSize(value: string | number | null | undefined): value is ApplicationPageSize {
-  if (value === APPLICATION_VIEW_ALL_PAGE_SIZE) return true;
-  if (typeof value === "number") return isApplicationNumericPageSize(value);
-  if (typeof value !== "string" || value.length === 0) return false;
-  if (value === APPLICATION_VIEW_ALL_PAGE_SIZE) return true;
-  const parsed = Number.parseInt(value, 10);
-  return isApplicationNumericPageSize(parsed);
-}
-
 export function parseApplicationPageSize(value: string | null | undefined): ApplicationPageSize | null {
   if (value === APPLICATION_VIEW_ALL_PAGE_SIZE) return APPLICATION_VIEW_ALL_PAGE_SIZE;
   if (typeof value !== "string" || value.length === 0) return null;

@@ -7,7 +7,6 @@ import type {
 import type { UserRepository } from "../repositories/userRepository";
 import {
   buildStatusHistoryEntry,
-  HAS_STATUS_HISTORY_FOR_APPLICATION_SQL,
   INSERT_STATUS_HISTORY_SQL,
   LIST_STATUS_HISTORY_BY_APPLICATION_SQL,
   rowToStatusHistoryEntry,
@@ -17,13 +16,11 @@ import {
 export class SqliteApplicationStatusHistoryRepository implements ApplicationStatusHistoryRepository {
   private readonly listByApplicationStmt;
   private readonly insertStmt;
-  private readonly hasAnyForApplicationStmt;
   private readonly users: UserRepository;
 
   constructor(db: Database.Database, users: UserRepository) {
     this.listByApplicationStmt = db.prepare(LIST_STATUS_HISTORY_BY_APPLICATION_SQL);
     this.insertStmt = db.prepare(INSERT_STATUS_HISTORY_SQL);
-    this.hasAnyForApplicationStmt = db.prepare(HAS_STATUS_HISTORY_FOR_APPLICATION_SQL);
     this.users = users;
   }
 
@@ -42,9 +39,5 @@ export class SqliteApplicationStatusHistoryRepository implements ApplicationStat
       ...entry,
       userDisplayName: user?.displayName ?? "Unknown",
     };
-  }
-
-  hasAnyForApplication(applicationId: string): Promise<boolean> {
-    return Promise.resolve(this.hasAnyForApplicationStmt.get(applicationId) !== undefined);
   }
 }

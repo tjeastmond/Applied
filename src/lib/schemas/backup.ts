@@ -111,5 +111,3 @@ export type TursoSyncMode = z.infer<typeof tursoSyncModeSchema>;
 export type ImportMode = z.infer<typeof importModeSchema>;
 
 export const backupFormatSchema = z.enum(["sql", "json"]);
-
-export type BackupFormat = z.infer<typeof backupFormatSchema>;

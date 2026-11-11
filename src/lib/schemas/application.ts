@@ -129,9 +129,6 @@ export const bulkArchiveApplicationsSchema = z.object({
   statuses: z.array(applicationStatusSchema).optional(),
 });
 
-export type BulkFetchApplicationsInput = z.infer<typeof bulkFetchApplicationsSchema>;
-export type BulkArchiveApplicationsInput = z.infer<typeof bulkArchiveApplicationsSchema>;
-
 export type ApplicationSalaryInput = z.input<typeof applicationSalaryFieldsSchema>;
 export type ParsedApplicationSalaryInput = z.infer<typeof applicationSalaryFieldsSchema>;
 export type ParsedApplicationSalaryFields = z.infer<typeof parsedApplicationSalaryFieldsSchema>;
