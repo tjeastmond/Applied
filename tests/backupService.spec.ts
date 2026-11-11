@@ -16,6 +16,7 @@ import {
   assertSqlBackupIsSafe,
   exportJson,
   exportSql,
+  exportSqlFromRecords,
   importJson,
   importSql,
 } from "@/lib/server/services/backupService";
@@ -98,6 +99,33 @@ describe("backupService", () => {
     expect(exportJson(db).applications[0]?.fullJd).toBe("<p>Keep me</p>");
     expect(exportSql(db)).toContain("<p>Keep me</p>");
   });
+
+  test.each(["json", "sql"] as const)(
+    "replace %s import survives another user holding the owner email",
+    async (format) => {
+      const db = openDatabase(":memory:");
+      await seedSampleData(db);
+      const users = new SqliteUserRepository(db);
+      await users.ensureDefaultUser();
+      const backup = exportJson(db);
+      const now = new Date().toISOString();
+      backup.users.push({
+        id: randomUUID(),
+        displayName: "Other",
+        email: "o@example.com",
+        createdAt: now,
+        updatedAt: now,
+      });
+      await users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
+
+      if (format === "json") importJson(db, backup, "replace");
+      else importSql(db, exportSqlFromRecords(backup.applications, backup.notes, backup.users, [], []), "replace");
+
+      expect((await users.getCredentialById(DEFAULT_USER_ID))?.passwordHash).toBe("scrypt$hash");
+      const emails = db.prepare("SELECT email FROM users WHERE email IS NOT NULL").all() as { email: string }[];
+      expect(new Set(emails.map((r) => r.email)).size).toBe(emails.length);
+    },
+  );
 
   test("sanitizes fullJd HTML on JSON import", async () => {
     const db = openDatabase(":memory:");

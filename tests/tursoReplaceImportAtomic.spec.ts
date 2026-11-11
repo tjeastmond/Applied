@@ -78,6 +78,28 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
       // The backup user has email null; the restored owner keeps its email and hash so login still works.
       expect((await backend.users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
 
+      // Another restored user holding the owner's email must not break the restore or the unique index.
+      const other = {
+        id: crypto.randomUUID(),
+        displayName: "Other",
+        email: "o@example.com",
+        createdAt: now,
+        updatedAt: now,
+      };
+      await backend.importJson(
+        { ...empty, version: 3, users: [...users, other], statusHistory: [], companies: [] },
+        "replace",
+      );
+      expect((await backend.users.getCredentialById(DEFAULT_USER_ID))?.passwordHash).toBe("scrypt$hash");
+      const dupes = await backend
+        .getTursoClient()
+        .execute("SELECT email FROM users WHERE email IS NOT NULL GROUP BY email HAVING COUNT(*) > 1");
+      expect(dupes.rows).toHaveLength(0);
+      await backend.importJson({ ...empty, version: 3, users, statusHistory: [], companies: [] }, "replace");
+      await backend
+        .getTursoClient()
+        .execute({ sql: "UPDATE users SET email = ? WHERE id = ?", args: ["o@example.com", DEFAULT_USER_ID] });
+
       // A failed replace leaves email and hash unchanged.
       await expect(
         backend.importJson(
