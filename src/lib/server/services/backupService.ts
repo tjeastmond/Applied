@@ -398,8 +398,10 @@ function restorePasswordHashes(db: Database.Database, hashes: PasswordHashes): v
   // The credential owner wins an email collision: other restored users lose that email (unique index).
   const clearOthers = db.prepare("UPDATE users SET email = NULL WHERE email = ? AND id <> ?");
   const update = db.prepare("UPDATE users SET email = ?, password_hash = ? WHERE id = ?");
+  const present = db.prepare("SELECT 1 FROM users WHERE id = ?");
   for (const { id, email, password_hash } of hashes) {
-    clearOthers.run(email, id);
+    // Only when the owner row exists, otherwise the other user's email would be lost for nothing.
+    if (present.get(id)) clearOthers.run(email, id);
     update.run(email, password_hash, id);
   }
 }
@@ -577,7 +579,7 @@ export function withCredentialPreservation(sql: string): string {
     commit,
     0,
     "ALTER TABLE users ADD COLUMN password_hash TEXT",
-    "UPDATE users SET email = NULL WHERE email IN (SELECT email FROM kept_credentials k WHERE k.id <> users.id)",
+    "UPDATE users SET email = NULL WHERE email IN (SELECT email FROM kept_credentials k WHERE k.id <> users.id AND EXISTS (SELECT 1 FROM users u WHERE u.id = k.id))",
     "UPDATE users SET email = (SELECT email FROM kept_credentials k WHERE k.id = users.id), password_hash = (SELECT password_hash FROM kept_credentials k WHERE k.id = users.id) WHERE id IN (SELECT id FROM kept_credentials)",
     "DROP TABLE kept_credentials",
   );

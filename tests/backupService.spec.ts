@@ -129,6 +129,23 @@ describe("backupService", () => {
     },
   );
 
+  test("replace import keeps another user's email when the owner is not in the backup", async () => {
+    const db = openDatabase(":memory:");
+    await seedSampleData(db);
+    const users = new SqliteUserRepository(db);
+    await users.ensureDefaultUser();
+    const backup = exportJson(db);
+    const now = new Date().toISOString();
+    const otherId = randomUUID();
+    backup.statusHistory = [];
+    backup.users = [{ id: otherId, displayName: "Other", email: "o@example.com", createdAt: now, updatedAt: now }];
+    await users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
+
+    importJson(db, backup, "replace");
+
+    expect(db.prepare("SELECT id FROM users WHERE email = ?").get("o@example.com")).toEqual({ id: otherId });
+  });
+
   test("replace import of a v1 backup without users keeps the owner login", async () => {
     const db = openDatabase(":memory:");
     await seedSampleData(db);
