@@ -187,6 +187,46 @@ describe("TursoDatabaseBackend", { timeout: 30_000 }, () => {
     }
   });
 
+  test("upsert import clears a backup user's email that collides with the owner's", async () => {
+    const tursoConfig = requireTursoTestConfig();
+    const backend = new TursoDatabaseBackend({
+      provider: "turso",
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
+    });
+    const client = backend.getTursoClient();
+    const clearOwner = () => client.execute("UPDATE users SET password_hash = NULL, email = NULL");
+    const otherId = crypto.randomUUID();
+
+    try {
+      await backend.users.hasPasswordLogin();
+      await clearOwner();
+      await backend.users.setOwnerPassword({ email: "owner@example.com", passwordHash: "scrypt$test" });
+      const backup = await backend.exportJson();
+      const now = new Date().toISOString();
+      backup.users.push({
+        id: otherId,
+        displayName: "Other",
+        email: "owner@example.com",
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const result = await backend.importJson(backup, "upsert");
+
+      expect(result.emailsCleared).toBe(1);
+      const withEmail = await client.execute("SELECT email FROM users WHERE email IS NOT NULL");
+      expect(withEmail.rows.map((r) => r.email)).toEqual(["owner@example.com"]);
+      const other = await client.execute({ sql: "SELECT email FROM users WHERE id = ?", args: [otherId] });
+      expect(other.rows).toHaveLength(1);
+      expect(other.rows[0]?.email).toBeNull();
+    } finally {
+      await client.execute({ sql: "DELETE FROM users WHERE id = ?", args: [otherId] });
+      await clearOwner();
+      backend.reset();
+    }
+  });
+
   test("company update and setIgnored persist", async () => {
     const tursoConfig = requireTursoTestConfig();
     const backend = new TursoDatabaseBackend({
