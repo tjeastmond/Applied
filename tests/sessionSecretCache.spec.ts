@@ -4,7 +4,7 @@ const getCredentialById = vi.fn();
 const repo = { getCredentialById };
 vi.mock("@/lib/server/db", () => ({ getUserRepository: () => repo }));
 
-import { clearSessionSecretCache, getSessionSecret } from "@/lib/server/sessionSecret";
+import { buildSessionCookieHeader, clearSessionSecretCache, getSessionSecret } from "@/lib/server/sessionSecret";
 
 describe("getSessionSecret cache", () => {
   beforeEach(() => {
@@ -26,6 +26,15 @@ describe("getSessionSecret cache", () => {
     resolveStale({ passwordHash: "old" });
     expect(await stale).toBe("tok:old");
     expect(await getSessionSecret("tok")).toBe("tok:h1");
+    expect(getCredentialById).toHaveBeenCalledTimes(2);
+  });
+
+  test("signing a cookie reads fresh even when the cache is warm", async () => {
+    await getSessionSecret("tok");
+    getCredentialById.mockResolvedValue({ passwordHash: "h2" });
+    await buildSessionCookieHeader("tok");
+    expect(getCredentialById).toHaveBeenCalledTimes(2);
+    expect(await getSessionSecret("tok")).toBe("tok:h2");
     expect(getCredentialById).toHaveBeenCalledTimes(2);
   });
 
