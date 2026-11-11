@@ -32,6 +32,12 @@ function guardedUpdateArgs(updated: ReturnType<typeof buildApplicationUpdateRow>
   };
 }
 
+export class ApplicationConflictError extends Error {
+  constructor() {
+    super("Application was modified concurrently; please retry");
+  }
+}
+
 export async function patchApplicationWithSideEffects(
   id: string,
   data: PatchJobApplicationInput,
@@ -60,7 +66,7 @@ export async function patchApplicationWithSideEffects(
   if (result !== "conflict") return result;
 
   // Row changed since the caller read it: re-read and retry once, then surface the conflict.
-  if (retried) throw new Error("Application was modified concurrently; please retry");
+  if (retried) throw new ApplicationConflictError();
   const fresh = await getRepository().getById(id);
   return fresh ? patchApplicationWithSideEffects(id, data, fresh, true) : null;
 }

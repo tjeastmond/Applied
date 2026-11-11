@@ -1,6 +1,10 @@
 import { agentPatchApplicationSchema } from "@/lib/schemas/agent";
 import { requireAgentApplicationRouteContext } from "@/lib/server/agentRouteHelpers";
-import { applicationNotFoundResponse, type ApplicationIdRouteContext } from "@/lib/server/applicationRouteHelpers";
+import {
+  applicationNotFoundResponse,
+  conflictResponseOrThrow,
+  type ApplicationIdRouteContext,
+} from "@/lib/server/applicationRouteHelpers";
 import { requireAgentAuth } from "@/lib/server/agentAuth";
 import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
@@ -42,7 +46,12 @@ export async function PATCH(request: Request, context: ApplicationIdRouteContext
     return data;
   }
 
-  const updated = await updateApplicationStatusForAgent(routeContext.id, data.status, auth);
+  const updated = await updateApplicationStatusForAgent(routeContext.id, data.status, auth).catch(
+    conflictResponseOrThrow,
+  );
+  if (updated instanceof Response) {
+    return updated;
+  }
   if (!updated) {
     return applicationNotFoundResponse();
   }

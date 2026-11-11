@@ -3,6 +3,7 @@ import type { LogContext } from "@/lib/server/logging/types";
 import { getAgentApiTokenRepository, getRepository } from "@/lib/server/db";
 import { parseUuid } from "@/lib/schemas/common";
 import type { AgentApiTokenRepository } from "@/lib/server/repositories/agentApiTokenRepository";
+import { ApplicationConflictError } from "@/lib/server/services/applicationMutationService";
 import { NextResponse } from "next/server";
 
 export type ApplicationIdRouteContext = { params: Promise<{ id: string }> };
@@ -16,6 +17,12 @@ export function jsonError(message: string, status: number) {
 export function logAndRespondFromUnknown(error: unknown, message: string, status: number, context?: LogContext) {
   log.errorFromUnknown(error, { ...context, status });
   return jsonError(message, status);
+}
+
+/** Maps a concurrent-edit conflict to 409 (expected, not logged); rethrows anything else. */
+export function conflictResponseOrThrow(error: unknown): Response {
+  if (error instanceof ApplicationConflictError) return jsonError(error.message, 409);
+  throw error;
 }
 
 export function badRequestResponse(error: string) {
