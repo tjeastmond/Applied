@@ -121,7 +121,9 @@ describe("backupService", () => {
       if (format === "json") importJson(db, backup, "replace");
       else importSql(db, exportSqlFromRecords(backup.applications, backup.notes, backup.users, [], []), "replace");
 
-      expect((await users.getCredentialById(DEFAULT_USER_ID))?.passwordHash).toBe("scrypt$hash");
+      const owner = await users.getCredentialByEmail("o@example.com");
+      expect(owner?.id).toBe(DEFAULT_USER_ID);
+      expect(owner?.passwordHash).toBe("scrypt$hash");
       const emails = db.prepare("SELECT email FROM users WHERE email IS NOT NULL").all() as { email: string }[];
       expect(new Set(emails.map((r) => r.email)).size).toBe(emails.length);
     },

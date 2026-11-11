@@ -91,7 +91,9 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
         { ...empty, version: 3, users: [...users, other], statusHistory: [], companies: [] },
         "replace",
       );
-      expect((await backend.users.getCredentialById(DEFAULT_USER_ID))?.passwordHash).toBe("scrypt$hash");
+      const owner = await backend.users.getCredentialByEmail("o@example.com");
+      expect(owner?.id).toBe(DEFAULT_USER_ID);
+      expect(owner?.passwordHash).toBe("scrypt$hash");
       const dupes = await backend
         .getTursoClient()
         .execute("SELECT email FROM users WHERE email IS NOT NULL GROUP BY email HAVING COUNT(*) > 1");

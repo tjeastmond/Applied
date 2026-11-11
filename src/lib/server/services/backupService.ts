@@ -395,11 +395,13 @@ function clearAllData(db: Database.Database): PasswordHashes {
 
 function restorePasswordHashes(db: Database.Database, hashes: PasswordHashes): void {
   // Email travels with the hash: a restored owner without an email could not sign in with the carried-over hash.
-  // Unless another restored user already has that email (unique index): then the restored row keeps its own.
-  const update = db.prepare(
-    "UPDATE users SET email = CASE WHEN EXISTS (SELECT 1 FROM users o WHERE o.email = ? AND o.id <> ?) THEN email ELSE ? END, password_hash = ? WHERE id = ?",
-  );
-  for (const { id, email, password_hash } of hashes) update.run(email, id, email, password_hash, id);
+  // The credential owner wins an email collision: other restored users lose that email (unique index).
+  const clearOthers = db.prepare("UPDATE users SET email = NULL WHERE email = ? AND id <> ?");
+  const update = db.prepare("UPDATE users SET email = ?, password_hash = ? WHERE id = ?");
+  for (const { id, email, password_hash } of hashes) {
+    clearOthers.run(email, id);
+    update.run(email, password_hash, id);
+  }
 }
 
 function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMode): ImportResult {
@@ -575,7 +577,8 @@ export function withCredentialPreservation(sql: string): string {
     commit,
     0,
     "ALTER TABLE users ADD COLUMN password_hash TEXT",
-    "UPDATE users SET email = CASE WHEN EXISTS (SELECT 1 FROM users o WHERE o.id <> users.id AND o.email = (SELECT email FROM kept_credentials k WHERE k.id = users.id)) THEN email ELSE (SELECT email FROM kept_credentials k WHERE k.id = users.id) END, password_hash = (SELECT password_hash FROM kept_credentials k WHERE k.id = users.id) WHERE id IN (SELECT id FROM kept_credentials)",
+    "UPDATE users SET email = NULL WHERE email IN (SELECT email FROM kept_credentials k WHERE k.id <> users.id)",
+    "UPDATE users SET email = (SELECT email FROM kept_credentials k WHERE k.id = users.id), password_hash = (SELECT password_hash FROM kept_credentials k WHERE k.id = users.id) WHERE id IN (SELECT id FROM kept_credentials)",
     "DROP TABLE kept_credentials",
   );
   statements.splice(

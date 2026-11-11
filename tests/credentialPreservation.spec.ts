@@ -11,8 +11,9 @@ describe("withCredentialPreservation", () => {
     expect(out[1]).toMatch(/^CREATE TEMP TABLE kept_credentials/);
     expect(out.at(-1)).toMatch(/^COMMIT/i);
     expect(out.at(-2)).toBe("DROP TABLE kept_credentials");
-    expect(out.at(-3)).toMatch(/^UPDATE users SET email/);
-    expect(out.at(-4)).toMatch(/^ALTER TABLE users ADD COLUMN password_hash/);
+    expect(out.at(-3)).toMatch(/^UPDATE users SET email = \(SELECT email FROM kept_credentials/);
+    expect(out.at(-4)).toMatch(/^UPDATE users SET email = NULL/);
+    expect(out.at(-5)).toMatch(/^ALTER TABLE users ADD COLUMN password_hash/);
   });
 
   test("throws without BEGIN or COMMIT", () => {
