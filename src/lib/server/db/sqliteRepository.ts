@@ -6,6 +6,7 @@ import {
   buildApplicationInsertRow,
   buildApplicationUpdateRow,
   buildBulkArchiveByStatusesSql,
+  DELETE_APPLICATION_CHILDREN_SQL,
   DELETE_APPLICATION_SQL,
   TOUCH_APPLICATION_SQL,
   GET_APPLICATION_BY_ID_SQL,
@@ -27,6 +28,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
   private readonly insertStmt;
   private readonly updateStmt;
   private readonly deleteStmt;
+  private readonly deleteChildStmts;
   private readonly touchStmt;
 
   constructor(db: Database.Database) {
@@ -37,6 +39,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
     this.insertStmt = db.prepare(INSERT_APPLICATION_SQL);
     this.updateStmt = db.prepare(UPDATE_APPLICATION_SQL);
     this.deleteStmt = db.prepare(DELETE_APPLICATION_SQL);
+    this.deleteChildStmts = DELETE_APPLICATION_CHILDREN_SQL.map((sql) => db.prepare(sql));
     this.touchStmt = db.prepare(TOUCH_APPLICATION_SQL);
   }
 
@@ -150,7 +153,10 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
   }
 
   async delete(id: string): Promise<boolean> {
-    const result = this.deleteStmt.run(id);
-    return result.changes > 0;
+    const run = this.db.transaction(() => {
+      for (const stmt of this.deleteChildStmts) stmt.run(id);
+      return this.deleteStmt.run(id).changes > 0;
+    });
+    return run();
   }
 }

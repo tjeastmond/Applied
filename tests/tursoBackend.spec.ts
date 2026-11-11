@@ -169,4 +169,46 @@ describe("TursoDatabaseBackend", { timeout: 30_000 }, () => {
       backend.reset();
     }
   });
+
+  test("delete removes notes and status history even when foreign keys are off", async () => {
+    const tursoConfig = requireTursoTestConfig();
+    const backend = new TursoDatabaseBackend({
+      provider: "turso",
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
+    });
+    const client = backend.getTursoClient();
+
+    try {
+      const created = await backend.applications.create(
+        createJobApplicationSchema.parse({
+          url: "https://jobs.example.com/turso-delete-children",
+          title: "Engineer",
+          company: "Acme",
+          appliedAt: "2026-06-01",
+          status: "applied",
+        }),
+      );
+      await backend.notes.create(created.id, "note");
+      expect(await backend.statusHistory.listByApplicationId(created.id)).toHaveLength(1);
+
+      await client.execute("PRAGMA foreign_keys = OFF");
+      expect(await backend.applications.delete(created.id)).toBe(true);
+
+      const count = async (table: string) =>
+        Number(
+          (
+            await client.execute({
+              sql: `SELECT COUNT(*) AS n FROM ${table} WHERE application_id = ?`,
+              args: [created.id],
+            })
+          ).rows[0]?.n,
+        );
+      expect(await count("application_notes")).toBe(0);
+      expect(await count("application_status_history")).toBe(0);
+    } finally {
+      await client.execute("PRAGMA foreign_keys = ON");
+      backend.reset();
+    }
+  });
 });
