@@ -16,6 +16,19 @@ const APPLICATION_CARD_GRID_CLASSES = "grid grid-cols-1 gap-4 lg:grid-cols-2";
 const APPLICATION_CARD_GRID_SINGLE_COLUMN_CLASSES = "grid grid-cols-1 gap-4";
 const EMPTY_STATE_CARD_CLASS = "shadow-sm shadow-black/5";
 
+function EmptyState({ message, label, onClick }: { message: string; label: string; onClick: () => void }) {
+  return (
+    <Card className={EMPTY_STATE_CARD_CLASS}>
+      <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+        <p className="text-muted-foreground text-sm">{message}</p>
+        <Button type="button" variant="outline" size="sm" onClick={onClick}>
+          {label}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 type ApplicationListPageProps = Pick<
   AuthenticatedAppController,
   | "applications"
@@ -158,46 +171,29 @@ export function ApplicationListPage({
               </CardContent>
             </Card>
           ) : isArchivedViewEmpty ? (
-            <Card className={EMPTY_STATE_CARD_CLASS}>
-              <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-                <p className="text-muted-foreground text-sm">No archived applications.</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onBackToApplications ?? handleViewModeToggle}
-                >
-                  Back To Active Applications
-                </Button>
-              </CardContent>
-            </Card>
+            <EmptyState
+              message="No archived applications."
+              label="Back To Active Applications"
+              onClick={onBackToApplications ?? handleViewModeToggle}
+            />
           ) : isBookmarksViewEmpty ? (
-            <Card className={EMPTY_STATE_CARD_CLASS}>
-              <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-                <p className="text-muted-foreground text-sm">No bookmarked applications.</p>
-                <Button type="button" variant="outline" size="sm" onClick={onBackToApplications ?? clearFilters}>
-                  Back To Applications
-                </Button>
-              </CardContent>
-            </Card>
+            <EmptyState
+              message="No bookmarked applications."
+              label="Back To Applications"
+              onClick={onBackToApplications ?? clearFilters}
+            />
           ) : isToApplyViewEmpty ? (
-            <Card className={EMPTY_STATE_CARD_CLASS}>
-              <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-                <p className="text-muted-foreground text-sm">No To Apply applications.</p>
-                <Button type="button" variant="outline" size="sm" onClick={onBackToApplications ?? clearFilters}>
-                  Back To Applications
-                </Button>
-              </CardContent>
-            </Card>
+            <EmptyState
+              message="No To Apply applications."
+              label="Back To Applications"
+              onClick={onBackToApplications ?? clearFilters}
+            />
           ) : isFilteredEmpty ? (
-            <Card className={EMPTY_STATE_CARD_CLASS}>
-              <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-                <p className="text-muted-foreground text-sm">No applications match the current filters.</p>
-                <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
-                  Clear Filters
-                </Button>
-              </CardContent>
-            </Card>
+            <EmptyState
+              message="No applications match the current filters."
+              label="Clear Filters"
+              onClick={clearFilters}
+            />
           ) : !hasSyncedPageSize ? (
             <div className={cardGridClasses} aria-busy="true" aria-label="Loading applications">
               {Array.from({ length: 4 }, (_, index) => (
