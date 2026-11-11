@@ -36,7 +36,7 @@
     "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@base-ui/react": "^1.5.0",
     "@scalar/nextjs-api-reference": "^0.11.13",
-    "@tursodatabase/serverless": "^1.2.1",
+    "@tursodatabase/serverless": "^1.4.1",
     "better-sqlite3": "^12.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
