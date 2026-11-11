@@ -24,13 +24,9 @@ async function readApiError(response: Response, fallback: string): Promise<strin
   return body?.error ?? `${fallback} (${response.status})`;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function fetchWithCredentials(path: string, init?: RequestInit): Promise<Response> {
   const response = await fetch(path, {
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
     ...init,
   });
 
@@ -38,6 +34,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     notifyUnauthorized();
     throw new UnauthorizedError(await readApiError(response, "Unauthorized"));
   }
+
+  return response;
+}
+
+function send<T>(path: string, method: string, body?: unknown): Promise<T> {
+  return request<T>(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetchWithCredentials(path, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+    ...init,
+  });
 
   if (!response.ok) {
     throw new Error(await readApiError(response, "Request failed"));
@@ -51,16 +63,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function loginApp(accessToken: string): Promise<{ ok: true }> {
-  return request<{ ok: true }>("/api/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ accessToken }),
-  });
+  return send<{ ok: true }>("/api/auth/login", "POST", { accessToken });
 }
 
 export function devLoginApp(): Promise<{ ok: true }> {
-  return request<{ ok: true }>("/api/auth/dev-login", {
-    method: "POST",
-  });
+  return send<{ ok: true }>("/api/auth/dev-login", "POST");
 }
 
 export function setupApp(input: {
@@ -69,23 +76,15 @@ export function setupApp(input: {
   displayName: string;
   accessToken?: string;
 }): Promise<{ ok: true }> {
-  return request<{ ok: true }>("/api/auth/setup", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return send<{ ok: true }>("/api/auth/setup", "POST", input);
 }
 
 export function passwordLoginApp(input: { email: string; password: string }): Promise<{ ok: true }> {
-  return request<{ ok: true }>("/api/auth/password-login", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return send<{ ok: true }>("/api/auth/password-login", "POST", input);
 }
 
 export function logoutApp(): Promise<{ ok: true }> {
-  return request<{ ok: true }>("/api/auth/logout", {
-    method: "POST",
-  });
+  return send<{ ok: true }>("/api/auth/logout", "POST");
 }
 
 export function listApplications(): Promise<JobApplication[]> {
@@ -105,24 +104,15 @@ export function listCompanies(search?: { search?: string; ignored?: boolean }): 
 }
 
 export function createCompany(input: CreateCompanyInput): Promise<Company> {
-  return request<Company>("/api/companies", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return send<Company>("/api/companies", "POST", input);
 }
 
 export function patchCompany(id: string, input: PatchCompanyInput): Promise<Company> {
-  return request<Company>(`/api/companies/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  });
+  return send<Company>(`/api/companies/${id}`, "PATCH", input);
 }
 
 export function setCompanyIgnored(id: string, ignored: boolean): Promise<Company> {
-  return request<Company>(`/api/companies/${id}/ignore`, {
-    method: "PATCH",
-    body: JSON.stringify({ ignored }),
-  });
+  return send<Company>(`/api/companies/${id}/ignore`, "PATCH", { ignored });
 }
 
 export function getAnalytics(searchParams: URLSearchParams, signal?: AbortSignal): Promise<AnalyticsResponse> {
@@ -135,45 +125,33 @@ export function getApplication(id: string): Promise<JobApplication> {
 }
 
 export function createApplication(input: CreateJobApplicationInput): Promise<JobApplication> {
-  return request<JobApplication>("/api/applications", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return send<JobApplication>("/api/applications", "POST", input);
 }
 
 export function updateApplication(id: string, input: Partial<CreateJobApplicationInput>): Promise<JobApplication> {
-  return request<JobApplication>(`/api/applications/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  });
+  return send<JobApplication>(`/api/applications/${id}`, "PATCH", input);
 }
 
 export function bulkArchiveApplications(
   statuses?: CreateJobApplicationInput["status"][],
 ): Promise<{ archivedCount: number; applications: JobApplication[] }> {
-  return request<{ archivedCount: number; applications: JobApplication[] }>("/api/applications/bulk-archive", {
-    method: "POST",
-    body: JSON.stringify(statuses && statuses.length > 0 ? { statuses } : {}),
-  });
+  return send<{ archivedCount: number; applications: JobApplication[] }>(
+    "/api/applications/bulk-archive",
+    "POST",
+    statuses && statuses.length > 0 ? { statuses } : {},
+  );
 }
 
 export function archiveStaleApplications(): Promise<{ archivedCount: number; applications: JobApplication[] }> {
-  return request<{ archivedCount: number; applications: JobApplication[] }>("/api/applications/archive-stale", {
-    method: "POST",
-  });
+  return send<{ archivedCount: number; applications: JobApplication[] }>("/api/applications/archive-stale", "POST");
 }
 
 export function deleteApplication(id: string): Promise<void> {
-  return request<void>(`/api/applications/${id}`, {
-    method: "DELETE",
-  });
+  return send<void>(`/api/applications/${id}`, "DELETE");
 }
 
 export function parseJobUrl(url: string): Promise<ParseJobUrlResult> {
-  return request<ParseJobUrlResult>("/api/jobs/parse", {
-    method: "POST",
-    body: JSON.stringify({ url }),
-  });
+  return send<ParseJobUrlResult>("/api/jobs/parse", "POST", { url });
 }
 
 export function listApplicationNotes(applicationId: string): Promise<ApplicationNote[]> {
@@ -185,10 +163,7 @@ export function listApplicationStatusHistory(applicationId: string): Promise<App
 }
 
 export function createApplicationNote(applicationId: string, content: string): Promise<ApplicationNoteMutationResult> {
-  return request<ApplicationNoteMutationResult>(`/api/applications/${applicationId}/notes`, {
-    method: "POST",
-    body: JSON.stringify({ content }),
-  });
+  return send<ApplicationNoteMutationResult>(`/api/applications/${applicationId}/notes`, "POST", { content });
 }
 
 export function updateApplicationNote(
@@ -196,16 +171,13 @@ export function updateApplicationNote(
   noteId: string,
   content: string,
 ): Promise<ApplicationNoteMutationResult> {
-  return request<ApplicationNoteMutationResult>(`/api/applications/${applicationId}/notes/${noteId}`, {
-    method: "PATCH",
-    body: JSON.stringify({ content }),
+  return send<ApplicationNoteMutationResult>(`/api/applications/${applicationId}/notes/${noteId}`, "PATCH", {
+    content,
   });
 }
 
 export function deleteApplicationNote(applicationId: string, noteId: string): Promise<void> {
-  return request<void>(`/api/applications/${applicationId}/notes/${noteId}`, {
-    method: "DELETE",
-  });
+  return send<void>(`/api/applications/${applicationId}/notes/${noteId}`, "DELETE");
 }
 
 export type ImportBackupMode = "replace" | "upsert";
@@ -223,20 +195,6 @@ function parseContentDispositionFilename(header: string | null): string | null {
   if (!header) return null;
   const match = header.match(/filename="([^"]+)"/);
   return match?.[1] ?? null;
-}
-
-async function fetchWithCredentials(path: string, init?: RequestInit): Promise<Response> {
-  const response = await fetch(path, {
-    credentials: "include",
-    ...init,
-  });
-
-  if (response.status === 401) {
-    notifyUnauthorized();
-    throw new UnauthorizedError(await readApiError(response, "Unauthorized"));
-  }
-
-  return response;
 }
 
 export async function exportBackup(format: "sql" | "json"): Promise<{ blob: Blob; filename: string }> {
@@ -284,10 +242,7 @@ export type TursoSyncResult = {
 };
 
 export async function syncTurso(mode: "incremental" | ImportBackupMode = "incremental"): Promise<TursoSyncResult> {
-  return request<TursoSyncResult>("/api/backup/sync-turso", {
-    method: "POST",
-    body: JSON.stringify({ mode }),
-  });
+  return send<TursoSyncResult>("/api/backup/sync-turso", "POST", { mode });
 }
 
 export async function downloadDatabaseBackup(): Promise<{ blob: Blob; filename: string }> {
@@ -313,30 +268,19 @@ export function listAgentTokens(): Promise<ListAgentTokensResult> {
 }
 
 export function createAgentToken(name: string): Promise<CreateAgentApiTokenResult> {
-  return request<CreateAgentApiTokenResult>("/api/admin/agent-tokens", {
-    method: "POST",
-    body: JSON.stringify({ name }),
-  });
+  return send<CreateAgentApiTokenResult>("/api/admin/agent-tokens", "POST", { name });
 }
 
 export function importAgentTokenFromEnv(name: string): Promise<ImportAgentApiTokenResult> {
-  return request<ImportAgentApiTokenResult>("/api/admin/agent-tokens/from-env", {
-    method: "POST",
-    body: JSON.stringify({ name }),
-  });
+  return send<ImportAgentApiTokenResult>("/api/admin/agent-tokens/from-env", "POST", { name });
 }
 
 export function renameAgentToken(id: string, name: string): Promise<AgentApiTokenSummary> {
-  return request<AgentApiTokenSummary>(`/api/admin/agent-tokens/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ name }),
-  });
+  return send<AgentApiTokenSummary>(`/api/admin/agent-tokens/${id}`, "PATCH", { name });
 }
 
 export function revokeAgentToken(id: string): Promise<void> {
-  return request<void>(`/api/admin/agent-tokens/${id}`, {
-    method: "DELETE",
-  });
+  return send<void>(`/api/admin/agent-tokens/${id}`, "DELETE");
 }
 
 export function getCurrentUserProfile(): Promise<UserProfile> {
@@ -344,15 +288,9 @@ export function getCurrentUserProfile(): Promise<UserProfile> {
 }
 
 export function updateCurrentUserProfile(input: UpdateUserProfileInput): Promise<User> {
-  return request<User>("/api/user/profile", {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  });
+  return send<User>("/api/user/profile", "PATCH", input);
 }
 
 export function changeCurrentUserPassword(input: ChangePasswordInput): Promise<{ ok: true }> {
-  return request<{ ok: true }>("/api/user/password", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return send<{ ok: true }>("/api/user/password", "POST", input);
 }

@@ -26,6 +26,10 @@ async function parseErrorMessage(response: Response): Promise<string> {
   return response.statusText || "Request failed";
 }
 
+function json(body: unknown): RequestInit {
+  return { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+}
+
 async function request<T>(config: AgentCliConfig, path: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
@@ -90,8 +94,7 @@ export async function createApplication(
 ): Promise<AgentApplicationSummary> {
   return request(config, "/api/agent/applications", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url, ...(status ? { status } : {}) }),
+    ...json({ url, ...(status ? { status } : {}) }),
   });
 }
 
@@ -102,8 +105,7 @@ export async function setApplicationStatus(
 ): Promise<AgentApplicationSummary> {
   return request(config, `/api/agent/applications/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
+    ...json({ status }),
   });
 }
 
@@ -148,8 +150,7 @@ export type AgentCompanyPatchInput = {
 export async function createCompany(config: AgentCliConfig, input: AgentCompanyInput): Promise<AgentCompanySummary> {
   return request(config, "/api/agent/companies", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    ...json(input),
   });
 }
 
@@ -160,8 +161,7 @@ export async function updateCompany(
 ): Promise<AgentCompanySummary> {
   return request(config, `/api/agent/companies/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    ...json(input),
   });
 }
 
@@ -172,8 +172,7 @@ export async function setCompanyIgnored(
 ): Promise<AgentCompanySummary> {
   return request(config, `/api/agent/companies/${id}/ignore`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ignored }),
+    ...json({ ignored }),
   });
 }
 
@@ -184,8 +183,7 @@ export async function addApplicationNote(
 ): Promise<AgentNoteSummary & { applicationUpdatedAt: string }> {
   return request(config, `/api/agent/applications/${id}/notes`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
+    ...json({ content }),
   });
 }
 
