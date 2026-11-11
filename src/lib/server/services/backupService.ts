@@ -9,6 +9,7 @@ import {
   type ApplicationRow,
 } from "../db/applicationRepositoryShared";
 import { backfillCompaniesFromApplications, backfillMissingStatusHistory } from "../db/migrate";
+import { log } from "../logging/logger";
 import { sanitizeStoredHtml } from "./extractFullJd";
 import { readBackupSchemaSql } from "../db/schema";
 import type { CompanyRow } from "../db/companyRepositoryShared";
@@ -40,6 +41,8 @@ export type ImportResult = {
     statusHistory: number;
     companies: number;
   };
+  /** Restored users whose email was dropped because the credential holder already uses it. */
+  emailsCleared: number;
 };
 
 export type ApplicationBackupRow = ApplicationRow & {
@@ -381,6 +384,12 @@ export function exportSql(db: Database.Database): string {
   );
 }
 
+type UserEmail = { id: string; email: string | null };
+
+function listCredentialHolders(db: Database.Database): UserEmail[] {
+  return db.prepare("SELECT id, email FROM users WHERE password_hash IS NOT NULL").all() as UserEmail[];
+}
+
 type PasswordHashes = { id: string; email: string | null; password_hash: string }[];
 
 // Backups exclude password hashes, so a replace restore must carry them over for users that still exist.
@@ -392,6 +401,26 @@ function clearAllData(db: Database.Database, keepUsers = false): PasswordHashes 
     `DELETE FROM application_status_history; DELETE FROM application_notes; DELETE FROM applications; DELETE FROM companies;${keepUsers ? "" : " DELETE FROM users;"}`,
   );
   return hashes;
+}
+
+/** Backup users that lose their email to a different credential holder (replace only when the holder is restored too). */
+export function countEmailsCleared(holders: UserEmail[], users: UserEmail[], mode: ImportMode): number {
+  const restored = new Set(users.map((u) => u.id));
+  const owned = holders.filter((h) => h.email && (mode === "upsert" || restored.has(h.id)));
+  const cleared = users.filter((u) => u.email && owned.some((h) => h.email === u.email && h.id !== u.id)).length;
+  if (cleared > 0) log.warn("backup restore cleared emails already used by the credential holder", { cleared });
+  return cleared;
+}
+
+const USER_INSERT_RE = /^INSERT\s+(?:OR\s+\w+\s+)?INTO\s+users\s*\(([^)]*)\)\s*VALUES\s*([\s\S]*)$/i;
+
+/** A SELECT of (id, email) over the script's user rows, or null when it restores none. */
+export function backupUserRowsSql(sql: string): string | null {
+  const selects = extractInsertStatements(sql).flatMap((insert) => {
+    const m = USER_INSERT_RE.exec(insert);
+    return m ? [`SELECT id, email FROM (WITH i(${m[1]}) AS (VALUES ${m[2]}) SELECT * FROM i)`] : [];
+  });
+  return selects.length > 0 ? selects.join(" UNION ALL ") : null;
 }
 
 function restorePasswordHashes(db: Database.Database, hashes: PasswordHashes): void {
@@ -414,9 +443,11 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
   const upsertStatusHistory = db.prepare(UPSERT_STATUS_HISTORY_SQL);
   const upsertCompany = db.prepare(UPSERT_COMPANY_SQL);
 
+  let emailsCleared = 0;
   const run = db.transaction(() => {
     // v1/v2 backups carry no users; keep the current ones so the owner and credentials survive a replace.
     const users = mode === "replace" && data.users.length === 0 ? listUsers(db) : data.users;
+    emailsCleared = countEmailsCleared(listCredentialHolders(db), users, mode);
     const hashes = mode === "replace" ? clearAllData(db) : [];
 
     for (const user of users) {
@@ -461,6 +492,7 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
       statusHistory: data.statusHistory.length,
       companies: data.companies.length,
     },
+    emailsCleared,
   };
 }
 
@@ -687,7 +719,7 @@ export function prepareSqlUpsertStatements(sql: string): string[] {
 
 // Wraps a user's VALUES in a CTE so its email can be nulled when another user holds it (the unique index would fail).
 function userInsertToUpsert(insert: string): string | null {
-  const match = /^INSERT\s+(?:OR\s+\w+\s+)?INTO\s+users\s*\(([^)]*)\)\s*VALUES\s*([\s\S]*)$/i.exec(insert);
+  const match = USER_INSERT_RE.exec(insert);
   if (!match) return null;
   const cols = "id, display_name, email, created_at, updated_at";
   return `WITH i(${match[1]}) AS (VALUES ${match[2]})
@@ -713,7 +745,12 @@ function importSqlStatements(db: Database.Database, sql: string, mode: ImportMod
   const upserts = prepareSqlUpsertStatements(sql);
   const imported = countSqlInserts(sql);
 
+  const userRowsSql = backupUserRowsSql(sql);
+  let emailsCleared = 0;
   const run = db.transaction(() => {
+    if (userRowsSql) {
+      emailsCleared = countEmailsCleared(listCredentialHolders(db), db.prepare(userRowsSql).all() as UserEmail[], mode);
+    }
     // A script without user rows keeps the current users, like the JSON path.
     const hashes = mode === "replace" ? clearAllData(db, imported.users === 0) : [];
 
@@ -736,6 +773,7 @@ function importSqlStatements(db: Database.Database, sql: string, mode: ImportMod
   return {
     applications: listApplications(db),
     imported,
+    emailsCleared,
   };
 }
 

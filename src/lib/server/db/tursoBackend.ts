@@ -11,6 +11,8 @@ import type { CompanyRepository } from "../repositories/companyRepository";
 import type { BulkArchiveResult, JobApplicationRepository } from "../repositories/jobApplicationRepository";
 import { createSqlBackupZip } from "../services/databaseBackupService";
 import {
+  backupUserRowsSql,
+  countEmailsCleared,
   countSqlInserts,
   fullJdSanitizeUpdates,
   createBackupJson,
@@ -853,11 +855,12 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     }
     // One executeMultiple request (BEGIN..COMMIT script) so a failure cannot leave the DB empty or half full.
     const rows = [data.applications, data.notes, data.users, data.statusHistory, data.companies];
+    let emailsCleared = 0;
     if (mode === "replace" || rows.some((r) => r.length > 0)) {
-      await this.importSql(
+      ({ emailsCleared } = await this.importSql(
         exportSqlFromRecords(data.applications, data.notes, data.users, data.statusHistory, data.companies),
         mode,
-      );
+      ));
     }
 
     if (data.statusHistory.length === 0) {
@@ -877,6 +880,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
         statusHistory: data.statusHistory.length,
         companies: data.companies.length,
       },
+      emailsCleared,
     };
   }
 
@@ -890,6 +894,19 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     }
 
     const imported = countSqlInserts(trimmed);
+    const userRowsSql = backupUserRowsSql(trimmed);
+    const emailRows = async (sql: string) =>
+      (await tursoRows(this.client, sql)).map((row) => ({
+        id: nullableString(row, "id") ?? "",
+        email: nullableString(row, "email"),
+      }));
+    const emailsCleared = userRowsSql
+      ? countEmailsCleared(
+          await emailRows("SELECT id, email FROM users WHERE password_hash IS NOT NULL"),
+          await emailRows(userRowsSql),
+          mode,
+        )
+      : 0;
     const script =
       mode === "upsert"
         ? // PRAGMA foreign_keys is a no-op inside a transaction, so set it before BEGIN; the connection may have it OFF.
@@ -918,6 +935,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     return {
       applications: await this.applications.list(),
       imported,
+      emailsCleared,
     };
   }
 

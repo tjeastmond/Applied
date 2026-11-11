@@ -223,6 +223,7 @@ export type ImportBackupResult = {
     applications: number;
     notes: number;
   };
+  emailsCleared?: number;
 };
 
 function parseContentDispositionFilename(header: string | null): string | null {

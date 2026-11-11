@@ -118,8 +118,11 @@ describe("backupService", () => {
       });
       await users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
 
-      if (format === "json") importJson(db, backup, "replace");
-      else importSql(db, exportSqlFromRecords(backup.applications, backup.notes, backup.users, [], []), "replace");
+      const result =
+        format === "json"
+          ? importJson(db, backup, "replace")
+          : importSql(db, exportSqlFromRecords(backup.applications, backup.notes, backup.users, [], []), "replace");
+      expect(result.emailsCleared).toBe(1);
 
       const owner = await users.getCredentialByEmail("o@example.com");
       expect(owner?.id).toBe(DEFAULT_USER_ID);
@@ -141,7 +144,7 @@ describe("backupService", () => {
     backup.users = [{ id: otherId, displayName: "Other", email: "o@example.com", createdAt: now, updatedAt: now }];
     await users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
 
-    importJson(db, backup, "replace");
+    expect(importJson(db, backup, "replace").emailsCleared).toBe(0);
 
     expect(db.prepare("SELECT id FROM users WHERE email = ?").get("o@example.com")).toEqual({ id: otherId });
   });
@@ -182,8 +185,11 @@ describe("backupService", () => {
     const other = { id: randomUUID(), displayName: "Other", email: "o@example.com", createdAt: now, updatedAt: now };
     const backup = { ...exportJson(db), users: [other], statusHistory: [] };
 
-    if (format === "json") importJson(db, backup, "upsert");
-    else importSql(db, exportSqlFromRecords(backup.applications, backup.notes, backup.users, [], []), "upsert");
+    const result =
+      format === "json"
+        ? importJson(db, backup, "upsert")
+        : importSql(db, exportSqlFromRecords(backup.applications, backup.notes, backup.users, [], []), "upsert");
+    expect(result.emailsCleared).toBe(1);
 
     expect((await users.getCredentialByEmail("o@example.com"))?.id).toBe(DEFAULT_USER_ID);
     expect(db.prepare("SELECT email FROM users WHERE id = ?").get(other.id)).toEqual({ email: null });
