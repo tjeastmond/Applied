@@ -19,6 +19,7 @@ import {
   noteToRow,
   parseBackupJson,
   assertSqlBackupIsSafe,
+  withCredentialPreservation,
   prepareSqlUpsertStatements,
   UPSERT_APPLICATION_SQL,
   UPSERT_COMPANY_SQL,
@@ -903,7 +904,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
       );
     } else {
       try {
-        await this.client.executeMultiple(trimmed);
+        await this.client.executeMultiple(withCredentialPreservation(trimmed));
       } catch (error) {
         // The script's BEGIN stays open on the stream after a failed statement; roll back so old data survives.
         await this.client.execute("ROLLBACK").catch(() => undefined);

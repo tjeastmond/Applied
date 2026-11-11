@@ -3,7 +3,8 @@ import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { TursoDatabaseBackend } from "@/lib/server/db/tursoBackend";
 import { requireTursoTestConfig } from "./helpers/tursoTestConfig";
 
-describe("TursoDatabaseBackend", () => {
+// Each test makes many network round trips to Turso; the 5s default is too tight.
+describe("TursoDatabaseBackend", { timeout: 30_000 }, () => {
   test("importJson backfills status history when backup omits statusHistory", async () => {
     const tursoConfig = requireTursoTestConfig();
     const backend = new TursoDatabaseBackend({
