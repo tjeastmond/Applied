@@ -1,6 +1,6 @@
 import "@/lib/openapi/zodOpenApi";
 import type { OpenAPIRegistry } from "@asteasolutions/zod-to-openapi";
-import { z } from "zod";
+import { z, type ZodType } from "zod";
 import {
   agentApplicationSummarySchema,
   agentApplicationsListResponseSchema,
@@ -22,6 +22,9 @@ import {
   agentSetCompanyIgnoredSchema,
 } from "@/lib/schemas/agent";
 
+const jsonBody = (schema: ZodType) => ({ content: { "application/json": { schema } } });
+const ok = (description: string, schema: ZodType) => ({ description, ...jsonBody(schema) });
+
 const agentSecurity = [{ AgentBearer: [] }];
 
 const applicationIdParamsSchema = z.object({
@@ -40,14 +43,7 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
       query: agentListApplicationsQuerySchema,
     },
     responses: {
-      200: {
-        description: "Application summaries",
-        content: {
-          "application/json": {
-            schema: agentApplicationsListResponseSchema,
-          },
-        },
-      },
+      200: ok("Application summaries", agentApplicationsListResponseSchema),
       ...agentErrorResponses,
     },
   });
@@ -61,23 +57,10 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
       'Parses title, company, salaryRange, and fullJd from the URL when available. Adds audit note "Saved by {token name}: API|CLI".',
     security: agentSecurity,
     request: {
-      body: {
-        content: {
-          "application/json": {
-            schema: agentCreateApplicationSchema,
-          },
-        },
-      },
+      body: jsonBody(agentCreateApplicationSchema),
     },
     responses: {
-      201: {
-        description: "Created application summary",
-        content: {
-          "application/json": {
-            schema: agentApplicationSummarySchema,
-          },
-        },
-      },
+      201: ok("Created application summary", agentApplicationSummarySchema),
       ...agentErrorResponses,
     },
   });
@@ -96,10 +79,7 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
       }),
     },
     responses: {
-      200: {
-        description: "Affected applications",
-        content: { "application/json": { schema: agentArchiveStaleResponseSchema } },
-      },
+      200: ok("Affected applications", agentArchiveStaleResponseSchema),
       ...agentErrorResponses,
     },
   });
@@ -114,14 +94,7 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
       params: applicationIdParamsSchema,
     },
     responses: {
-      200: {
-        description: "Application summary",
-        content: {
-          "application/json": {
-            schema: agentApplicationSummarySchema,
-          },
-        },
-      },
+      200: ok("Application summary", agentApplicationSummarySchema),
       ...agentErrorResponses,
     },
   });
@@ -136,23 +109,10 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
     security: agentSecurity,
     request: {
       params: applicationIdParamsSchema,
-      body: {
-        content: {
-          "application/json": {
-            schema: agentPatchApplicationSchema,
-          },
-        },
-      },
+      body: jsonBody(agentPatchApplicationSchema),
     },
     responses: {
-      200: {
-        description: "Updated application summary",
-        content: {
-          "application/json": {
-            schema: agentApplicationSummarySchema,
-          },
-        },
-      },
+      200: ok("Updated application summary", agentApplicationSummarySchema),
       ...agentErrorResponses,
     },
   });
@@ -167,14 +127,7 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
       params: applicationIdParamsSchema,
     },
     responses: {
-      200: {
-        description: "Notes for the application",
-        content: {
-          "application/json": {
-            schema: agentNotesListResponseSchema,
-          },
-        },
-      },
+      200: ok("Notes for the application", agentNotesListResponseSchema),
       ...agentErrorResponses,
     },
   });
@@ -187,23 +140,10 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
     security: agentSecurity,
     request: {
       params: applicationIdParamsSchema,
-      body: {
-        content: {
-          "application/json": {
-            schema: agentCreateNoteBodySchema,
-          },
-        },
-      },
+      body: jsonBody(agentCreateNoteBodySchema),
     },
     responses: {
-      201: {
-        description: "Created note",
-        content: {
-          "application/json": {
-            schema: agentNoteSummarySchema,
-          },
-        },
-      },
+      201: ok("Created note", agentNoteSummarySchema),
       ...agentErrorResponses,
     },
   });
@@ -219,14 +159,7 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
       query: agentListCompaniesQuerySchema,
     },
     responses: {
-      200: {
-        description: "Companies",
-        content: {
-          "application/json": {
-            schema: agentCompaniesListResponseSchema,
-          },
-        },
-      },
+      200: ok("Companies", agentCompaniesListResponseSchema),
       ...agentErrorResponses,
     },
   });
@@ -238,23 +171,10 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
     summary: "Create company",
     security: agentSecurity,
     request: {
-      body: {
-        content: {
-          "application/json": {
-            schema: agentCreateCompanySchema,
-          },
-        },
-      },
+      body: jsonBody(agentCreateCompanySchema),
     },
     responses: {
-      201: {
-        description: "Created company",
-        content: {
-          "application/json": {
-            schema: agentCompanySummarySchema,
-          },
-        },
-      },
+      201: ok("Created company", agentCompanySummarySchema),
       ...agentErrorResponses,
     },
   });
@@ -267,23 +187,10 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
     security: agentSecurity,
     request: {
       params: z.object({ id: z.uuid() }),
-      body: {
-        content: {
-          "application/json": {
-            schema: agentPatchCompanySchema,
-          },
-        },
-      },
+      body: jsonBody(agentPatchCompanySchema),
     },
     responses: {
-      200: {
-        description: "Updated company",
-        content: {
-          "application/json": {
-            schema: agentCompanySummarySchema,
-          },
-        },
-      },
+      200: ok("Updated company", agentCompanySummarySchema),
       ...agentErrorResponses,
     },
   });
@@ -296,23 +203,10 @@ export function registerAgentPaths(registry: OpenAPIRegistry) {
     security: agentSecurity,
     request: {
       params: z.object({ id: z.uuid() }),
-      body: {
-        content: {
-          "application/json": {
-            schema: agentSetCompanyIgnoredSchema,
-          },
-        },
-      },
+      body: jsonBody(agentSetCompanyIgnoredSchema),
     },
     responses: {
-      200: {
-        description: "Updated company",
-        content: {
-          "application/json": {
-            schema: agentCompanySummarySchema,
-          },
-        },
-      },
+      200: ok("Updated company", agentCompanySummarySchema),
       ...agentErrorResponses,
     },
   });
