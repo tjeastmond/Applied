@@ -16,6 +16,12 @@ import type { CompanyRow } from "../db/companyRepositoryShared";
 import type { UserRow } from "../db/userRepositoryShared";
 
 import {
+  ALLOWED_CREATE_RE,
+  ALLOWED_DROP_RE,
+  ALLOWED_INSERT_RE,
+  BACKUP_TABLES,
+  insertSql,
+  sqlInsertTablePriority,
   UPSERT_APPLICATION_SQL,
   UPSERT_COMPANY_SQL,
   UPSERT_CONFLICT_CLAUSES,
@@ -57,10 +63,6 @@ export type StatusHistoryBackupRow = {
   to_status: JobApplication["status"];
   changed_at: string;
 };
-
-export function rowToBackupApplication(row: ApplicationBackupRow): JobApplication {
-  return rowToApplication(row);
-}
 
 export function rowToBackupNote(row: NoteRow): ApplicationNote {
   return {
@@ -146,16 +148,9 @@ function rowToBackupStatusHistory(row: StatusHistoryBackupRow): BackupJson["stat
   };
 }
 
-function sqlQuote(value: string | null | undefined): string {
-  if (value === null || value === undefined) {
-    return "NULL";
-  }
-  return `'${value.replace(/'/g, "''")}'`;
-}
-
 function listApplications(db: Database.Database): JobApplication[] {
   const rows = db.prepare(LIST_APPLICATIONS_SQL).all() as ApplicationBackupRow[];
-  return rows.map(rowToBackupApplication);
+  return rows.map(rowToApplication);
 }
 
 function listNotes(db: Database.Database): ApplicationNote[] {
@@ -243,30 +238,6 @@ export function exportJson(db: Database.Database): BackupJson {
   return createBackupJson(listApplications(db), listNotes(db), listUsers(db), listStatusHistory(db), listCompanies(db));
 }
 
-function applicationToSqlRow(application: JobApplication): ApplicationBackupRow {
-  return applicationToRow({
-    id: application.id,
-    url: application.url,
-    linkedinUrl: application.linkedinUrl,
-    title: application.title,
-    company: application.company,
-    appliedAt: application.appliedAt,
-    viaRecruiter: application.viaRecruiter,
-    recruiterName: application.recruiterName,
-    recruiterFirm: application.recruiterFirm,
-    contactEmail: application.contactEmail,
-    contactPhone: application.contactPhone,
-    salaryRange: application.salaryRange,
-    desiredSalary: application.desiredSalary,
-    fullJd: application.fullJd ?? null,
-    status: application.status,
-    archived: application.archived,
-    pinned: application.pinned,
-    createdAt: application.createdAt,
-    updatedAt: application.updatedAt,
-  });
-}
-
 export function exportSqlFromRecords(
   applications: JobApplication[],
   notes: ApplicationNote[],
@@ -292,86 +263,19 @@ export function exportSqlFromRecords(
     "",
   ];
 
-  for (const row of users.map(userToRow)) {
-    lines.push(
-      `INSERT INTO users (id, display_name, email, created_at, updated_at) VALUES (${[
-        sqlQuote(row.id),
-        sqlQuote(row.display_name),
-        sqlQuote(row.email),
-        sqlQuote(row.created_at),
-        sqlQuote(row.updated_at),
-      ].join(", ")});`,
-    );
-  }
-
-  for (const row of companies.map(companyToRow)) {
-    lines.push(
-      `INSERT INTO companies (id, name, url, linkedin_url, email, ignored, created_at, updated_at) VALUES (${[
-        sqlQuote(row.id),
-        sqlQuote(row.name),
-        sqlQuote(row.url),
-        sqlQuote(row.linkedin_url),
-        sqlQuote(row.email),
-        String(row.ignored),
-        sqlQuote(row.created_at),
-        sqlQuote(row.updated_at),
-      ].join(", ")});`,
-    );
-  }
-
-  for (const row of applications.map(applicationToSqlRow)) {
-    lines.push(
-      `INSERT INTO applications (id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm, contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, archived, pinned, created_at, updated_at) VALUES (${[
-        sqlQuote(row.id),
-        sqlQuote(row.url),
-        sqlQuote(row.linkedin_url),
-        sqlQuote(row.title),
-        sqlQuote(row.company),
-        sqlQuote(row.applied_at),
-        String(row.via_recruiter),
-        sqlQuote(row.recruiter_name),
-        sqlQuote(row.recruiter_firm),
-        sqlQuote(row.contact_email),
-        sqlQuote(row.contact_phone),
-        sqlQuote(row.salary_range),
-        sqlQuote(row.desired_salary),
-        sqlQuote(row.notes),
-        sqlQuote(row.full_jd),
-        sqlQuote(row.status),
-        String(row.archived),
-        String(row.pinned),
-        sqlQuote(row.created_at),
-        sqlQuote(row.updated_at),
-      ].join(", ")});`,
-    );
-  }
-
-  for (const row of notes.map(noteToRow)) {
-    lines.push(
-      `INSERT INTO application_notes (id, application_id, content, created_at) VALUES (${[
-        sqlQuote(row.id),
-        sqlQuote(row.application_id),
-        sqlQuote(row.content),
-        sqlQuote(row.created_at),
-      ].join(", ")});`,
-    );
-  }
-
-  for (const row of statusHistory.map(statusHistoryToRow)) {
-    lines.push(
-      `INSERT INTO application_status_history (id, application_id, user_id, from_status, to_status, changed_at) VALUES (${[
-        sqlQuote(row.id),
-        sqlQuote(row.application_id),
-        sqlQuote(row.user_id),
-        sqlQuote(row.from_status),
-        sqlQuote(row.to_status),
-        sqlQuote(row.changed_at),
-      ].join(", ")});`,
-    );
-  }
-
-  lines.push("", "COMMIT;", "PRAGMA foreign_keys = ON;", "");
-  return lines.join("\n");
+  // Array spread, not push(...rows): push hits the argument limit on large backups.
+  return [
+    ...lines,
+    ...users.map((r) => insertSql("users", userToRow(r))),
+    ...companies.map((r) => insertSql("companies", companyToRow(r))),
+    ...applications.map((r) => insertSql("applications", applicationToRow({ ...r, fullJd: r.fullJd ?? null }))),
+    ...notes.map((r) => insertSql("application_notes", noteToRow(r))),
+    ...statusHistory.map((r) => insertSql("application_status_history", statusHistoryToRow(r))),
+    "",
+    "COMMIT;",
+    "PRAGMA foreign_keys = ON;",
+    "",
+  ].join("\n");
 }
 
 export function exportSql(db: Database.Database): string {
@@ -554,31 +458,7 @@ function isAllowedSqlBackupStatement(statement: string): boolean {
     return true;
   }
 
-  if (
-    /^DROP TABLE IF EXISTS (?:application_status_history|application_notes|applications|companies|users)$/i.test(
-      normalized,
-    )
-  ) {
-    return true;
-  }
-
-  if (/^CREATE TABLE IF NOT EXISTS applications\s*\(/i.test(normalized)) {
-    return true;
-  }
-
-  if (/^CREATE TABLE IF NOT EXISTS application_notes\s*\(/i.test(normalized)) {
-    return true;
-  }
-
-  if (/^CREATE TABLE IF NOT EXISTS users\s*\(/i.test(normalized)) {
-    return true;
-  }
-
-  if (/^CREATE TABLE IF NOT EXISTS application_status_history\s*\(/i.test(normalized)) {
-    return true;
-  }
-
-  if (/^CREATE TABLE IF NOT EXISTS companies\s*\(/i.test(normalized)) {
+  if (ALLOWED_DROP_RE.test(normalized) || ALLOWED_CREATE_RE.test(normalized)) {
     return true;
   }
 
@@ -586,9 +466,7 @@ function isAllowedSqlBackupStatement(statement: string): boolean {
     return true;
   }
 
-  if (
-    /^INSERT\s+INTO\s+(?:applications|application_notes|users|application_status_history|companies)\b/i.test(normalized)
-  ) {
+  if (ALLOWED_INSERT_RE.test(normalized)) {
     return true;
   }
 
@@ -646,54 +524,14 @@ export function assertSqlBackupIsSafe(sql: string): void {
   }
 }
 
-export function countSqlInserts(sql: string): {
-  applications: number;
-  notes: number;
-  users: number;
-  statusHistory: number;
-  companies: number;
-} {
-  const inserts = extractInsertStatements(sql);
-  let applications = 0;
-  let notes = 0;
-  let users = 0;
-  let statusHistory = 0;
-  let companies = 0;
-
-  for (const insert of inserts) {
-    if (/INSERT\s+INTO\s+applications\b/i.test(insert)) {
-      applications += 1;
-    } else if (/INSERT\s+INTO\s+application_notes\b/i.test(insert)) {
-      notes += 1;
-    } else if (/INSERT\s+INTO\s+users\b/i.test(insert)) {
-      users += 1;
-    } else if (/INSERT\s+INTO\s+application_status_history\b/i.test(insert)) {
-      statusHistory += 1;
-    } else if (/INSERT\s+INTO\s+companies\b/i.test(insert)) {
-      companies += 1;
-    }
+export function countSqlInserts(sql: string): ImportResult["imported"] {
+  const counts = { applications: 0, notes: 0, users: 0, statusHistory: 0, companies: 0 };
+  for (const insert of extractInsertStatements(sql)) {
+    const name = /^INSERT\s+INTO\s+(\w+)\b/i.exec(insert)?.[1]?.toLowerCase();
+    const t = BACKUP_TABLES.find((b) => b.table === name);
+    if (t) counts[t.key] += 1;
   }
-
-  return { applications, notes, users, statusHistory, companies };
-}
-
-function sqlInsertTablePriority(insert: string): number {
-  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+users\b/i.test(insert)) {
-    return 0;
-  }
-  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+companies\b/i.test(insert)) {
-    return 1;
-  }
-  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+applications\b/i.test(insert)) {
-    return 2;
-  }
-  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+application_notes\b/i.test(insert)) {
-    return 3;
-  }
-  if (/INSERT\s+(?:OR\s+(?:REPLACE|IGNORE)\s+)?INTO\s+application_status_history\b/i.test(insert)) {
-    return 4;
-  }
-  return 99;
+  return counts;
 }
 
 function insertToUpsertStatement(insert: string): string {
@@ -777,21 +615,13 @@ function importSqlStatements(db: Database.Database, sql: string, mode: ImportMod
   };
 }
 
-function importSqlUpsert(db: Database.Database, sql: string): ImportResult {
-  return importSqlStatements(db, sql, "upsert");
-}
-
 export function importSql(db: Database.Database, sql: string, mode: ImportMode): ImportResult {
   const trimmed = sql.trim();
   if (trimmed.length === 0) {
     throw new Error("SQL backup is empty");
   }
 
-  if (mode === "upsert") {
-    return importSqlUpsert(db, trimmed);
-  }
-
-  return importSqlStatements(db, trimmed, "replace");
+  return importSqlStatements(db, trimmed, mode);
 }
 
 export function backupFilename(format: "sql" | "json", exportedAt = new Date()): string {
