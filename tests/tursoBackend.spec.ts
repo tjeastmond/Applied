@@ -1,7 +1,18 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { TursoDatabaseBackend } from "@/lib/server/db/tursoBackend";
+import {
+  ApplicationConflictError,
+  patchApplicationWithSideEffects,
+} from "@/lib/server/services/applicationMutationService";
 import { requireTursoTestConfig } from "./helpers/tursoTestConfig";
+
+// patchApplicationWithSideEffects resolves its backend from the db singleton; point it at the test backend.
+const dbMock = vi.hoisted(() => ({ backend: undefined as unknown as TursoDatabaseBackend }));
+vi.mock("@/lib/server/db", () => ({
+  getDatabaseBackend: () => dbMock.backend,
+  getRepository: () => dbMock.backend.applications,
+}));
 
 // Each test makes many network round trips to Turso; the 5s default is too tight.
 describe("TursoDatabaseBackend", { timeout: 30_000 }, () => {
@@ -168,6 +179,121 @@ describe("TursoDatabaseBackend", { timeout: 30_000 }, () => {
     } finally {
       backend.reset();
     }
+  });
+
+  test("company update and setIgnored persist", async () => {
+    const tursoConfig = requireTursoTestConfig();
+    const backend = new TursoDatabaseBackend({
+      provider: "turso",
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
+    });
+
+    try {
+      await backend.importJson(
+        { version: 1, exportedAt: new Date().toISOString(), applications: [], notes: [] },
+        "replace",
+      );
+      const company = await backend.companies.create({ name: "Acme" });
+
+      expect((await backend.companies.update(company.id, { name: "Acme Renamed", email: "hr@acme.test" }))?.name).toBe(
+        "Acme Renamed",
+      );
+      expect(await backend.companies.getById(company.id)).toMatchObject({
+        name: "Acme Renamed",
+        email: "hr@acme.test",
+      });
+
+      expect((await backend.companies.setIgnored(company.id, true))?.ignored).toBe(true);
+      expect((await backend.companies.getById(company.id))?.ignored).toBe(true);
+    } finally {
+      await backend.importJson(
+        { version: 1, exportedAt: new Date().toISOString(), applications: [], notes: [] },
+        "replace",
+      );
+      backend.reset();
+    }
+  });
+
+  describe("status change concurrency guard", () => {
+    // Bumps updated_at just before the guarded UPDATE's transaction opens, `times` times,
+    // simulating another writer landing between the caller's read and the write.
+    async function setup(times: number) {
+      const tursoConfig = requireTursoTestConfig();
+      const backend = new TursoDatabaseBackend({
+        provider: "turso",
+        url: tursoConfig.url,
+        authToken: tursoConfig.authToken,
+      });
+      dbMock.backend = backend;
+      await backend.importJson(
+        { version: 1, exportedAt: new Date().toISOString(), applications: [], notes: [] },
+        "replace",
+      );
+      const created = await backend.applications.create(
+        createJobApplicationSchema.parse({
+          url: "https://jobs.example.com/turso-conflict",
+          title: "Engineer",
+          company: "Acme",
+          appliedAt: "2026-06-01",
+          status: "applied",
+        }),
+      );
+      const client = backend.getTursoClient();
+      const realTransaction = client.transaction.bind(client);
+      let remaining = times;
+      vi.spyOn(client, "transaction").mockImplementation(async (mode) => {
+        if (remaining-- > 0) {
+          await client.execute({
+            sql: "UPDATE applications SET updated_at = ? WHERE id = ?",
+            args: [`2099-01-0${remaining + 1}T00:00:00.000Z`, created.id],
+          });
+        }
+        return realTransaction(mode);
+      });
+      return { backend, created };
+    }
+
+    async function cleanup(backend: TursoDatabaseBackend) {
+      vi.restoreAllMocks();
+      await backend.importJson(
+        { version: 1, exportedAt: new Date().toISOString(), applications: [], notes: [] },
+        "replace",
+      );
+      backend.reset();
+    }
+
+    test("throws ApplicationConflictError without history or note when both attempts lose the race", async () => {
+      const { backend, created } = await setup(2);
+      try {
+        await expect(patchApplicationWithSideEffects(created.id, { status: "interviewing" }, created)).rejects.toThrow(
+          ApplicationConflictError,
+        );
+
+        const fresh = await backend.applications.getById(created.id);
+        expect(fresh?.status).toBe("applied");
+        expect(await backend.notes.listByApplicationId(created.id)).toHaveLength(0);
+        const history = await backend.statusHistory.listByApplicationId(created.id);
+        expect(history.map((entry) => entry.toStatus)).toEqual(["applied"]);
+      } finally {
+        await cleanup(backend);
+      }
+    });
+
+    test("retry absorbs a single concurrent change", async () => {
+      const { backend, created } = await setup(1);
+      try {
+        const result = await patchApplicationWithSideEffects(created.id, { status: "interviewing" }, created);
+        expect(result?.status).toBe("interviewing");
+        expect((await backend.applications.getById(created.id))?.status).toBe("interviewing");
+
+        const history = await backend.statusHistory.listByApplicationId(created.id);
+        expect(history.map((entry) => entry.toStatus).sort()).toEqual(["applied", "interviewing"]);
+        expect(await backend.notes.listByApplicationId(created.id)).toHaveLength(1);
+      } finally {
+        await cleanup(backend);
+      }
+    });
   });
 
   test("delete removes notes and status history even when foreign keys are off", async () => {

@@ -85,6 +85,7 @@ import { TursoAgentApiTokenRepository } from "./tursoAgentApiTokenRepository";
 import { TursoLoginThrottleRepository } from "./tursoLoginThrottleRepository";
 import { TursoAnalyticsRepository } from "./tursoAnalyticsRepository";
 import {
+  bindNamed,
   nullableString,
   requiredNumber,
   requiredString,
@@ -319,9 +320,8 @@ async function backfillCompaniesFromApplicationsTurso(client: Client): Promise<v
     }
 
     const timestamp = requiredString(app, "created_at");
-    await client.execute({
-      sql: INSERT_COMPANY_SQL,
-      args: {
+    await client.execute(
+      bindNamed(INSERT_COMPANY_SQL, {
         id: crypto.randomUUID(),
         name,
         url: null,
@@ -330,8 +330,8 @@ async function backfillCompaniesFromApplicationsTurso(client: Client): Promise<v
         ignored: 0,
         created_at: timestamp,
         updated_at: timestamp,
-      },
-    });
+      }),
+    );
   }
 }
 
@@ -596,7 +596,7 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
 
     await tursoWriteTransaction(this.client, [
       { sql: INSERT_DEFAULT_USER_SQL, args: buildDefaultUserInsertArgs() },
-      { sql: INSERT_APPLICATION_SQL, args: created },
+      bindNamed(INSERT_APPLICATION_SQL, created),
       {
         sql: INSERT_STATUS_HISTORY_SQL,
         args: [
@@ -627,10 +627,7 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
     const existing = rowToApplicationRow(existingRow);
     const updated = buildApplicationUpdateRow(existing, input);
 
-    await this.client.execute({
-      sql: UPDATE_APPLICATION_SQL,
-      args: applicationRowToUpdateArgs(updated),
-    });
+    await this.client.execute(bindNamed(UPDATE_APPLICATION_SQL, applicationRowToUpdateArgs(updated)));
 
     return rowToApplication(updated);
   }

@@ -16,7 +16,7 @@ import {
   UPDATE_COMPANY_SQL,
   type CompanyRow,
 } from "./companyRepositoryShared";
-import { tursoFirstRow, tursoRows } from "./tursoRowHelpers";
+import { bindNamed, tursoFirstRow, tursoRows } from "./tursoRowHelpers";
 
 function nullableRowString(value: unknown): string | null {
   if (value == null) {
@@ -76,7 +76,7 @@ export class TursoCompanyRepository implements CompanyRepository {
     }
 
     const company = buildCompany(input);
-    await this.client.execute({ sql: INSERT_COMPANY_SQL, args: companyToRow(company) });
+    await this.client.execute(bindNamed(INSERT_COMPANY_SQL, companyToRow(company)));
     return company;
   }
 
@@ -95,17 +95,16 @@ export class TursoCompanyRepository implements CompanyRepository {
     }
 
     const updated = buildCompanyUpdateRow(existing, input);
-    const result = await this.client.execute({
-      sql: UPDATE_COMPANY_SQL,
-      args: {
+    const result = await this.client.execute(
+      bindNamed(UPDATE_COMPANY_SQL, {
         id: updated.id,
         name: updated.name,
         url: updated.url,
         linkedin_url: updated.linkedinUrl,
         email: updated.email,
         updated_at: updated.updatedAt,
-      },
-    });
+      }),
+    );
     if (result.rowsAffected === 0) {
       return null;
     }
@@ -121,14 +120,13 @@ export class TursoCompanyRepository implements CompanyRepository {
     }
 
     const updated = { ...existing, ignored, updatedAt: new Date().toISOString() };
-    const result = await this.client.execute({
-      sql: SET_COMPANY_IGNORED_SQL,
-      args: {
+    const result = await this.client.execute(
+      bindNamed(SET_COMPANY_IGNORED_SQL, {
         id: updated.id,
         ignored: ignored ? 1 : 0,
         updated_at: updated.updatedAt,
-      },
-    });
+      }),
+    );
     if (result.rowsAffected === 0) {
       return null;
     }

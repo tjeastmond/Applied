@@ -19,6 +19,7 @@ import {
 } from "@/lib/server/db/applicationStatusHistoryRepositoryShared";
 import { buildDefaultUserInsertArgs, INSERT_DEFAULT_USER_SQL } from "@/lib/server/db/userRepositoryShared";
 import { DEFAULT_USER_ID } from "@/lib/server/defaultUser";
+import { bindNamed } from "@/lib/server/db/tursoRowHelpers";
 import type { TursoDatabaseBackend } from "@/lib/server/db/tursoBackend";
 
 // Optimistic guard: the write only lands if the row is still the one `existing` was read from.
@@ -126,7 +127,7 @@ async function patchApplicationStatusChangeTurso(
   const tx = await client.transaction("write");
   try {
     await tx.execute({ sql: INSERT_DEFAULT_USER_SQL, args: buildDefaultUserInsertArgs() });
-    const result = await tx.execute({ sql: GUARDED_UPDATE_SQL, args: guardedUpdateArgs(updated, existing) });
+    const result = await tx.execute(bindNamed(GUARDED_UPDATE_SQL, guardedUpdateArgs(updated, existing)));
     if (result.rowsAffected === 0) {
       await tx.rollback();
       return "conflict";
