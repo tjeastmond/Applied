@@ -1,5 +1,7 @@
+import { lookup as lookupCb } from "node:dns";
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { isIP, type LookupFunction } from "node:net";
+import { Agent } from "undici";
 
 export class UnsafeFetchUrlError extends Error {
   constructor(message: string) {
@@ -47,7 +49,7 @@ function isPrivateIpv6(address: string): boolean {
     return isPrivateIpv4(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
   }
   if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true;
-  if (normalized.startsWith("fe80:")) return true;
+  if (/^fe[89a-f]/.test(normalized)) return true; // fe80::/10 link-local + fec0::/10 site-local
 
   return false;
 }
@@ -96,3 +98,20 @@ export const MAX_FETCH_REDIRECTS = 5;
 export function resolveRedirectUrl(currentUrl: URL, location: string): URL {
   return new URL(location, currentUrl);
 }
+
+// Checks the address the socket will actually use, closing the DNS-rebinding gap left by the pre-check.
+export const safeConnectLookup: LookupFunction = (hostname, options, callback) => {
+  lookupCb(hostname, options, (err, address, family) => {
+    if (!err) {
+      try {
+        for (const a of Array.isArray(address) ? address : [{ address }]) assertPrivateIpAddressIsBlocked(a.address);
+      } catch (blocked) {
+        err = blocked as NodeJS.ErrnoException;
+      }
+    }
+    callback(err, address, family);
+  });
+};
+
+/** Spread into fetch init for any user-supplied URL (global fetch's types omit undici's `dispatcher`). */
+export const safeFetchInit = { dispatcher: new Agent({ connect: { lookup: safeConnectLookup } }) } as RequestInit;
