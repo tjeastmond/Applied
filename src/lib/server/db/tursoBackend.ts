@@ -884,7 +884,8 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     const imported = countSqlInserts(trimmed);
     const script =
       mode === "upsert"
-        ? `BEGIN;\n${prepareSqlUpsertStatements(trimmed).join("\n")}\nCOMMIT;`
+        ? // PRAGMA foreign_keys is a no-op inside a transaction, so set it before BEGIN; the connection may have it OFF.
+          `PRAGMA foreign_keys = ON;\nBEGIN;\n${prepareSqlUpsertStatements(trimmed).join("\n")}\nCOMMIT;`
         : withCredentialPreservation(trimmed);
     try {
       await this.client.executeMultiple(script);
