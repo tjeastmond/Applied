@@ -5,7 +5,7 @@ import {
   conflictResponseOrThrow,
   type ApplicationIdRouteContext,
 } from "@/lib/server/applicationRouteHelpers";
-import { requireAgentAuth } from "@/lib/server/agentAuth";
+import { withAgentAuth } from "@/lib/server/agentAuth";
 import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { updateApplicationStatusForAgent } from "@/lib/server/services/agentApplicationInterface";
@@ -13,55 +13,51 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request, context: ApplicationIdRouteContext) {
-  const auth = await requireAgentAuth(request);
-  if (auth instanceof Response) {
-    log.warn("agent auth rejected", { route: "/api/agent/applications/[id]", method: "GET" });
-    return auth;
-  }
+export const GET = withAgentAuth(
+  "/api/agent/applications/[id]",
+  "GET",
+  async (_request, _auth, context: ApplicationIdRouteContext) => {
+    const routeContext = await requireAgentApplicationRouteContext(context);
+    if (routeContext instanceof Response) {
+      return routeContext;
+    }
 
-  const routeContext = await requireAgentApplicationRouteContext(context);
-  if (routeContext instanceof Response) {
-    return routeContext;
-  }
+    return NextResponse.json(routeContext.application);
+  },
+);
 
-  return NextResponse.json(routeContext.application);
-}
+export const PATCH = withAgentAuth(
+  "/api/agent/applications/[id]",
+  "PATCH",
+  async (request, auth, context: ApplicationIdRouteContext) => {
+    const routeContext = await requireAgentApplicationRouteContext(context);
+    if (routeContext instanceof Response) {
+      return routeContext;
+    }
 
-export async function PATCH(request: Request, context: ApplicationIdRouteContext) {
-  const auth = await requireAgentAuth(request);
-  if (auth instanceof Response) {
-    log.warn("agent auth rejected", { route: "/api/agent/applications/[id]", method: "PATCH" });
-    return auth;
-  }
+    const parsed = await parseRequestBody(request, agentPatchApplicationSchema);
+    const data = parsedBodyOrResponse(parsed);
+    if (data instanceof Response) {
+      return data;
+    }
 
-  const routeContext = await requireAgentApplicationRouteContext(context);
-  if (routeContext instanceof Response) {
-    return routeContext;
-  }
+    const updated = await updateApplicationStatusForAgent(routeContext.id, data.status, auth).catch(
+      conflictResponseOrThrow,
+    );
+    if (updated instanceof Response) {
+      return updated;
+    }
+    if (!updated) {
+      return applicationNotFoundResponse();
+    }
 
-  const parsed = await parseRequestBody(request, agentPatchApplicationSchema);
-  const data = parsedBodyOrResponse(parsed);
-  if (data instanceof Response) {
-    return data;
-  }
+    log.info("agent application status updated", {
+      route: "/api/agent/applications/[id]",
+      method: "PATCH",
+      id: updated.id,
+      status: updated.status,
+    });
 
-  const updated = await updateApplicationStatusForAgent(routeContext.id, data.status, auth).catch(
-    conflictResponseOrThrow,
-  );
-  if (updated instanceof Response) {
-    return updated;
-  }
-  if (!updated) {
-    return applicationNotFoundResponse();
-  }
-
-  log.info("agent application status updated", {
-    route: "/api/agent/applications/[id]",
-    method: "PATCH",
-    id: updated.id,
-    status: updated.status,
-  });
-
-  return NextResponse.json(updated);
-}
+    return NextResponse.json(updated);
+  },
+);

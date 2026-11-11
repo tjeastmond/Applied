@@ -19,38 +19,14 @@ export async function requireAppAccess(request: Request): Promise<Response | nul
 
 export type AppAccessHandler<TContext> = (request: Request, context: TContext) => Response | Promise<Response>;
 
-type DefaultRouteContext = { params: Promise<Record<string, string>> };
+export type DefaultRouteContext = { params: Promise<Record<string, string>> };
 
-export function withAppAccess(
-  handler: () => Response | Promise<Response>,
-): (request: Request, context: DefaultRouteContext) => Promise<Response>;
-export function withAppAccess(
-  handler: (request: Request) => Response | Promise<Response>,
-): (request: Request, context: DefaultRouteContext) => Promise<Response>;
-export function withAppAccess(
-  handler: (request: Request, context: DefaultRouteContext) => Response | Promise<Response>,
-): (request: Request, context: DefaultRouteContext) => Promise<Response>;
-export function withAppAccess<TContext extends DefaultRouteContext>(
+export function withAppAccess<TContext = DefaultRouteContext>(
   handler: AppAccessHandler<TContext>,
-): (request: Request, context: TContext) => Promise<Response>;
-export function withAppAccess<TContext extends DefaultRouteContext>(
-  handler:
-    | (() => Response | Promise<Response>)
-    | ((request: Request) => Response | Promise<Response>)
-    | AppAccessHandler<TContext>,
-): (request: Request, context: TContext | DefaultRouteContext) => Promise<Response> {
-  return async (request: Request, context: TContext | DefaultRouteContext) => {
+): (request: Request, context: TContext) => Promise<Response> {
+  return async (request, context) => {
     const authError = await requireAppAccess(request);
-    if (authError) {
-      return authError;
-    }
-    if (handler.length === 0) {
-      return (handler as () => Response | Promise<Response>)();
-    }
-    if (handler.length === 1) {
-      return (handler as (request: Request) => Response | Promise<Response>)(request);
-    }
-    return (handler as AppAccessHandler<TContext>)(request, context as TContext);
+    return authError ?? handler(request, context);
   };
 }
 

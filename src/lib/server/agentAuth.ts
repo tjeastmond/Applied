@@ -3,6 +3,8 @@ import { bearerTokenFromRequest, constantTimeEquals } from "@/lib/server/bearerA
 import { isAgentEnvTokenConfigured } from "@/lib/server/agentEnvToken";
 import { getAgentApiTokenRepository } from "@/lib/server/db";
 import { jsonError } from "@/lib/server/applicationRouteHelpers";
+import type { DefaultRouteContext } from "@/lib/server/appAuth";
+import { log } from "@/lib/server/logging/logger";
 
 export type AgentAuthChannel = "cli" | "api";
 
@@ -58,22 +60,32 @@ export async function requireAgentAuth(request: Request): Promise<Response | Age
     return jsonError("Unauthorized", 401);
   }
 
-  const envToken = process.env.AGENT_API_TOKEN?.trim();
-  if (envToken && constantTimeEquals(token, envToken)) {
-    return {
-      actorName: await resolveAgentActorName(token),
-      channel: resolveAgentAuthChannel(request),
-    };
-  }
-
+  const isEnvToken = constantTimeEquals(token, process.env.AGENT_API_TOKEN?.trim() ?? "");
   const repository = getAgentApiTokenRepository();
-  if (repository && (await Promise.resolve(repository.isValidToken(token)))) {
-    void Promise.resolve(repository.touchLastUsed(token)).catch(() => {});
-    return {
-      actorName: await resolveAgentActorName(token),
-      channel: resolveAgentAuthChannel(request),
-    };
+  const isDbToken = !isEnvToken && repository && (await Promise.resolve(repository.isValidToken(token)));
+  if (!isEnvToken && !isDbToken) {
+    return jsonError("Unauthorized", 401);
   }
+  if (isDbToken) {
+    void Promise.resolve(repository.touchLastUsed(token)).catch(() => {});
+  }
+  return {
+    actorName: await resolveAgentActorName(token),
+    channel: resolveAgentAuthChannel(request),
+  };
+}
 
-  return jsonError("Unauthorized", 401);
+export function withAgentAuth<TContext = DefaultRouteContext>(
+  route: string,
+  method: string,
+  handler: (request: Request, auth: AgentAuthContext, context: TContext) => Response | Promise<Response>,
+) {
+  return async (request: Request, context?: TContext): Promise<Response> => {
+    const auth = await requireAgentAuth(request);
+    if (auth instanceof Response) {
+      log.warn("agent auth rejected", { route, method });
+      return auth;
+    }
+    return handler(request, auth, context as TContext);
+  };
 }

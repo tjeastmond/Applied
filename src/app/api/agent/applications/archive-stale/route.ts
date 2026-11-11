@@ -1,4 +1,4 @@
-import { requireAgentAuth } from "@/lib/server/agentAuth";
+import { withAgentAuth } from "@/lib/server/agentAuth";
 import { conflictResponseOrThrow } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
 import { archiveStaleApplicationsForAgent } from "@/lib/server/services/agentApplicationInterface";
@@ -6,13 +6,7 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
-  const auth = await requireAgentAuth(request);
-  if (auth instanceof Response) {
-    log.warn("agent auth rejected", { route: "/api/agent/applications/archive-stale", method: "POST" });
-    return auth;
-  }
-
+export const POST = withAgentAuth("/api/agent/applications/archive-stale", "POST", async (request, auth) => {
   const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
   const result = await archiveStaleApplicationsForAgent(dryRun, auth).catch(conflictResponseOrThrow);
   if (result instanceof Response) {
@@ -28,4 +22,4 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json(result);
-}
+});
