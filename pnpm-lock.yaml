@@ -22,8 +22,8 @@ importers:
         specifier: ^0.11.13
         version: 0.11.13(next@16.4.3(@babel/core@7.29.7)(@types/node@22.19.19)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       '@tursodatabase/serverless':
-        specifier: ^1.2.1
-        version: 1.2.1
+        specifier: ^1.4.1
+        version: 1.4.1
       better-sqlite3:
         specifier: ^12.10.0
         version: 12.10.0
@@ -1476,8 +1476,8 @@ packages:
   '@ts-morph/common@0.27.0':
     resolution: {integrity: sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ==}
 
-  '@tursodatabase/serverless@1.2.1':
-    resolution: {integrity: sha512-lkksnxftnXv/6Xnhuc7xMmD2VTW8Q5vczVXkymH6INB9Jqnbr1tILnu3/+tV67RSss6z29YIFG/WE2TWjLxECA==}
+  '@tursodatabase/serverless@1.4.1':
+    resolution: {integrity: sha512-kcbGx0zb0Js4WnIrIF4AlsK3gzryRdTyUQev/9UbxtcH/iyk7u0Rk+l7dWdPC/5Ymu1WlbSyn4oUb02eNbn6Mw==}
 
   '@tybys/wasm-util@0.10.2':
     resolution: {integrity: sha512-RoBvJ2X0wuKlWFIjrwffGw1IqZHKQqzIchKaadZZfnNpsAYp2mM0h36JtPCjNDAHGgYez/15uMBpfGwchhiMgg==}
@@ -5432,7 +5432,7 @@ snapshots:
       minimatch: 10.2.5
       path-browserify: 1.0.1
 
-  '@tursodatabase/serverless@1.2.1': {}
+  '@tursodatabase/serverless@1.4.1': {}
 
   '@tybys/wasm-util@0.10.2':
     dependencies:
