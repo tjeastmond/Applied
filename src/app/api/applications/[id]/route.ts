@@ -4,6 +4,7 @@ import { patchApplicationWithSideEffects } from "@/lib/server/services/applicati
 import {
   applicationNotFoundResponse,
   badRequestResponse,
+  conflictResponseOrThrow,
   type ApplicationIdRouteContext,
   requireApplicationRouteContext,
 } from "@/lib/server/applicationRouteHelpers";
@@ -50,7 +51,10 @@ export const PATCH = withAppAccess<ApplicationIdRouteContext>(async (request: Re
 
   const statusChanging = data.status !== undefined && data.status !== existing.status;
 
-  const updated = await patchApplicationWithSideEffects(id, data, existing);
+  const updated = await patchApplicationWithSideEffects(id, data, existing).catch(conflictResponseOrThrow);
+  if (updated instanceof Response) {
+    return updated;
+  }
   if (!updated) {
     return applicationNotFoundResponse();
   }

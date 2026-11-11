@@ -24,6 +24,7 @@ describe("application API routes", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     restoreAppAccessToken(originalAppAccessToken);
   });
 
@@ -278,6 +279,35 @@ describe("application API routes", () => {
     expect(transitions).not.toContain("applied>interviewing");
     const notes = await getNoteRepository().listByApplicationId(app.id);
     expect(notes.filter((note) => note.content === "Status Update: Interviewing")).toHaveLength(1);
+  });
+
+  test("PATCH returns 409 when the status change keeps losing a concurrent-edit race", async () => {
+    const repo = getRepository();
+    const app = await repo.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/conflict",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+        status: "applied",
+      }),
+    );
+    const stale = (await repo.getById(app.id))!;
+    await repo.update(app.id, { status: "waiting" }); // status differs from the stale snapshot, so the guard fails deterministically
+    // Every re-read returns the stale snapshot, so the guarded write conflicts on retry too.
+    vi.spyOn(repo, "getById").mockResolvedValue(stale);
+
+    const response = await patchApplication(
+      authorizedAppRequest("/api/applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "interviewing" }),
+      }),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "Application was modified concurrently; please retry" });
   });
 
   test("GET status history returns entries newest first", async () => {
