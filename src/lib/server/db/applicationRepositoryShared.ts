@@ -229,9 +229,10 @@ export function buildApplicationUpdateRow(
 }
 
 export function applicationRowToUpdateArgs(row: ApplicationRow): Omit<ApplicationRow, "created_at"> {
-  const { created_at, ...updateArgs } = row;
+  const { created_at, id, ...updateArgs } = row;
   void created_at;
-  return updateArgs;
+  // Turso binds named args by position, not name: keys must follow UPDATE_APPLICATION_SQL order (id is last).
+  return { ...updateArgs, id };
 }
 
 export function buildBulkArchiveByStatusesSql(statuses: readonly string[]): string {
