@@ -41,6 +41,7 @@ import {
   GET_APPLICATION_BY_ID_SQL,
   INSERT_APPLICATION_SQL,
   LIST_APPLICATIONS_SQL,
+  LIST_APPLICATION_SUMMARIES_SQL,
   nowIso,
   rowToApplication,
   type ApplicationRow,
@@ -559,6 +560,11 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
     return (await tursoRows(this.client, LIST_APPLICATIONS_SQL)).map(tursoRowToApplication);
   }
 
+  async listSummaries(): Promise<JobApplication[]> {
+    await this.ready;
+    return (await tursoRows(this.client, LIST_APPLICATION_SUMMARIES_SQL)).map(tursoRowToApplication);
+  }
+
   async listByIds(ids: string[]): Promise<JobApplication[]> {
     await this.ready;
     if (ids.length === 0) {
@@ -567,7 +573,10 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
 
     const uniqueIds = [...new Set(ids)];
     const placeholders = uniqueIds.map(() => "?").join(", ");
-    const sql = LIST_APPLICATIONS_SQL.replace("FROM applications", `FROM applications WHERE id IN (${placeholders})`);
+    const sql = LIST_APPLICATION_SUMMARIES_SQL.replace(
+      "FROM applications",
+      `FROM applications WHERE id IN (${placeholders})`,
+    );
     const applications = (await tursoRows(this.client, sql, uniqueIds)).map(tursoRowToApplication);
     const applicationsById = new Map(applications.map((application) => [application.id, application]));
 
@@ -638,7 +647,7 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
   async bulkArchiveByStatuses(statuses: readonly ApplicationStatus[]): Promise<BulkArchiveResult> {
     await this.ready;
     if (statuses.length === 0) {
-      return { archivedCount: 0, applications: await this.list() };
+      return { archivedCount: 0, applications: await this.listSummaries() };
     }
 
     const timestamp = nowIso();
@@ -650,7 +659,7 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
 
     return {
       archivedCount: result.rowsAffected,
-      applications: await this.list(),
+      applications: await this.listSummaries(),
     };
   }
 

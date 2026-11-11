@@ -29,6 +29,9 @@ export const LIST_APPLICATIONS_SQL = `SELECT
   contact_email, contact_phone, salary_range, desired_salary, full_jd, status, archived, pinned, created_at, updated_at
 FROM applications ORDER BY pinned DESC, updated_at DESC, created_at DESC`;
 
+/** Same as LIST_APPLICATIONS_SQL but never reads the (large) full_jd column; fullJd comes back null. */
+export const LIST_APPLICATION_SUMMARIES_SQL = LIST_APPLICATIONS_SQL.replace("full_jd,", "NULL AS full_jd,");
+
 export const GET_APPLICATION_BY_ID_SQL = `SELECT
   id, url, linkedin_url, title, company, applied_at,
   via_recruiter, recruiter_name, recruiter_firm,

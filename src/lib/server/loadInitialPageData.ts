@@ -28,7 +28,7 @@ function groupNotesByApplicationId(notes: ApplicationNote[]): Record<string, App
 
 export async function loadInitialPageData(): Promise<InitialPageData> {
   const [applications, companies, notes, currentUser] = await Promise.all([
-    getRepository().list(),
+    getRepository().listSummaries(),
     getCompanyRepository().list(),
     getNoteRepository().listAll(),
     getUserRepository().ensureDefaultUser(),

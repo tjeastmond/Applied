@@ -39,6 +39,13 @@ describe("SqliteJobApplicationRepository", () => {
     expect(listed).toHaveLength(1);
     expect(listed[0]?.title).toBe("Senior Engineer");
 
+    const summaries = await repository.listSummaries();
+    expect(summaries[0]?.id).toBe(created.id);
+    expect(summaries[0]?.fullJd).toBeNull();
+    expect((await repository.listByIds([created.id]))[0]?.fullJd).toBeNull();
+    expect((await repository.getById(created.id))?.fullJd).toContain("Summary");
+    expect(listed[0]?.fullJd).toContain("Summary");
+
     const updated = await repository.update(created.id, {
       status: "interviewing",
       viaRecruiter: false,

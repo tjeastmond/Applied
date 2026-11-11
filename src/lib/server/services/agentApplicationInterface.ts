@@ -57,7 +57,7 @@ export async function listApplicationsForAgent(
   searchQuery = "",
   status?: ApplicationStatus,
 ): Promise<AgentApplicationSummary[]> {
-  const applications = (await getRepository().list()).filter(
+  const applications = (await getRepository().listSummaries()).filter(
     (application) => !application.archived && (!status || application.status === status),
   );
   const summaries = applications.map(toAgentApplicationSummary);

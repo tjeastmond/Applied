@@ -90,6 +90,15 @@ describe("backupService", () => {
     },
   );
 
+  test("JSON and SQL exports keep full_jd", async () => {
+    const db = openDatabase(":memory:");
+    await seedSampleData(db);
+    db.prepare("UPDATE applications SET full_jd = ?").run("<p>Keep me</p>");
+
+    expect(exportJson(db).applications[0]?.fullJd).toBe("<p>Keep me</p>");
+    expect(exportSql(db)).toContain("<p>Keep me</p>");
+  });
+
   test("sanitizes fullJd HTML on JSON import", async () => {
     const db = openDatabase(":memory:");
     await seedSampleData(db);

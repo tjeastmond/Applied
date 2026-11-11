@@ -19,7 +19,8 @@ export const POST = withAppAccess(async (request: Request) => {
     return NextResponse.json({ applications: [] });
   }
 
-  const applications = data.ids && data.ids.length > 0 ? await repository.listByIds(data.ids) : await repository.list();
+  const applications =
+    data.ids && data.ids.length > 0 ? await repository.listByIds(data.ids) : await repository.listSummaries();
 
   return NextResponse.json({ applications: applications.map(omitFullJd) });
 });

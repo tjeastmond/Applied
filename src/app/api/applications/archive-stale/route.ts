@@ -19,5 +19,5 @@ export const POST = withAppAccess(async () => {
     });
   }
 
-  return NextResponse.json({ archivedCount, applications: (await getRepository().list()).map(omitFullJd) });
+  return NextResponse.json({ archivedCount, applications: (await getRepository().listSummaries()).map(omitFullJd) });
 });

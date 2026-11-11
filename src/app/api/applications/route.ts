@@ -14,7 +14,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 export const GET = withAppAccess(async () => {
-  const applications = await getRepository().list();
+  const applications = await getRepository().listSummaries();
   return NextResponse.json(applications.map(omitFullJd));
 });
 

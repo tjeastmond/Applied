@@ -11,6 +11,7 @@ import {
   GET_APPLICATION_BY_ID_SQL,
   INSERT_APPLICATION_SQL,
   LIST_APPLICATIONS_SQL,
+  LIST_APPLICATION_SUMMARIES_SQL,
   nowIso,
   rowToApplication,
   type ApplicationRow,
@@ -21,6 +22,7 @@ import { ensureDefaultUserIdSync, insertStatusHistorySync } from "./statusHistor
 export class SqliteJobApplicationRepository implements JobApplicationRepository {
   private readonly db;
   private readonly listStmt;
+  private readonly listSummariesStmt;
   private readonly getByIdStmt;
   private readonly insertStmt;
   private readonly updateStmt;
@@ -30,6 +32,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
   constructor(db: Database.Database) {
     this.db = db;
     this.listStmt = db.prepare(LIST_APPLICATIONS_SQL);
+    this.listSummariesStmt = db.prepare(LIST_APPLICATION_SUMMARIES_SQL);
     this.getByIdStmt = db.prepare(GET_APPLICATION_BY_ID_SQL);
     this.insertStmt = db.prepare(INSERT_APPLICATION_SQL);
     this.updateStmt = db.prepare(UPDATE_APPLICATION_SQL);
@@ -42,6 +45,10 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
     return rows.map(rowToApplication);
   }
 
+  async listSummaries(): Promise<JobApplication[]> {
+    return (this.listSummariesStmt.all() as ApplicationRow[]).map(rowToApplication);
+  }
+
   async listByIds(ids: string[]): Promise<JobApplication[]> {
     if (ids.length === 0) {
       return [];
@@ -49,7 +56,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
 
     const uniqueIds = [...new Set(ids)];
     const placeholders = uniqueIds.map(() => "?").join(", ");
-    const sql = `${LIST_APPLICATIONS_SQL.replace("FROM applications", `FROM applications WHERE id IN (${placeholders})`)}`;
+    const sql = `${LIST_APPLICATION_SUMMARIES_SQL.replace("FROM applications", `FROM applications WHERE id IN (${placeholders})`)}`;
     const rows = this.db.prepare(sql).all(...uniqueIds) as ApplicationRow[];
     const applicationsById = new Map(rows.map((row) => [row.id, rowToApplication(row)]));
     return uniqueIds.flatMap((id) => {
@@ -124,7 +131,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
 
   async bulkArchiveByStatuses(statuses: readonly ApplicationStatus[]): Promise<BulkArchiveResult> {
     if (statuses.length === 0) {
-      return { archivedCount: 0, applications: await this.list() };
+      return { archivedCount: 0, applications: await this.listSummaries() };
     }
 
     const timestamp = nowIso();
@@ -133,7 +140,7 @@ export class SqliteJobApplicationRepository implements JobApplicationRepository 
 
     return {
       archivedCount: result.changes,
-      applications: await this.list(),
+      applications: await this.listSummaries(),
     };
   }
 

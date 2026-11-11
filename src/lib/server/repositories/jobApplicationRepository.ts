@@ -7,7 +7,11 @@ export type BulkArchiveResult = {
 };
 
 export interface JobApplicationRepository {
+  /** Full records including fullJd (backup, export, transfer, sync). */
   list(): Promise<JobApplication[]>;
+  /** Same order as list() but fullJd is always null; use for list/bulk/SSR/agent paths. */
+  listSummaries(): Promise<JobApplication[]>;
+  /** Summaries (fullJd null) for the given ids, in request order. */
   listByIds(ids: string[]): Promise<JobApplication[]>;
   getById(id: string): Promise<JobApplication | null>;
   create(input: ParsedCreateJobApplicationInput): Promise<JobApplication>;
