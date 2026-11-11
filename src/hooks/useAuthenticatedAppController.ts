@@ -332,42 +332,55 @@ export function useAuthenticatedAppController({
     setPendingDeleteId(id);
   }, []);
 
-  const updateApplicationStatus = useCallback(
-    async (id: string, status: ApplicationStatus): Promise<JobApplication | null> => {
+  const patchOptimistic = useCallback(
+    async <K extends "status" | "pinned">(
+      id: string,
+      key: K,
+      value: JobApplication[K],
+      failMessage: string,
+    ): Promise<JobApplication | null> => {
       let previousApplication: JobApplication | undefined;
 
       setApplications((prev) => {
         const application = prev.find((item) => item.id === id);
-        if (!application || application.status === status) return prev;
+        if (!application || application[key] === value) return prev;
         previousApplication = application;
-        return upsertApplication(prev, { ...application, status });
+        return upsertApplication(prev, { ...application, [key]: value });
       });
 
       if (!previousApplication) return null;
 
       const snapshotApplication = previousApplication;
+      const replaceIfUnchanged = (next: JobApplication) =>
+        setApplications((prev) => {
+          const current = prev.find((item) => item.id === id);
+          if (!current || current[key] !== value) return prev;
+          return upsertApplication(prev, next);
+        });
 
       try {
-        const updated = await updateApplication(id, { status });
-        setApplications((prev) => {
-          const current = prev.find((item) => item.id === id);
-          if (!current || current.status !== status) return prev;
-          return upsertApplication(prev, updated);
-        });
-        void refetchNotes(id);
-        void refetchStatusHistory(id);
+        const updated = await updateApplication(id, { [key]: value });
+        replaceIfUnchanged(updated);
         return updated;
       } catch (error) {
-        setApplications((prev) => {
-          const current = prev.find((item) => item.id === id);
-          if (!current || current.status !== status) return prev;
-          return upsertApplication(prev, snapshotApplication);
-        });
-        toast.error(errorMessage(error, toastMessages.statusUpdateFailed));
+        replaceIfUnchanged(snapshotApplication);
+        toast.error(errorMessage(error, failMessage));
         return null;
       }
     },
-    [refetchNotes, refetchStatusHistory],
+    [],
+  );
+
+  const updateApplicationStatus = useCallback(
+    async (id: string, status: ApplicationStatus): Promise<JobApplication | null> => {
+      const updated = await patchOptimistic(id, "status", status, toastMessages.statusUpdateFailed);
+      if (updated) {
+        void refetchNotes(id);
+        void refetchStatusHistory(id);
+      }
+      return updated;
+    },
+    [patchOptimistic, refetchNotes, refetchStatusHistory],
   );
 
   const handleStatusChange = useCallback(
@@ -377,40 +390,17 @@ export function useAuthenticatedAppController({
     [updateApplicationStatus],
   );
 
-  const handlePinChange = useCallback((id: string, pinned: boolean) => {
-    void (async () => {
-      let previousApplication: JobApplication | undefined;
-
-      setApplications((prev) => {
-        const application = prev.find((item) => item.id === id);
-        if (!application || application.pinned === pinned) return prev;
-        previousApplication = application;
-        return upsertApplication(prev, { ...application, pinned });
-      });
-
-      if (!previousApplication) return;
-
-      const snapshotApplication = previousApplication;
-
-      try {
-        const updated = await updateApplication(id, { pinned });
-        setApplications((prev) => {
-          const current = prev.find((item) => item.id === id);
-          if (!current || current.pinned !== pinned) return prev;
-          return upsertApplication(prev, updated);
-        });
-      } catch (error) {
-        setApplications((prev) => {
-          const current = prev.find((item) => item.id === id);
-          if (!current || current.pinned !== pinned) return prev;
-          return upsertApplication(prev, snapshotApplication);
-        });
-        toast.error(
-          errorMessage(error, pinned ? toastMessages.applicationPinFailed : toastMessages.applicationUnpinFailed),
-        );
-      }
-    })();
-  }, []);
+  const handlePinChange = useCallback(
+    (id: string, pinned: boolean) => {
+      void patchOptimistic(
+        id,
+        "pinned",
+        pinned,
+        pinned ? toastMessages.applicationPinFailed : toastMessages.applicationUnpinFailed,
+      );
+    },
+    [patchOptimistic],
+  );
 
   const handleDeleteDialogOpenChange = useCallback(
     (open: boolean) => {

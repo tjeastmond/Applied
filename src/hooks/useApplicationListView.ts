@@ -366,18 +366,10 @@ export function useApplicationListView({
     setCurrentPage(1);
   }, []);
 
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
-  }, []);
-
   const handlePageSizeChange = useCallback((nextPageSize: ApplicationPageSize) => {
     setPageSize(nextPageSize);
     persistApplicationPageSize(nextPageSize);
     setCurrentPage(1);
-  }, []);
-
-  const queuePendingCompanyFilterForNavigation = useCallback((company: string) => {
-    queuePendingCompanyFilter(company);
   }, []);
 
   const handleCompanyFilter = useCallback((company: string) => {
@@ -417,10 +409,10 @@ export function useApplicationListView({
     handleViewModeChange,
     handleViewModeToggle,
     handleIncludeArchivedChange,
-    handlePageChange,
+    handlePageChange: setCurrentPage,
     handlePageSizeChange,
     handleCompanyFilter,
-    queuePendingCompanyFilterForNavigation,
+    queuePendingCompanyFilterForNavigation: queuePendingCompanyFilter,
     resetListPagination,
   };
 }
