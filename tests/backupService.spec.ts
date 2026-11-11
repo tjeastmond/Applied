@@ -127,6 +127,19 @@ describe("backupService", () => {
     },
   );
 
+  test("replace import of a v1 backup without users keeps the owner login", async () => {
+    const db = openDatabase(":memory:");
+    await seedSampleData(db);
+    const users = new SqliteUserRepository(db);
+    await users.ensureDefaultUser();
+    const { applications, notes } = exportJson(db);
+    await users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
+
+    importJson(db, { version: 1, exportedAt: new Date().toISOString(), applications, notes }, "replace");
+
+    expect((await users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
+  });
+
   test("sanitizes fullJd HTML on JSON import", async () => {
     const db = openDatabase(":memory:");
     await seedSampleData(db);

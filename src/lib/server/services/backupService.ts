@@ -410,9 +410,11 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
   const upsertCompany = db.prepare(UPSERT_COMPANY_SQL);
 
   const run = db.transaction(() => {
+    // v1/v2 backups carry no users; keep the current ones so the owner and credentials survive a replace.
+    const users = mode === "replace" && data.users.length === 0 ? listUsers(db) : data.users;
     const hashes = mode === "replace" ? clearAllData(db) : [];
 
-    for (const user of data.users) {
+    for (const user of users) {
       upsertUser.run(userToRow(user));
     }
 
@@ -463,7 +465,7 @@ export function importJson(db: Database.Database, raw: unknown, mode: ImportMode
 
 // Mirrors SQLite's lexer: splits on `;` outside '...', "...", `...` (doubled delimiter escapes) and [...] spans,
 // drops `--` line comments, and replaces /* */ block comments (unterminated runs to EOF) with a space.
-function splitSqlStatements(sql: string): string[] {
+export function splitSqlStatements(sql: string): string[] {
   const statements: string[] = [];
   let current = "";
   let quote = "";

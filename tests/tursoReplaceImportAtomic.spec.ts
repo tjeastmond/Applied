@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
 import { TursoDatabaseBackend } from "@/lib/server/db/tursoBackend";
+import { exportSqlFromRecords } from "@/lib/server/services/backupService";
 import { DEFAULT_USER_ID } from "@/lib/server/defaultUser";
 import { requireTursoTestConfig } from "./helpers/tursoTestConfig";
 
@@ -115,6 +116,18 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
         ),
       ).rejects.toThrow();
       expect((await backend.users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
+
+      // A v1 backup without users keeps the current owner, email and hash.
+      await backend.importJson(empty, "replace");
+      expect((await backend.users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
+
+      // SQL replace imports bypass the JSON sanitizer; the post-commit pass must still clean full_jd.
+      const dirty = { ...incoming, fullJd: "<p>hi</p><script>alert(1)</script>" };
+      await backend.importSql(exportSqlFromRecords([dirty], [], users, [], []), "replace");
+      const stored = (await backend.getTursoClient().execute("SELECT full_jd FROM applications"))
+        .rows[0]?.[0] as string;
+      expect(stored).not.toContain("<script");
+      expect(stored).toContain("<p>hi</p>");
     } finally {
       await backend.importJson(empty, "replace");
       // The default owner survives replace imports with its hash; clear it so other specs see a passwordless DB.

@@ -833,7 +833,10 @@ export class TursoDatabaseBackend implements DatabaseBackend {
 
   async importJson(raw: unknown, mode: ImportMode) {
     await this.ready;
-    const data = parseBackupJson(raw);
+    const parsed = parseBackupJson(raw);
+    // v1/v2 backups carry no users; keep the current ones so the owner and credentials survive a replace.
+    const data =
+      mode === "replace" && parsed.users.length === 0 ? { ...parsed, users: (await this.exportJson()).users } : parsed;
 
     if (mode === "replace") {
       // The script runs with foreign keys off, so reject dangling references up front.
