@@ -53,8 +53,12 @@ export const UPSERT_NOTE_SQL = `INSERT INTO application_notes (id, application_i
 VALUES (@id, @application_id, @content, @created_at)
 ${UPSERT_CONFLICT_CLAUSES.application_notes}`;
 
+// An incoming email already held by another user is dropped (the unique index would fail the import).
+export const USER_EMAIL_IF_FREE_SQL = (email: string, id: string) =>
+  `CASE WHEN EXISTS (SELECT 1 FROM users WHERE email = ${email} AND id <> ${id}) THEN NULL ELSE ${email} END`;
+
 export const UPSERT_USER_SQL = `INSERT INTO users (id, display_name, email, created_at, updated_at)
-VALUES (@id, @display_name, @email, @created_at, @updated_at)
+VALUES (@id, @display_name, ${USER_EMAIL_IF_FREE_SQL("@email", "@id")}, @created_at, @updated_at)
 ${UPSERT_CONFLICT_CLAUSES.users}`;
 
 export const UPSERT_STATUS_HISTORY_SQL = `INSERT INTO application_status_history (

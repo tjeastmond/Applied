@@ -21,6 +21,7 @@ import {
   UPSERT_NOTE_SQL,
   UPSERT_STATUS_HISTORY_SQL,
   UPSERT_USER_SQL,
+  USER_EMAIL_IF_FREE_SQL,
 } from "./backupSql";
 export {
   UPSERT_APPLICATION_SQL,
@@ -383,12 +384,12 @@ export function exportSql(db: Database.Database): string {
 type PasswordHashes = { id: string; email: string | null; password_hash: string }[];
 
 // Backups exclude password hashes, so a replace restore must carry them over for users that still exist.
-function clearAllData(db: Database.Database): PasswordHashes {
+function clearAllData(db: Database.Database, keepUsers = false): PasswordHashes {
   const hashes = db
     .prepare("SELECT id, email, password_hash FROM users WHERE password_hash IS NOT NULL")
     .all() as PasswordHashes;
   db.exec(
-    `DELETE FROM application_status_history; DELETE FROM application_notes; DELETE FROM applications; DELETE FROM companies; DELETE FROM users;`,
+    `DELETE FROM application_status_history; DELETE FROM application_notes; DELETE FROM applications; DELETE FROM companies;${keepUsers ? "" : " DELETE FROM users;"}`,
   );
   return hashes;
 }
@@ -575,9 +576,15 @@ export function withCredentialPreservation(sql: string): string {
   if (begin < 0 || commit < begin) {
     throw new Error("SQL backup replace script must be wrapped in BEGIN and COMMIT");
   }
+  // A script without user rows keeps the current users, like the JSON path.
+  const keepUsers = !statements.some((s) => /^INSERT\s+(?:OR\s+\w+\s+)?INTO\s+users\b/i.test(s));
+  const userCols = "id, display_name, email, created_at, updated_at";
   statements.splice(
     commit,
     0,
+    ...(keepUsers
+      ? [`INSERT INTO users (${userCols}) SELECT ${userCols} FROM kept_users`, "DROP TABLE kept_users"]
+      : []),
     "ALTER TABLE users ADD COLUMN password_hash TEXT",
     "UPDATE users SET email = NULL WHERE email IN (SELECT email FROM kept_credentials k WHERE k.id <> users.id AND EXISTS (SELECT 1 FROM users u WHERE u.id = k.id))",
     "UPDATE users SET email = (SELECT email FROM kept_credentials k WHERE k.id = users.id), password_hash = (SELECT password_hash FROM kept_credentials k WHERE k.id = users.id) WHERE id IN (SELECT id FROM kept_credentials)",
@@ -587,6 +594,7 @@ export function withCredentialPreservation(sql: string): string {
     begin + 1,
     0,
     "CREATE TEMP TABLE kept_credentials AS SELECT id, email, password_hash FROM users WHERE password_hash IS NOT NULL",
+    ...(keepUsers ? [`CREATE TEMP TABLE kept_users AS SELECT ${userCols} FROM users`] : []),
   );
   return statements.map((statement) => `${statement};`).join("\n");
 }
@@ -672,9 +680,23 @@ export function prepareSqlUpsertStatements(sql: string): string[] {
     throw new Error("No INSERT statements found in SQL backup");
   }
 
-  return inserts
+  const isUser = (insert: string) => sqlInsertTablePriority(insert) === 0;
+  const upserts = inserts
+    .filter((insert) => !isUser(insert))
     .sort((left, right) => sqlInsertTablePriority(left) - sqlInsertTablePriority(right))
     .map((insert) => insertToUpsertStatement(insert));
+  const users = inserts.filter(isUser);
+  if (users.length === 0) return upserts;
+  // Stage user rows so emails held by other users can be nulled in SQL (a plain table: temp tables are not safe on Turso).
+  const cols = "id, display_name, email, created_at, updated_at";
+  return [
+    "DROP TABLE IF EXISTS incoming_users",
+    `CREATE TABLE incoming_users AS SELECT ${cols} FROM users WHERE 0`,
+    ...users.map((insert) => insert.replace(/^INSERT\s+(?:OR\s+\w+\s+)?INTO\s+users\b/i, "INSERT INTO incoming_users")),
+    `INSERT INTO users (${cols}) SELECT id, display_name, ${USER_EMAIL_IF_FREE_SQL("i.email", "i.id")}, created_at, updated_at FROM incoming_users i WHERE true\n${UPSERT_CONFLICT_CLAUSES.users}`,
+    "DROP TABLE incoming_users",
+    ...upserts,
+  ];
 }
 
 /** Rows whose stored full_jd changes when sanitized; SQL imports bypass parseBackupJson's sanitizing. */
@@ -696,7 +718,8 @@ function importSqlStatements(db: Database.Database, sql: string, mode: ImportMod
   const imported = countSqlInserts(sql);
 
   const run = db.transaction(() => {
-    const hashes = mode === "replace" ? clearAllData(db) : [];
+    // A script without user rows keeps the current users, like the JSON path.
+    const hashes = mode === "replace" ? clearAllData(db, imported.users === 0) : [];
 
     for (const upsert of upserts) {
       db.exec(upsert);

@@ -35,7 +35,9 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
         toStatus: "applied" as const,
         changedAt: new Date().toISOString(),
       };
-      const users = [{ id: DEFAULT_USER_ID, displayName: "You", email: null, createdAt: now, updatedAt: now }];
+      const users = [
+        { id: DEFAULT_USER_ID, displayName: "You", email: null as string | null, createdAt: now, updatedAt: now },
+      ];
 
       await expect(
         backend.importJson(
@@ -137,4 +139,74 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
       backend.reset();
     }
   }, 30_000);
+
+  test("replace restores keep credentials across email collisions and user-less scripts", async () => {
+    const tursoConfig = requireTursoTestConfig();
+    const backend = new TursoDatabaseBackend({
+      provider: "turso",
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
+    });
+    const client = backend.getTursoClient();
+    const empty = { version: 1, exportedAt: new Date().toISOString(), applications: [], notes: [] };
+    const now = new Date().toISOString();
+    const owner = {
+      id: DEFAULT_USER_ID,
+      displayName: "You",
+      email: null as string | null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const other = {
+      id: crypto.randomUUID(),
+      displayName: "Other",
+      email: "o@example.com",
+      createdAt: now,
+      updatedAt: now,
+    };
+    const v3 = (users: (typeof owner)[]) => ({ ...empty, version: 3, users, statusHistory: [], companies: [] });
+    const setup = async () => {
+      await backend.importJson(empty, "replace");
+      await client.execute({ sql: "DELETE FROM users WHERE id <> ?", args: [DEFAULT_USER_ID] });
+      await client.execute("UPDATE users SET password_hash = NULL");
+      await backend.users.ensureDefaultUser();
+      await backend.users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
+    };
+
+    try {
+      // (a) Backup made before a password existed; another restored user holds the owner's current email.
+      await setup();
+      await backend.importJson(v3([owner, other]), "replace");
+      expect((await backend.users.getCredentialByEmail("o@example.com"))?.id).toBe(DEFAULT_USER_ID);
+      expect((await backend.users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
+      const dupes = await client.execute(
+        "SELECT email FROM users WHERE email IS NOT NULL GROUP BY email HAVING COUNT(*) > 1",
+      );
+      expect(dupes.rows).toHaveLength(0);
+
+      // (b) Backup omits the owner; that other user keeps the email.
+      await setup();
+      await backend.importJson(v3([other]), "replace");
+      const row = await client.execute({ sql: "SELECT id FROM users WHERE email = ?", args: ["o@example.com"] });
+      expect(row.rows.map((r) => r[0])).toEqual([other.id]);
+
+      // SQL script without user rows keeps the current users and login.
+      await setup();
+      await backend.importSql(exportSqlFromRecords([], [], [], [], []), "replace");
+      expect((await backend.users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
+
+      // Upsert: an incoming user with a new id but the owner's email loses the email; the owner keeps it (JSON and SQL).
+      await setup();
+      await backend.importJson(v3([other]), "upsert");
+      await backend.importSql(exportSqlFromRecords([], [], [{ ...other, id: crypto.randomUUID() }], [], []), "upsert");
+      expect((await backend.users.getCredentialByEmail("o@example.com"))?.id).toBe(DEFAULT_USER_ID);
+      const total = await client.execute("SELECT COUNT(*) FROM users");
+      expect(Number(total.rows[0]?.[0])).toBe(3);
+    } finally {
+      await client.execute({ sql: "DELETE FROM users WHERE id <> ?", args: [DEFAULT_USER_ID] }).catch(() => undefined);
+      await backend.importJson(empty, "replace");
+      await client.execute("UPDATE users SET password_hash = NULL");
+      backend.reset();
+    }
+  }, 60_000);
 });

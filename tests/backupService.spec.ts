@@ -159,6 +159,36 @@ describe("backupService", () => {
     expect((await users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
   });
 
+  test("SQL replace import without user rows keeps the current users and login", async () => {
+    const db = openDatabase(":memory:");
+    await seedSampleData(db);
+    const users = new SqliteUserRepository(db);
+    await users.ensureDefaultUser();
+    const { applications, notes } = exportJson(db);
+    await users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
+
+    importSql(db, exportSqlFromRecords(applications, notes, [], [], []), "replace");
+
+    expect((await users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
+  });
+
+  test.each(["json", "sql"] as const)("upsert %s import keeps the owner email from another user", async (format) => {
+    const db = openDatabase(":memory:");
+    await seedSampleData(db);
+    const users = new SqliteUserRepository(db);
+    await users.ensureDefaultUser();
+    await users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
+    const now = new Date().toISOString();
+    const other = { id: randomUUID(), displayName: "Other", email: "o@example.com", createdAt: now, updatedAt: now };
+    const backup = { ...exportJson(db), users: [other], statusHistory: [] };
+
+    if (format === "json") importJson(db, backup, "upsert");
+    else importSql(db, exportSqlFromRecords(backup.applications, backup.notes, backup.users, [], []), "upsert");
+
+    expect((await users.getCredentialByEmail("o@example.com"))?.id).toBe(DEFAULT_USER_ID);
+    expect(db.prepare("SELECT email FROM users WHERE id = ?").get(other.id)).toEqual({ email: null });
+  });
+
   test("sanitizes fullJd HTML on JSON import", async () => {
     const db = openDatabase(":memory:");
     await seedSampleData(db);

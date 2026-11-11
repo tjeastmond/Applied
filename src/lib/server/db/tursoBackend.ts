@@ -765,9 +765,8 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     return new TursoUserRepository(this.client, this.ready);
   }
 
-  async exportJson(): Promise<BackupJson> {
-    await this.ready;
-    const users = (
+  private async listUsers(): Promise<User[]> {
+    return (
       await tursoRows(
         this.client,
         `SELECT id, display_name, email, created_at, updated_at FROM users ORDER BY created_at ASC`,
@@ -779,6 +778,11 @@ export class TursoDatabaseBackend implements DatabaseBackend {
       createdAt: requiredString(row, "created_at"),
       updatedAt: requiredString(row, "updated_at"),
     }));
+  }
+
+  async exportJson(): Promise<BackupJson> {
+    await this.ready;
+    const users = await this.listUsers();
     const statusHistory = (
       await tursoRows(
         this.client,
@@ -836,7 +840,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
     const parsed = parseBackupJson(raw);
     // v1/v2 backups carry no users; keep the current ones so the owner and credentials survive a replace.
     const data =
-      mode === "replace" && parsed.users.length === 0 ? { ...parsed, users: (await this.exportJson()).users } : parsed;
+      mode === "replace" && parsed.users.length === 0 ? { ...parsed, users: await this.listUsers() } : parsed;
 
     if (mode === "replace") {
       // The script runs with foreign keys off, so reject dangling references up front.
