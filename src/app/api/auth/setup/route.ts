@@ -1,6 +1,7 @@
 import { getAppAccessToken, isAppAccessAuthorized } from "@/lib/appAccessAuth";
 import { badRequestResponse, jsonError } from "@/lib/server/applicationRouteHelpers";
 import { isAccessTokenValid } from "@/lib/server/appAuth";
+import { clearSessionSecretCache } from "@/lib/server/sessionSecret";
 import { ensureAppAccessTokenHydrated } from "@/lib/server/appAccessToken";
 import { getUserRepository } from "@/lib/server/db";
 import { DEFAULT_USER_ID } from "@/lib/server/defaultUser";
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
   if (!updated) {
     return NextResponse.json({ error: "Account already exists" }, { status: 409 });
   }
+  clearSessionSecretCache();
 
   const sessionResponse = await issueAppSessionResponse("password-setup", "/api/auth/setup");
   if (sessionResponse.status !== 200) {
