@@ -89,8 +89,4 @@ export class SqliteDatabaseBackend implements DatabaseBackend {
   getSqliteDatabase(): Database.Database {
     return this.db;
   }
-
-  getSqliteDatabasePath(): string {
-    return this.path;
-  }
 }

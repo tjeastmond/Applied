@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { log } from "@/lib/server/logging/logger";
 import { hostFromUrl } from "@/lib/server/logging/sanitize";
-import { getDefaultDatabasePath, readDatabaseConfig } from "./databaseConfig";
+import { readDatabaseConfig } from "./databaseConfig";
 import type { DatabaseBackend } from "./databaseBackend";
 import { SqliteDatabaseBackend } from "./db/sqliteBackend";
 import { TursoDatabaseBackend } from "./db/tursoBackend";
@@ -21,11 +21,6 @@ const globalForDb = globalThis as unknown as {
 
 function hasAnalyticsRepository(backend: DatabaseBackend): boolean {
   return typeof (backend as Partial<DatabaseBackend>).analytics?.loadSnapshot === "function";
-}
-
-export function getDatabasePath(): string {
-  const config = readDatabaseConfig();
-  return config.provider === "sqlite" ? config.path : getDefaultDatabasePath();
 }
 
 export function getDatabaseBackend(): DatabaseBackend {

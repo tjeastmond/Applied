@@ -30,7 +30,7 @@ describe("SqliteApplicationNoteRepository", () => {
     expect(listed[0]?.id).toBe(second.id);
     expect(listed[1]?.id).toBe(first.id);
 
-    const deleted = await notes.delete(first.id);
+    const deleted = await notes.deleteForApplication(application.id, first.id);
     expect(deleted).toBe(true);
     expect(await notes.listByApplicationId(application.id)).toHaveLength(1);
 

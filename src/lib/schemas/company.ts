@@ -79,7 +79,6 @@ export type CreateCompanyInput = z.input<typeof createCompanySchema>;
 export type ParsedCreateCompanyInput = z.output<typeof createCompanySchema>;
 export type PatchCompanyInput = z.input<typeof patchCompanySchema>;
 export type ParsedPatchCompanyInput = z.output<typeof patchCompanySchema>;
-export type CompanyListQuery = z.output<typeof companyListQuerySchema>;
 
 export function normalizeCompanyName(name: string): string {
   return sanitizePlainText(name).toLowerCase();

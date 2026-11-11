@@ -295,7 +295,7 @@ All endpoints return JSON unless noted. Errors: `{ "error": "message" }` with 4x
 
 **Create validation** (`src/lib/schemas/application.ts` via Zod): `url`, `title`, `company`, `appliedAt` required; optional fields (`salaryRange`, `desiredSalary`, recruiter/contact, etc.) sanitized on persist.
 
-**Bulk fetch:** `POST /api/applications/bulk` returns full `JobApplication` records (including `salaryRange` and `desiredSalary`). The client hydrates the list via `bulkFetchApplications()` in `src/api.ts`.
+**Bulk fetch:** `POST /api/applications/bulk` returns full `JobApplication` records (including `salaryRange` and `desiredSalary`).
 
 **Analytics:** `GET /api/analytics` defaults to `range=90d`; accepts repeated `company` and `status` parameters, `archived=0` to exclude archived applications, and inclusive `from`/`to` dates when `range=custom`. The response contains aggregate counts, rates, volume buckets, status distribution, and company performance only.
 

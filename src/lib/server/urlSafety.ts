@@ -95,10 +95,6 @@ export async function assertSafeFetchUrl(url: URL): Promise<void> {
 
 export const MAX_FETCH_REDIRECTS = 5;
 
-export function resolveRedirectUrl(currentUrl: URL, location: string): URL {
-  return new URL(location, currentUrl);
-}
-
 // Checks the address the socket will actually use, closing the DNS-rebinding gap left by the pre-check.
 export const safeConnectLookup: LookupFunction = (hostname, options, callback) => {
   lookupCb(hostname, options, (err, address, family) => {

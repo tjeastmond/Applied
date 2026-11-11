@@ -50,11 +50,3 @@ export const agentCreateApplicationSchema = z.object({
 export const agentPatchApplicationSchema = z.strictObject({
   status: applicationStatusSchema,
 });
-
-export type AgentListApplicationsQuery = z.infer<typeof agentListApplicationsQuerySchema>;
-export type AgentListCompaniesQuery = z.infer<typeof agentListCompaniesQuerySchema>;
-export type AgentCreateCompanyInput = z.infer<typeof agentCreateCompanySchema>;
-export type AgentPatchCompanyInput = z.infer<typeof agentPatchCompanySchema>;
-export type AgentSetCompanyIgnoredInput = z.infer<typeof agentSetCompanyIgnoredSchema>;
-export type AgentCreateApplicationInput = z.infer<typeof agentCreateApplicationSchema>;
-export type AgentPatchApplicationInput = z.infer<typeof agentPatchApplicationSchema>;

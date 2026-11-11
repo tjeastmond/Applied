@@ -130,13 +130,6 @@ export function getAnalytics(searchParams: URLSearchParams, signal?: AbortSignal
   return request<AnalyticsResponse>(`/api/analytics${query ? `?${query}` : ""}`, { signal });
 }
 
-export function bulkFetchApplications(ids?: string[]): Promise<JobApplication[]> {
-  return request<{ applications: JobApplication[] }>("/api/applications/bulk", {
-    method: "POST",
-    body: JSON.stringify(ids && ids.length > 0 ? { ids } : {}),
-  }).then((result) => result.applications);
-}
-
 export function getApplication(id: string): Promise<JobApplication> {
   return request<JobApplication>(`/api/applications/${id}`);
 }

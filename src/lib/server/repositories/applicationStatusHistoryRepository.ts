@@ -12,5 +12,4 @@ export type RecordStatusHistoryInput = {
 export interface ApplicationStatusHistoryRepository {
   listByApplicationId(applicationId: string): Promise<ApplicationStatusHistoryEntry[]>;
   record(input: RecordStatusHistoryInput): Promise<ApplicationStatusHistoryEntry>;
-  hasAnyForApplication(applicationId: string): Promise<boolean>;
 }

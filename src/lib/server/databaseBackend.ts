@@ -31,5 +31,4 @@ export type DatabaseBackend = {
   createDatabaseBackup(): Promise<DatabaseBackupPayload>;
   reset(): void;
   getSqliteDatabase?(): Database.Database;
-  getSqliteDatabasePath?(): string;
 };

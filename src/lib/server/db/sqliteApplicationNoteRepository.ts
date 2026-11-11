@@ -4,7 +4,6 @@ import type { ApplicationNoteRepository } from "../repositories/applicationNoteR
 import {
   buildNote,
   DELETE_NOTE_FOR_APPLICATION_SQL,
-  DELETE_NOTE_SQL,
   GET_NOTE_FOR_APPLICATION_SQL,
   INSERT_NOTE_SQL,
   LIST_ALL_NOTES_SQL,
@@ -21,7 +20,6 @@ export class SqliteApplicationNoteRepository implements ApplicationNoteRepositor
   private readonly getForApplicationStmt;
   private readonly insertStmt;
   private readonly updateForApplicationStmt;
-  private readonly deleteStmt;
   private readonly deleteForApplicationStmt;
 
   constructor(db: Database.Database) {
@@ -30,7 +28,6 @@ export class SqliteApplicationNoteRepository implements ApplicationNoteRepositor
     this.getForApplicationStmt = db.prepare(GET_NOTE_FOR_APPLICATION_SQL);
     this.insertStmt = db.prepare(INSERT_NOTE_SQL);
     this.updateForApplicationStmt = db.prepare(UPDATE_NOTE_FOR_APPLICATION_SQL);
-    this.deleteStmt = db.prepare(DELETE_NOTE_SQL);
     this.deleteForApplicationStmt = db.prepare(DELETE_NOTE_FOR_APPLICATION_SQL);
   }
 
@@ -62,11 +59,6 @@ export class SqliteApplicationNoteRepository implements ApplicationNoteRepositor
 
     const row = this.getForApplicationStmt.get(noteId, applicationId) as NoteRow | undefined;
     return row ? rowToNote(row) : null;
-  }
-
-  async delete(id: string): Promise<boolean> {
-    const result = this.deleteStmt.run(id);
-    return result.changes > 0;
   }
 
   async deleteForApplication(applicationId: string, noteId: string): Promise<boolean> {

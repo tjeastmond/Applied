@@ -5,13 +5,7 @@ import { log } from "@/lib/server/logging/logger";
 import { hostFromUrl } from "@/lib/server/logging/sanitize";
 import { parseParsedApplicationSalaryFields } from "@/lib/schemas/application";
 import { parseJobUrlResultSchema, type ParseJobUrlResult } from "@/lib/schemas/parseJob";
-import {
-  assertSafeFetchUrl,
-  safeFetchInit,
-  MAX_FETCH_REDIRECTS,
-  resolveRedirectUrl,
-  UnsafeFetchUrlError,
-} from "@/lib/server/urlSafety";
+import { assertSafeFetchUrl, safeFetchInit, MAX_FETCH_REDIRECTS, UnsafeFetchUrlError } from "@/lib/server/urlSafety";
 import { extractAshbyRole, isAshbyHost, isGenericAshbyTitle } from "./extractAshbyRole";
 import { buildFullJd } from "./extractFullJd";
 import { extractJobCompany } from "./extractJobCompany";
@@ -67,14 +61,9 @@ function hostnameToCompany(url: URL): string | null {
   const parts = host.split(".").filter(Boolean);
   if (parts.length === 0) return null;
 
-  const commonSubdomains = new Set(["careers", "jobs", "job", "apply"]);
   let label = parts[0] ?? "";
 
-  if (parts.length > 2 && commonSubdomains.has(parts[0] ?? "")) {
-    label = parts[parts.length - 2] ?? label;
-  } else if (parts.length >= 2) {
-    label = parts[parts.length - 2] ?? label;
-  }
+  if (parts.length >= 2) label = parts[parts.length - 2] ?? label;
 
   if (!label) return null;
   return label.charAt(0).toUpperCase() + label.slice(1);
@@ -121,7 +110,7 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
         if (hop === MAX_FETCH_REDIRECTS) {
           return { ok: false, error: "Too many redirects" };
         }
-        currentUrl = resolveRedirectUrl(currentUrl, location);
+        currentUrl = new URL(location, currentUrl);
         continue;
       }
 

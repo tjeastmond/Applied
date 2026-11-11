@@ -30,8 +30,6 @@ export const INSERT_STATUS_HISTORY_SQL = `INSERT INTO application_status_history
   id, application_id, user_id, from_status, to_status, changed_at
 ) VALUES (?, ?, ?, ?, ?, ?)`;
 
-export const HAS_STATUS_HISTORY_FOR_APPLICATION_SQL = `SELECT 1 FROM application_status_history WHERE application_id = ? LIMIT 1`;
-
 export function rowToStatusHistoryEntry(row: StatusHistoryRow): ApplicationStatusHistoryEntry {
   return {
     id: row.id,

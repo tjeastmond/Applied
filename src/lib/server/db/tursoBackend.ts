@@ -43,7 +43,6 @@ import {
 import {
   buildNote,
   DELETE_NOTE_FOR_APPLICATION_SQL,
-  DELETE_NOTE_SQL,
   GET_NOTE_FOR_APPLICATION_SQL,
   INSERT_NOTE_SQL,
   LIST_ALL_NOTES_SQL,
@@ -57,7 +56,6 @@ import { INSERT_COMPANY_SQL } from "./companyRepositoryShared";
 import { TursoCompanyRepository } from "./tursoCompanyRepository";
 import {
   buildStatusHistoryEntry,
-  HAS_STATUS_HISTORY_FOR_APPLICATION_SQL,
   INSERT_STATUS_HISTORY_SQL,
   LIST_STATUS_HISTORY_BY_APPLICATION_SQL,
   rowToStatusHistoryEntry,
@@ -534,12 +532,6 @@ class TursoApplicationStatusHistoryRepository implements ApplicationStatusHistor
       userDisplayName: user?.displayName ?? "Unknown",
     };
   }
-
-  async hasAnyForApplication(applicationId: string): Promise<boolean> {
-    await this.ready;
-    const row = await tursoFirstRow(this.client, HAS_STATUS_HISTORY_FOR_APPLICATION_SQL, [applicationId]);
-    return row !== null;
-  }
 }
 
 class TursoJobApplicationRepository implements JobApplicationRepository {
@@ -718,12 +710,6 @@ class TursoApplicationNoteRepository implements ApplicationNoteRepository {
 
     const row = await tursoFirstRow(this.client, GET_NOTE_FOR_APPLICATION_SQL, [noteId, applicationId]);
     return row ? tursoRowToNote(row) : null;
-  }
-
-  async delete(id: string): Promise<boolean> {
-    await this.ready;
-    const result = await this.client.execute({ sql: DELETE_NOTE_SQL, args: [id] });
-    return result.rowsAffected > 0;
   }
 
   async deleteForApplication(applicationId: string, noteId: string): Promise<boolean> {

@@ -75,21 +75,6 @@ export function listApplicationsForCompany(applications: JobApplication[], compa
     .sort((left, right) => right.appliedAt.localeCompare(left.appliedAt));
 }
 
-export function computeCompanyNavCounts(companies: Company[]): { active: number; ignored: number } {
-  let active = 0;
-  let ignored = 0;
-
-  for (const company of companies) {
-    if (company.ignored) {
-      ignored += 1;
-    } else {
-      active += 1;
-    }
-  }
-
-  return { active, ignored };
-}
-
 export type CompanyContact = {
   name: string | null;
   firm: string | null;

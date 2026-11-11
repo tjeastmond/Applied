@@ -14,14 +14,10 @@ export const setupAccountSchema = z.strictObject({
   accessToken: z.string().min(1).max(512).optional(),
 });
 
-export type SetupAccountInput = z.infer<typeof setupAccountSchema>;
-
 export const passwordLoginSchema = z.strictObject({
   email: requiredEmailSchema,
   password: z.string().min(1, "Password is required").max(256),
 });
-
-export type PasswordLoginInput = z.infer<typeof passwordLoginSchema>;
 
 export const changePasswordSchema = z.strictObject({
   currentPassword: z.string().min(1, "Current password is required").max(256),

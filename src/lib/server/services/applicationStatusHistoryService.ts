@@ -19,18 +19,3 @@ export async function recordApplicationStatusChange(input: {
     changedAt: input.changedAt,
   });
 }
-
-export async function recordInitialApplicationStatus(input: {
-  applicationId: string;
-  status: ApplicationStatus;
-  changedAt: string;
-  userId?: string;
-}): Promise<ApplicationStatusHistoryEntry> {
-  return recordApplicationStatusChange({
-    applicationId: input.applicationId,
-    fromStatus: null,
-    toStatus: input.status,
-    changedAt: input.changedAt,
-    userId: input.userId,
-  });
-}
