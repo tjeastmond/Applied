@@ -907,6 +907,7 @@ export class TursoDatabaseBackend implements DatabaseBackend {
           mode,
         )
       : 0;
+    // shortcut: whole restore is one executeMultiple request so it is all-or-nothing, but a backup too big for one Turso request fails as a whole (nothing written); chunk it inside an interactive client.transaction("write") if backups outgrow one request.
     const script =
       mode === "upsert"
         ? // PRAGMA foreign_keys is a no-op inside a transaction, so set it before BEGIN; the connection may have it OFF.
