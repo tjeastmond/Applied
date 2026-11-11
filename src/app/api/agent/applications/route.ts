@@ -1,7 +1,7 @@
 import { formatZodError } from "@/lib/formatZodError";
 import { agentCreateApplicationSchema, agentListApplicationsQuerySchema } from "@/lib/schemas/agent";
 import { badRequestResponse } from "@/lib/server/applicationRouteHelpers";
-import { requireAgentAuth } from "@/lib/server/agentAuth";
+import { withAgentAuth } from "@/lib/server/agentAuth";
 import { log } from "@/lib/server/logging/logger";
 import { parseRequestBody } from "@/lib/server/parseRequestBody";
 import {
@@ -12,13 +12,7 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
-  const auth = await requireAgentAuth(request);
-  if (auth instanceof Response) {
-    log.warn("agent auth rejected", { route: "/api/agent/applications", method: "GET" });
-    return auth;
-  }
-
+export const GET = withAgentAuth("/api/agent/applications", "GET", async (request) => {
   const { searchParams } = new URL(request.url);
   const parsedQuery = agentListApplicationsQuerySchema.safeParse({
     search: searchParams.get("search") ?? undefined,
@@ -30,15 +24,9 @@ export async function GET(request: Request) {
 
   const applications = await listApplicationsForAgent(parsedQuery.data.search ?? "", parsedQuery.data.status);
   return NextResponse.json({ applications });
-}
+});
 
-export async function POST(request: Request) {
-  const auth = await requireAgentAuth(request);
-  if (auth instanceof Response) {
-    log.warn("agent auth rejected", { route: "/api/agent/applications", method: "POST" });
-    return auth;
-  }
-
+export const POST = withAgentAuth("/api/agent/applications", "POST", async (request, auth) => {
   const parsed = await parseRequestBody(request, agentCreateApplicationSchema);
   if (!parsed.ok) {
     return badRequestResponse(parsed.error);
@@ -56,4 +44,4 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json(result.application, { status: 201 });
-}
+});

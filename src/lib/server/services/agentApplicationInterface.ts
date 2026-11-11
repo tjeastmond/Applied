@@ -12,16 +12,12 @@ import { archiveStaleApplications } from "@/lib/server/services/staleApplication
 import { touchApplicationUpdatedAt } from "@/lib/server/touchApplicationUpdatedAt";
 import { ensureCompanyForApplicationName } from "@/lib/server/services/companySyncService";
 import type { JobApplication } from "@/types";
+import type { AgentAuthContext } from "@/lib/server/agentAuth";
 import { parseJobUrl } from "./parseJobUrl";
 
 type CreateApplicationFromUrlResult = { ok: true; application: AgentApplicationSummary } | { ok: false; error: string };
 
-export type AgentAuditContext = {
-  actorName: string;
-  channel: "cli" | "api";
-};
-
-function agentAuditNote(action: "created" | "updated", context: AgentAuditContext): string {
+function agentAuditNote(action: "created" | "updated", context: AgentAuthContext): string {
   return formatApplicationAuditNote(action, context.actorName, context.channel);
 }
 
@@ -99,7 +95,7 @@ export async function createNoteForAgent(
 export async function updateApplicationStatusForAgent(
   id: string,
   status: ApplicationStatus,
-  auditContext: AgentAuditContext,
+  auditContext: AgentAuthContext,
 ): Promise<AgentApplicationSummary | null> {
   const existing = await getVisibleApplicationForAgent(id);
   if (!existing) {
@@ -125,7 +121,7 @@ export async function updateApplicationStatusForAgent(
 
 export async function archiveStaleApplicationsForAgent(
   dryRun: boolean,
-  auditContext: AgentAuditContext,
+  auditContext: AgentAuthContext,
 ): Promise<{ dryRun: boolean; archivedCount: number; applications: AgentApplicationSummary[] }> {
   const { affected } = await archiveStaleApplications({
     dryRun,
@@ -143,7 +139,7 @@ export async function archiveStaleApplicationsForAgent(
 export async function createApplicationFromUrlForAgent(
   rawUrl: string,
   status: ApplicationStatus = "to_apply",
-  auditContext: AgentAuditContext,
+  auditContext: AgentAuthContext,
 ): Promise<CreateApplicationFromUrlResult> {
   const url = normalizePastedJobUrl(rawUrl);
   if (!url) {
