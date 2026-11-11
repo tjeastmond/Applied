@@ -63,6 +63,25 @@ function buildPatchInput(current: CompanyFormState, baseline: CompanyFormState):
   return Object.keys(patch).length > 0 ? patch : null;
 }
 
+const COMPANY_FIELDS: {
+  key: keyof CompanyFormState;
+  id: string;
+  label: string;
+  type?: string;
+  placeholder?: string;
+}[] = [
+  { key: "name", id: "company-name", label: "Company Name" },
+  { key: "url", id: "company-url", label: "URL", type: "url", placeholder: "https://example.com" },
+  {
+    key: "linkedinUrl",
+    id: "company-linkedin",
+    label: "LinkedIn",
+    type: "url",
+    placeholder: "https://linkedin.com/company/...",
+  },
+  { key: "email", id: "company-email", label: "Email", type: "email", placeholder: "contact@example.com" },
+];
+
 const COMPANY_JOB_GRID_CLASSES = "grid grid-cols-1 gap-4 lg:grid-cols-2";
 
 type CompanyPageProps = Pick<CompaniesController, "companies" | "handleCompanyChange" | "handleUpdateCompany"> &
@@ -201,6 +220,12 @@ export function CompanyPage({
     );
   }
 
+  const sectionSeparator = (
+    <div className={cn("py-1", edgeBleedClassName)}>
+      <Separator />
+    </div>
+  );
+
   return (
     <div className="mx-auto flex w-full max-w-none flex-col gap-4">
       {backLink}
@@ -220,54 +245,26 @@ export function CompanyPage({
         </Button>
       </div>
 
-      <div className={cn("py-1", edgeBleedClassName)}>
-        <Separator />
-      </div>
+      {sectionSeparator}
 
       <section className="space-y-4" aria-labelledby="company-details-heading">
         <h2 id="company-details-heading" className="text-sm font-medium">
           Company Details
         </h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="company-name">Company Name</Label>
-            <Input
-              id="company-name"
-              value={form.name}
-              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              aria-invalid={form.name.trim().length === 0}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="company-url">URL</Label>
-            <Input
-              id="company-url"
-              type="url"
-              value={form.url}
-              onChange={(event) => setForm((current) => ({ ...current, url: event.target.value }))}
-              placeholder="https://example.com"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="company-linkedin">LinkedIn</Label>
-            <Input
-              id="company-linkedin"
-              type="url"
-              value={form.linkedinUrl}
-              onChange={(event) => setForm((current) => ({ ...current, linkedinUrl: event.target.value }))}
-              placeholder="https://linkedin.com/company/..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="company-email">Email</Label>
-            <Input
-              id="company-email"
-              type="email"
-              value={form.email}
-              onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-              placeholder="contact@example.com"
-            />
-          </div>
+          {COMPANY_FIELDS.map(({ key, id, label, type, placeholder }) => (
+            <div key={id} className="space-y-2">
+              <Label htmlFor={id}>{label}</Label>
+              <Input
+                id={id}
+                type={type}
+                value={form[key]}
+                onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}
+                placeholder={placeholder}
+                aria-invalid={key === "name" ? form.name.trim().length === 0 : undefined}
+              />
+            </div>
+          ))}
         </div>
         <div className="flex items-center justify-end gap-3">
           <p className="text-muted-foreground text-xs">{modSShortcutDescription("company")}</p>
@@ -277,9 +274,7 @@ export function CompanyPage({
         </div>
       </section>
 
-      <div className={cn("py-1", edgeBleedClassName)}>
-        <Separator />
-      </div>
+      {sectionSeparator}
 
       <section className="space-y-3" aria-labelledby="company-contacts-heading">
         <h2 id="company-contacts-heading" className="text-sm font-medium">
@@ -323,9 +318,7 @@ export function CompanyPage({
         )}
       </section>
 
-      <div className={cn("py-1", edgeBleedClassName)}>
-        <Separator />
-      </div>
+      {sectionSeparator}
 
       <section className="space-y-3" aria-labelledby="company-jobs-heading">
         <h2 id="company-jobs-heading" className="text-sm font-medium">

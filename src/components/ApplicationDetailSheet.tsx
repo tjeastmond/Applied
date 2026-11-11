@@ -284,7 +284,6 @@ export function ApplicationDetailSheet({
     }
   }, [application, applicationId, open, updateManualSaveBaseline]);
 
-  const pendingNote = useMemo(() => notes.find((note) => note.id === pendingNoteId) ?? null, [notes, pendingNoteId]);
   const sortedNotes = useMemo(() => sortNotes(notes, noteSortOrder), [notes, noteSortOrder]);
 
   function handleNoteSortOrderChange(order: NoteSortOrder) {
@@ -424,46 +423,42 @@ export function ApplicationDetailSheet({
     }
   }
 
-  async function toggleArchive() {
+  async function toggleField(
+    field: "archived" | "pinned",
+    setBusy: (busy: boolean) => void,
+    messages: { on: string; off: string; onFailed: string; offFailed: string },
+  ) {
     if (!applicationId || !applicationRef.current) return;
 
-    const nextArchived = !applicationRef.current.archived;
-    setIsArchiving(true);
+    const next = !applicationRef.current[field];
+    setBusy(true);
     try {
-      const updated = await updateApplication(applicationId, { archived: nextArchived });
+      const updated = await updateApplication(applicationId, { [field]: next });
       onApplicationChange(updated);
       syncFormFromSavedApplication(updated);
-      toast.success(nextArchived ? toastMessages.applicationArchived : toastMessages.applicationUnarchived);
+      toast.success(next ? messages.on : messages.off);
     } catch (error) {
-      toast.error(
-        errorMessage(
-          error,
-          nextArchived ? toastMessages.applicationArchiveFailed : toastMessages.applicationUnarchiveFailed,
-        ),
-      );
+      toast.error(errorMessage(error, next ? messages.onFailed : messages.offFailed));
     } finally {
-      setIsArchiving(false);
+      setBusy(false);
     }
   }
 
-  async function togglePin() {
-    if (!applicationId || !applicationRef.current) return;
+  const toggleArchive = () =>
+    toggleField("archived", setIsArchiving, {
+      on: toastMessages.applicationArchived,
+      off: toastMessages.applicationUnarchived,
+      onFailed: toastMessages.applicationArchiveFailed,
+      offFailed: toastMessages.applicationUnarchiveFailed,
+    });
 
-    const nextPinned = !applicationRef.current.pinned;
-    setIsPinning(true);
-    try {
-      const updated = await updateApplication(applicationId, { pinned: nextPinned });
-      onApplicationChange(updated);
-      syncFormFromSavedApplication(updated);
-      toast.success(nextPinned ? toastMessages.applicationPinned : toastMessages.applicationUnpinned);
-    } catch (error) {
-      toast.error(
-        errorMessage(error, nextPinned ? toastMessages.applicationPinFailed : toastMessages.applicationUnpinFailed),
-      );
-    } finally {
-      setIsPinning(false);
-    }
-  }
+  const togglePin = () =>
+    toggleField("pinned", setIsPinning, {
+      on: toastMessages.applicationPinned,
+      off: toastMessages.applicationUnpinned,
+      onFailed: toastMessages.applicationPinFailed,
+      offFailed: toastMessages.applicationUnpinFailed,
+    });
 
   const handleStatusChange = useCallback(
     (status: ApplicationStatus) => {
@@ -883,9 +878,7 @@ export function ApplicationDetailSheet({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Note?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingNote
-                ? "This will permanently remove this note. This action cannot be undone."
-                : "This will permanently remove this note. This action cannot be undone."}
+              This will permanently remove this note. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

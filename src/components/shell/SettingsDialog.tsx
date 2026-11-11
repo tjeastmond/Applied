@@ -123,6 +123,43 @@ function formatTokenMetadata(token: AgentApiTokenSummary): string {
   return `${token.tokenPrefix}… · ${created}`;
 }
 
+function ArchiveConfirmDialog({
+  open,
+  busy,
+  onClose,
+  title,
+  description,
+  label,
+  onConfirm,
+}: {
+  open: boolean;
+  busy: boolean;
+  onClose: () => void;
+  title: string;
+  description: string;
+  label: string;
+  onConfirm: () => Promise<void>;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={(nextOpen) => !nextOpen && !busy && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busy} variant="cancelOutline">
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction disabled={busy} variant="save" onClick={() => void onConfirm()}>
+            {busy ? "Archiving…" : label}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export function SettingsDialog({
   applications,
   onImported,
@@ -231,10 +268,10 @@ export function SettingsDialog({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [setOpen]);
 
-  async function handleExport(format: "sql" | "json") {
+  async function runExport(fetchBackup: () => Promise<{ blob: Blob; filename: string }>) {
     setExporting(true);
     try {
-      const { blob, filename } = await exportBackup(format);
+      const { blob, filename } = await fetchBackup();
       downloadBlob(blob, filename);
       toast.success(toastMessages.backupExported);
     } catch (error) {
@@ -244,18 +281,8 @@ export function SettingsDialog({
     }
   }
 
-  async function handleDownloadDatabaseBackup() {
-    setExporting(true);
-    try {
-      const { blob, filename } = await downloadDatabaseBackup();
-      downloadBlob(blob, filename);
-      toast.success(toastMessages.backupExported);
-    } catch (error) {
-      toast.error(errorMessage(error, toastMessages.backupExportFailed));
-    } finally {
-      setExporting(false);
-    }
-  }
+  const handleExport = (format: "sql" | "json") => runExport(() => exportBackup(format));
+  const handleDownloadDatabaseBackup = () => runExport(downloadDatabaseBackup);
 
   async function handleTursoSync() {
     setSyncingTurso(true);
@@ -825,53 +852,25 @@ export function SettingsDialog({
 
       <BackupImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={onImported} />
 
-      <AlertDialog
+      <ArchiveConfirmDialog
         open={pendingArchiveStale}
-        onOpenChange={(nextOpen) => !nextOpen && !isArchivingStale && setPendingArchiveStale(false)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Archive Stale Applications?</AlertDialogTitle>
-            <AlertDialogDescription>{archiveStaleConfirmDescription(staleCount)}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isArchivingStale} variant="cancelOutline">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isArchivingStale}
-              variant="save"
-              onClick={() => void handleConfirmArchiveStale()}
-            >
-              {isArchivingStale ? "Archiving…" : "Archive Stale"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        busy={isArchivingStale}
+        onClose={() => setPendingArchiveStale(false)}
+        title="Archive Stale Applications?"
+        description={archiveStaleConfirmDescription(staleCount)}
+        label="Archive Stale"
+        onConfirm={handleConfirmArchiveStale}
+      />
 
-      <AlertDialog
+      <ArchiveConfirmDialog
         open={pendingBulkArchive}
-        onOpenChange={(nextOpen) => !nextOpen && !isBulkArchiving && setPendingBulkArchive(false)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{bulkArchiveConfirmTitle()}</AlertDialogTitle>
-            <AlertDialogDescription>{bulkArchiveConfirmDescription(archivableCount)}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isBulkArchiving} variant="cancelOutline">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isBulkArchiving}
-              variant="save"
-              onClick={() => void handleConfirmBulkArchive()}
-            >
-              {isBulkArchiving ? "Archiving…" : "Archive"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        busy={isBulkArchiving}
+        onClose={() => setPendingBulkArchive(false)}
+        title={bulkArchiveConfirmTitle()}
+        description={bulkArchiveConfirmDescription(archivableCount)}
+        label="Archive"
+        onConfirm={handleConfirmBulkArchive}
+      />
 
       <AlertDialog open={revokeTarget !== null} onOpenChange={(nextOpen) => !nextOpen && setRevokeTarget(null)}>
         <AlertDialogContent>
