@@ -11,6 +11,7 @@ import { GET as getStatusHistory } from "@/app/api/applications/[id]/status-hist
 import { POST as bulkArchiveApplicationsRoute } from "@/app/api/applications/bulk-archive/route";
 import { POST as archiveStaleRoute } from "@/app/api/applications/archive-stale/route";
 import { POST as bulkFetchApplicationsRoute } from "@/app/api/applications/bulk/route";
+import { patchApplicationWithSideEffects } from "@/lib/server/services/applicationMutationService";
 import { authorizedAppRequest, emptyRouteContext, restoreAppAccessToken, withTestAppAccessToken } from "./testAppAuth";
 
 const missingApplicationId = "00000000-0000-4000-a000-000000000099";
@@ -248,6 +249,35 @@ describe("application API routes", () => {
     const history = await getStatusHistoryRepository().listByApplicationId(app.id);
     expect(history.some((entry) => entry.fromStatus === "applied" && entry.toStatus === "interviewing")).toBe(true);
     expect(history.some((entry) => entry.userDisplayName.length > 0)).toBe(true);
+  });
+
+  test("status change with a stale record keeps concurrent edits and records the real fromStatus", async () => {
+    const repo = getRepository();
+    const app = await repo.create(
+      createJobApplicationSchema.parse({
+        url: "https://jobs.example.com/race",
+        title: "Engineer",
+        company: "Acme",
+        appliedAt: "2026-06-02",
+        status: "applied",
+      }),
+    );
+    const stale = (await repo.getById(app.id))!;
+
+    // Two requests committed after the stale read: a field save and a status change.
+    await repo.update(app.id, { title: "Staff Engineer" });
+    await patchApplicationWithSideEffects(app.id, { status: "waiting" }, (await repo.getById(app.id))!);
+
+    const result = await patchApplicationWithSideEffects(app.id, { status: "interviewing" }, stale);
+
+    expect(result?.title).toBe("Staff Engineer");
+    expect((await repo.getById(app.id))?.title).toBe("Staff Engineer");
+    const history = await getStatusHistoryRepository().listByApplicationId(app.id);
+    const transitions = history.map((entry) => `${entry.fromStatus}>${entry.toStatus}`);
+    expect(transitions).toContain("waiting>interviewing");
+    expect(transitions).not.toContain("applied>interviewing");
+    const notes = await getNoteRepository().listByApplicationId(app.id);
+    expect(notes.filter((note) => note.content === "Status Update: Interviewing")).toHaveLength(1);
   });
 
   test("GET status history returns entries newest first", async () => {
