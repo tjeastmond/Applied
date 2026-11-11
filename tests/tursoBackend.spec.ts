@@ -181,6 +181,40 @@ describe("TursoDatabaseBackend", { timeout: 30_000 }, () => {
     }
   });
 
+  test("company update and setIgnored persist", async () => {
+    const tursoConfig = requireTursoTestConfig();
+    const backend = new TursoDatabaseBackend({
+      provider: "turso",
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
+    });
+
+    try {
+      await backend.importJson(
+        { version: 1, exportedAt: new Date().toISOString(), applications: [], notes: [] },
+        "replace",
+      );
+      const company = await backend.companies.create({ name: "Acme" });
+
+      expect((await backend.companies.update(company.id, { name: "Acme Renamed", email: "hr@acme.test" }))?.name).toBe(
+        "Acme Renamed",
+      );
+      expect(await backend.companies.getById(company.id)).toMatchObject({
+        name: "Acme Renamed",
+        email: "hr@acme.test",
+      });
+
+      expect((await backend.companies.setIgnored(company.id, true))?.ignored).toBe(true);
+      expect((await backend.companies.getById(company.id))?.ignored).toBe(true);
+    } finally {
+      await backend.importJson(
+        { version: 1, exportedAt: new Date().toISOString(), applications: [], notes: [] },
+        "replace",
+      );
+      backend.reset();
+    }
+  });
+
   describe("status change concurrency guard", () => {
     // Bumps updated_at just before the guarded UPDATE's transaction opens, `times` times,
     // simulating another writer landing between the caller's read and the write.

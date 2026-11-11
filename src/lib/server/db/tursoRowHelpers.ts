@@ -16,6 +16,18 @@ export async function tursoWriteTransaction(client: Client, statements: InStatem
 
 export type NamedArgs = Record<string, InValue>;
 
+/** Turso binds named args by position, not name: rewrite `@name` params to `?` in SQL order. */
+export function bindNamed(sql: string, args: object): InStatement {
+  const values = args as NamedArgs;
+  return {
+    sql: sql.replace(/@\w+/g, "?"),
+    args: [...sql.matchAll(/@(\w+)/g)].map(([, name]) => {
+      if (!(name in values)) throw new Error(`Missing SQL parameter: ${name}`);
+      return values[name]!;
+    }),
+  };
+}
+
 function rowValue(row: Row, column: string): InValue | undefined {
   return row[column];
 }
