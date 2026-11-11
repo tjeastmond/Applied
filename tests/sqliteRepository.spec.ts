@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { createJobApplicationSchema } from "@/lib/schemas/application";
-import { CLEAR_PINNED_ON_ARCHIVED_SQL } from "@/lib/server/db/applicationRepositoryShared";
+import { buildApplicationUpdateRow, CLEAR_PINNED_ON_ARCHIVED_SQL } from "@/lib/server/db/applicationRepositoryShared";
 import { openDatabase } from "@/lib/server/db/migrate";
 import { SqliteJobApplicationRepository } from "@/lib/server/db/sqliteRepository";
 
@@ -269,5 +269,14 @@ describe("SqliteJobApplicationRepository", () => {
 
     const row = db.prepare(`SELECT pinned FROM applications WHERE id = ?`).get(id) as { pinned: number };
     expect(row.pinned).toBe(0);
+  });
+});
+
+describe("buildApplicationUpdateRow", () => {
+  test("updated_at strictly increases even when the clock does not advance", () => {
+    const existing = { updated_at: "2026-01-01T00:00:00.500Z" } as Parameters<typeof buildApplicationUpdateRow>[0];
+    for (const now of ["2026-01-01T00:00:00.500Z", "2026-01-01T00:00:00.400Z"]) {
+      expect(buildApplicationUpdateRow(existing, {}, now).updated_at > existing.updated_at).toBe(true);
+    }
   });
 });

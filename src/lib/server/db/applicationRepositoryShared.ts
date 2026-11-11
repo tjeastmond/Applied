@@ -193,8 +193,10 @@ export function buildApplicationInsertRow(
 export function buildApplicationUpdateRow(
   existing: ApplicationRow,
   input: Partial<ParsedCreateJobApplicationInput>,
-  timestamp = nowIso(),
+  now = nowIso(),
 ): ApplicationRow {
+  // Strictly increase updated_at so the optimistic-concurrency guard always detects a same-millisecond write.
+  const timestamp = now > existing.updated_at ? now : new Date(Date.parse(existing.updated_at) + 1).toISOString();
   const viaRecruiter = input.viaRecruiter !== undefined ? input.viaRecruiter : existing.via_recruiter === 1;
   const archived = input.archived !== undefined ? (input.archived ? 1 : 0) : existing.archived;
   const requestedPinned = input.pinned !== undefined ? (input.pinned ? 1 : 0) : existing.pinned;
