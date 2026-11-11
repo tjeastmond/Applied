@@ -1,4 +1,9 @@
-import { buildSessionSetCookieHeader, SESSION_MAX_AGE_SECONDS, signSessionCookie } from "@/lib/appAccessAuth";
+import {
+  buildSessionSetCookieHeader,
+  SESSION_MAX_AGE_SECONDS,
+  signSessionCookie,
+  verifySessionCookie,
+} from "@/lib/appAccessAuth";
 import { getUserRepository } from "@/lib/server/db";
 import { DEFAULT_USER_ID } from "@/lib/server/defaultUser";
 
@@ -26,10 +31,24 @@ async function readHash(): Promise<string | null> {
 
 const withHash = (accessToken: string, hash: string | null) => (hash ? `${accessToken}:${hash}` : accessToken);
 
+function cachedHash(): { hash: string | null } | null {
+  return cached?.repo === getUserRepository() && cached.expires >= Date.now() ? cached : null;
+}
+
 /** Signing secret bound to the owner's password hash so a password change invalidates old sessions. Cached: verify path only. */
 export async function getSessionSecret(accessToken: string): Promise<string> {
-  const hit = cached?.repo === getUserRepository() && cached.expires >= Date.now();
-  return withHash(accessToken, hit ? cached!.hash : await readHash());
+  return withHash(accessToken, (cachedHash() ?? { hash: await readHash() }).hash);
+}
+
+/** Verify a session cookie; a failure on a cached secret retries once with a fresh read (another instance may have changed the password). */
+export async function verifySessionWithFreshRetry(accessToken: string, cookie: string): Promise<boolean> {
+  const hit = cachedHash();
+  const secret = withHash(accessToken, hit ? hit.hash : await readHash());
+  if (await verifySessionCookie(secret, cookie)) return true;
+  if (!hit) return false;
+  // Cost: a garbage cookie forces one DB read per request, same as before the cache.
+  const fresh = withHash(accessToken, await readHash());
+  return fresh !== secret && verifySessionCookie(fresh, cookie);
 }
 
 /** Signing always reads fresh: another instance may have changed the password, and a cookie signed with a stale hash would not verify. */

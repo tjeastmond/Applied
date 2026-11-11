@@ -1,5 +1,5 @@
 import { bearerTokenFromRequest, constantTimeEquals } from "@/lib/server/bearerAuth";
-import { getSessionSecret } from "@/lib/server/sessionSecret";
+import { verifySessionWithFreshRetry } from "@/lib/server/sessionSecret";
 
 export const APP_SESSION_COOKIE = "applied-session";
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
@@ -76,7 +76,7 @@ export async function isAppAccessAuthorized(request: Request): Promise<boolean> 
   const cookie = sessionCookieFromRequest(request);
   if (!cookie?.startsWith("v1.") || cookie.split(".").length !== 3) return false;
 
-  return verifySessionCookie(await getSessionSecret(configuredToken), cookie);
+  return verifySessionWithFreshRetry(configuredToken, cookie);
 }
 
 export function buildSessionSetCookieHeader(value: string): string {

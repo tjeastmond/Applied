@@ -4,7 +4,13 @@ const getCredentialById = vi.fn();
 const repo = { getCredentialById };
 vi.mock("@/lib/server/db", () => ({ getUserRepository: () => repo }));
 
-import { buildSessionCookieHeader, clearSessionSecretCache, getSessionSecret } from "@/lib/server/sessionSecret";
+import { signSessionCookie } from "@/lib/appAccessAuth";
+import {
+  buildSessionCookieHeader,
+  clearSessionSecretCache,
+  getSessionSecret,
+  verifySessionWithFreshRetry,
+} from "@/lib/server/sessionSecret";
 
 describe("getSessionSecret cache", () => {
   beforeEach(() => {
@@ -36,6 +42,20 @@ describe("getSessionSecret cache", () => {
     expect(getCredentialById).toHaveBeenCalledTimes(2);
     expect(await getSessionSecret("tok")).toBe("tok:h2");
     expect(getCredentialById).toHaveBeenCalledTimes(2);
+  });
+
+  test("a cookie signed with a newer hash is accepted via one fresh read", async () => {
+    await getSessionSecret("tok");
+    getCredentialById.mockResolvedValue({ passwordHash: "h2" });
+    const cookie = await signSessionCookie("tok:h2", Date.now() + 60_000);
+    expect(await verifySessionWithFreshRetry("tok", cookie)).toBe(true);
+    expect(getCredentialById).toHaveBeenCalledTimes(2);
+  });
+
+  test("a cookie signed with an unknown hash is rejected", async () => {
+    await getSessionSecret("tok");
+    const cookie = await signSessionCookie("tok:other", Date.now() + 60_000);
+    expect(await verifySessionWithFreshRetry("tok", cookie)).toBe(false);
   });
 
   test("clear forces a fresh read", async () => {
