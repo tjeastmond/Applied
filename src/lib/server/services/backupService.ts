@@ -384,13 +384,15 @@ export function exportSql(db: Database.Database): string {
   );
 }
 
-type PasswordHashes = { id: string; email: string | null; password_hash: string }[];
+type UserEmail = { id: string; email: string | null };
 
-// Backups exclude password hashes, so a replace restore must carry them over for users that still exist.
 function listCredentialHolders(db: Database.Database): UserEmail[] {
   return db.prepare("SELECT id, email FROM users WHERE password_hash IS NOT NULL").all() as UserEmail[];
 }
 
+type PasswordHashes = { id: string; email: string | null; password_hash: string }[];
+
+// Backups exclude password hashes, so a replace restore must carry them over for users that still exist.
 function clearAllData(db: Database.Database, keepUsers = false): PasswordHashes {
   const hashes = db
     .prepare("SELECT id, email, password_hash FROM users WHERE password_hash IS NOT NULL")
@@ -400,8 +402,6 @@ function clearAllData(db: Database.Database, keepUsers = false): PasswordHashes 
   );
   return hashes;
 }
-
-type UserEmail = { id: string; email: string | null };
 
 /** Backup users that lose their email to a different credential holder (replace only when the holder is restored too). */
 export function countEmailsCleared(holders: UserEmail[], users: UserEmail[], mode: ImportMode): number {
