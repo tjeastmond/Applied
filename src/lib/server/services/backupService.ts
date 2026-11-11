@@ -395,8 +395,15 @@ function clearAllData(db: Database.Database): PasswordHashes {
 
 function restorePasswordHashes(db: Database.Database, hashes: PasswordHashes): void {
   // Email travels with the hash: a restored owner without an email could not sign in with the carried-over hash.
+  // The credential owner wins an email collision: other restored users lose that email (unique index).
+  const clearOthers = db.prepare("UPDATE users SET email = NULL WHERE email = ? AND id <> ?");
   const update = db.prepare("UPDATE users SET email = ?, password_hash = ? WHERE id = ?");
-  for (const { id, email, password_hash } of hashes) update.run(email, password_hash, id);
+  const present = db.prepare("SELECT 1 FROM users WHERE id = ?");
+  for (const { id, email, password_hash } of hashes) {
+    // Only when the owner row exists, otherwise the other user's email would be lost for nothing.
+    if (present.get(id)) clearOthers.run(email, id);
+    update.run(email, password_hash, id);
+  }
 }
 
 function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMode): ImportResult {
@@ -407,9 +414,11 @@ function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMod
   const upsertCompany = db.prepare(UPSERT_COMPANY_SQL);
 
   const run = db.transaction(() => {
+    // v1/v2 backups carry no users; keep the current ones so the owner and credentials survive a replace.
+    const users = mode === "replace" && data.users.length === 0 ? listUsers(db) : data.users;
     const hashes = mode === "replace" ? clearAllData(db) : [];
 
-    for (const user of data.users) {
+    for (const user of users) {
       upsertUser.run(userToRow(user));
     }
 
@@ -460,7 +469,7 @@ export function importJson(db: Database.Database, raw: unknown, mode: ImportMode
 
 // Mirrors SQLite's lexer: splits on `;` outside '...', "...", `...` (doubled delimiter escapes) and [...] spans,
 // drops `--` line comments, and replaces /* */ block comments (unterminated runs to EOF) with a space.
-function splitSqlStatements(sql: string): string[] {
+export function splitSqlStatements(sql: string): string[] {
   const statements: string[] = [];
   let current = "";
   let quote = "";
@@ -570,6 +579,7 @@ export function withCredentialPreservation(sql: string): string {
     commit,
     0,
     "ALTER TABLE users ADD COLUMN password_hash TEXT",
+    "UPDATE users SET email = NULL WHERE email IN (SELECT email FROM kept_credentials k WHERE k.id <> users.id AND EXISTS (SELECT 1 FROM users u WHERE u.id = k.id))",
     "UPDATE users SET email = (SELECT email FROM kept_credentials k WHERE k.id = users.id), password_hash = (SELECT password_hash FROM kept_credentials k WHERE k.id = users.id) WHERE id IN (SELECT id FROM kept_credentials)",
     "DROP TABLE kept_credentials",
   );
