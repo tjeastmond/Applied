@@ -156,32 +156,9 @@ async function tableExists(client: Client, table: string): Promise<boolean> {
   return row !== null;
 }
 
-async function columnExists(client: Client, column: string): Promise<boolean> {
-  const result = await tursoRows(client, "PRAGMA table_info(applications)");
-  return result.some((row) => nullableString(row, "name") === column);
-}
-
-async function agentApiTokenColumnExists(client: Client, column: string): Promise<boolean> {
-  if (!(await tableExists(client, "agent_api_tokens"))) {
-    return false;
-  }
-  const result = await tursoRows(client, "PRAGMA table_info(agent_api_tokens)");
-  return result.some((row) => nullableString(row, "name") === column);
-}
-
-async function companyColumnExists(client: Client, column: string): Promise<boolean> {
-  if (!(await tableExists(client, "companies"))) {
-    return false;
-  }
-  const result = await tursoRows(client, "PRAGMA table_info(companies)");
-  return result.some((row) => nullableString(row, "name") === column);
-}
-
-async function userColumnExists(client: Client, column: string): Promise<boolean> {
-  if (!(await tableExists(client, "users"))) {
-    return false;
-  }
-  const result = await tursoRows(client, "PRAGMA table_info(users)");
+// Table/column names are internal literals, never user input. PRAGMA on a missing table yields no rows.
+async function columnExists(client: Client, table: string, column: string): Promise<boolean> {
+  const result = await tursoRows(client, `PRAGMA table_info(${table})`);
   return result.some((row) => nullableString(row, "name") === column);
 }
 
@@ -190,7 +167,7 @@ async function migrateUserCredentials(client: Client): Promise<void> {
     return;
   }
 
-  if (!(await userColumnExists(client, "password_hash"))) {
+  if (!(await columnExists(client, "users", "password_hash"))) {
     await client.execute(`ALTER TABLE users ADD COLUMN password_hash TEXT`);
   }
 
@@ -343,16 +320,16 @@ async function migrateTurso(client: Client): Promise<void> {
     : null;
 
   for (const column of APPLICATION_LEGACY_COLUMNS) {
-    if (!(await columnExists(client, column))) {
+    if (!(await columnExists(client, "applications", column))) {
       await client.execute(`ALTER TABLE applications ADD COLUMN ${column} TEXT`);
     }
   }
 
-  if (!(await columnExists(client, "archived"))) {
+  if (!(await columnExists(client, "applications", "archived"))) {
     await client.execute(`ALTER TABLE applications ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`);
   }
 
-  if (!(await columnExists(client, "pinned"))) {
+  if (!(await columnExists(client, "applications", "pinned"))) {
     await client.execute(`ALTER TABLE applications ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`);
   }
 
@@ -361,12 +338,12 @@ async function migrateTurso(client: Client): Promise<void> {
     await migrateLegacyApplicationNotes(client);
   }
 
-  if (!(await agentApiTokenColumnExists(client, "last_used_at"))) {
+  if (!(await columnExists(client, "agent_api_tokens", "last_used_at"))) {
     await client.execute(`ALTER TABLE agent_api_tokens ADD COLUMN last_used_at TEXT`);
   }
 
   for (const column of ["url", "linkedin_url", "email"] as const) {
-    if (!(await companyColumnExists(client, column))) {
+    if (!(await columnExists(client, "companies", column))) {
       await client.execute(`ALTER TABLE companies ADD COLUMN ${column} TEXT`);
     }
   }

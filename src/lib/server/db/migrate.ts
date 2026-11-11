@@ -8,8 +8,9 @@ import { DEFAULT_USER_ID } from "@/lib/server/defaultUser";
 import { buildDefaultUserInsertArgs } from "./userRepositoryShared";
 import { INSERT_STATUS_HISTORY_SQL } from "./applicationStatusHistoryRepositoryShared";
 
-function columnExists(db: Database.Database, column: string): boolean {
-  const columns = db.prepare("PRAGMA table_info(applications)").all() as { name: string }[];
+// Table/column names are internal literals, never user input. PRAGMA on a missing table yields no rows.
+function columnExists(db: Database.Database, table: string, column: string): boolean {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
   return columns.some((col) => col.name === column);
 }
 
@@ -20,36 +21,12 @@ function tableExists(db: Database.Database, table: string): boolean {
   return row !== undefined;
 }
 
-function agentApiTokenColumnExists(db: Database.Database, column: string): boolean {
-  if (!tableExists(db, "agent_api_tokens")) {
-    return false;
-  }
-  const columns = db.prepare("PRAGMA table_info(agent_api_tokens)").all() as { name: string }[];
-  return columns.some((col) => col.name === column);
-}
-
-function companyColumnExists(db: Database.Database, column: string): boolean {
-  if (!tableExists(db, "companies")) {
-    return false;
-  }
-  const columns = db.prepare("PRAGMA table_info(companies)").all() as { name: string }[];
-  return columns.some((col) => col.name === column);
-}
-
-function userColumnExists(db: Database.Database, column: string): boolean {
-  if (!tableExists(db, "users")) {
-    return false;
-  }
-  const columns = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
-  return columns.some((col) => col.name === column);
-}
-
 function migrateUserCredentials(db: Database.Database): void {
   if (!tableExists(db, "users")) {
     return;
   }
 
-  if (!userColumnExists(db, "password_hash")) {
+  if (!columnExists(db, "users", "password_hash")) {
     db.exec(`ALTER TABLE users ADD COLUMN password_hash TEXT`);
   }
 
@@ -181,16 +158,16 @@ export function migrate(db: Database.Database): void {
   db.exec(readSchemaSql());
 
   for (const column of APPLICATION_LEGACY_COLUMNS) {
-    if (!columnExists(db, column)) {
+    if (!columnExists(db, "applications", column)) {
       db.exec(`ALTER TABLE applications ADD COLUMN ${column} TEXT`);
     }
   }
 
-  if (!columnExists(db, "archived")) {
+  if (!columnExists(db, "applications", "archived")) {
     db.exec(`ALTER TABLE applications ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`);
   }
 
-  if (!columnExists(db, "pinned")) {
+  if (!columnExists(db, "applications", "pinned")) {
     db.exec(`ALTER TABLE applications ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`);
   }
 
@@ -198,12 +175,12 @@ export function migrate(db: Database.Database): void {
 
   migrateLegacyApplicationNotes(db);
 
-  if (!agentApiTokenColumnExists(db, "last_used_at")) {
+  if (!columnExists(db, "agent_api_tokens", "last_used_at")) {
     db.exec(`ALTER TABLE agent_api_tokens ADD COLUMN last_used_at TEXT`);
   }
 
   for (const column of ["url", "linkedin_url", "email"] as const) {
-    if (!companyColumnExists(db, column)) {
+    if (!columnExists(db, "companies", column)) {
       db.exec(`ALTER TABLE companies ADD COLUMN ${column} TEXT`);
     }
   }
