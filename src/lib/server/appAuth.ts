@@ -19,7 +19,7 @@ export async function requireAppAccess(request: Request): Promise<Response | nul
 
 export type AppAccessHandler<TContext> = (request: Request, context: TContext) => Response | Promise<Response>;
 
-type DefaultRouteContext = { params: Promise<Record<string, string>> };
+export type DefaultRouteContext = { params: Promise<Record<string, string>> };
 
 export function withAppAccess<TContext = DefaultRouteContext>(
   handler: AppAccessHandler<TContext>,

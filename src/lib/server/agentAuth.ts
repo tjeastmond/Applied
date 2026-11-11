@@ -3,6 +3,7 @@ import { bearerTokenFromRequest, constantTimeEquals } from "@/lib/server/bearerA
 import { isAgentEnvTokenConfigured } from "@/lib/server/agentEnvToken";
 import { getAgentApiTokenRepository } from "@/lib/server/db";
 import { jsonError } from "@/lib/server/applicationRouteHelpers";
+import type { DefaultRouteContext } from "@/lib/server/appAuth";
 import { log } from "@/lib/server/logging/logger";
 
 export type AgentAuthChannel = "cli" | "api";
@@ -74,7 +75,7 @@ export async function requireAgentAuth(request: Request): Promise<Response | Age
   };
 }
 
-export function withAgentAuth<TContext = undefined>(
+export function withAgentAuth<TContext = DefaultRouteContext>(
   route: string,
   method: string,
   handler: (request: Request, auth: AgentAuthContext, context: TContext) => Response | Promise<Response>,
