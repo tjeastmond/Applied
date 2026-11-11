@@ -23,20 +23,37 @@ export type ApplicationRow = {
   updated_at: string;
 };
 
-export const LIST_APPLICATIONS_SQL = `SELECT
-  id, url, linkedin_url, title, company, applied_at,
-  via_recruiter, recruiter_name, recruiter_firm,
-  contact_email, contact_phone, salary_range, desired_salary, full_jd, status, archived, pinned, created_at, updated_at
-FROM applications ORDER BY pinned DESC, updated_at DESC, created_at DESC`;
+const APPLICATION_COLUMNS = [
+  "id",
+  "url",
+  "linkedin_url",
+  "title",
+  "company",
+  "applied_at",
+  "via_recruiter",
+  "recruiter_name",
+  "recruiter_firm",
+  "contact_email",
+  "contact_phone",
+  "salary_range",
+  "desired_salary",
+  "full_jd",
+  "status",
+  "archived",
+  "pinned",
+  "created_at",
+  "updated_at",
+];
+const FULL_COLUMNS_SQL = APPLICATION_COLUMNS.join(", ");
+// Summary rows never read the (large) full_jd column; fullJd comes back null.
+const SUMMARY_COLUMNS_SQL = APPLICATION_COLUMNS.map((c) => (c === "full_jd" ? "NULL AS full_jd" : c)).join(", ");
+const LIST_ORDER_SQL = "ORDER BY pinned DESC, updated_at DESC, created_at DESC";
 
-/** Same as LIST_APPLICATIONS_SQL but never reads the (large) full_jd column; fullJd comes back null. */
-export const LIST_APPLICATION_SUMMARIES_SQL = LIST_APPLICATIONS_SQL.replace("full_jd,", "NULL AS full_jd,");
+export const LIST_APPLICATIONS_SQL = `SELECT ${FULL_COLUMNS_SQL} FROM applications ${LIST_ORDER_SQL}`;
 
-export const GET_APPLICATION_BY_ID_SQL = `SELECT
-  id, url, linkedin_url, title, company, applied_at,
-  via_recruiter, recruiter_name, recruiter_firm,
-  contact_email, contact_phone, salary_range, desired_salary, full_jd, status, archived, pinned, created_at, updated_at
-FROM applications WHERE id = ?`;
+export const LIST_APPLICATION_SUMMARIES_SQL = `SELECT ${SUMMARY_COLUMNS_SQL} FROM applications ${LIST_ORDER_SQL}`;
+
+export const GET_APPLICATION_BY_ID_SQL = `SELECT ${FULL_COLUMNS_SQL} FROM applications WHERE id = ?`;
 
 export const INSERT_APPLICATION_SQL = `INSERT INTO applications (
   id, url, linkedin_url, title, company, applied_at,

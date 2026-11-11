@@ -13,8 +13,14 @@ export async function archiveStaleApplications(
   options: { dryRun?: boolean; onArchived?: (application: JobApplication) => Promise<void> } = {},
 ): Promise<ArchiveStaleResult> {
   const now = new Date();
+  const repository = getRepository();
+  const staleSummaries = (await repository.listSummaries()).filter((application) =>
+    isStaleApplication(application, now),
+  );
   // Full records: patchApplicationWithSideEffects writes the whole row, so a summary would null full_jd.
-  const stale = (await getRepository().list()).filter((application) => isStaleApplication(application, now));
+  const stale = (await Promise.all(staleSummaries.map((application) => repository.getById(application.id)))).filter(
+    (application): application is JobApplication => application !== null,
+  );
 
   if (options.dryRun) {
     return { affected: stale };
