@@ -255,6 +255,8 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
       const incoming = { ...kept, id: crypto.randomUUID(), title: "Incoming" };
       const orphan = { id: crypto.randomUUID(), applicationId: crypto.randomUUID(), content: "x", createdAt: now };
 
+      // Simulate a connection left with FK enforcement off by an earlier failed replace script.
+      await backend.getTursoClient().execute("PRAGMA foreign_keys = OFF");
       // The application upsert runs before the orphan note fails; nothing may land.
       await expect(backend.importJson(v3([incoming], [orphan]), "upsert")).rejects.toThrow();
       expect((await backend.applications.list()).map((a) => a.id)).toEqual([kept.id]);
