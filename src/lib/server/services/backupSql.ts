@@ -24,7 +24,7 @@ export const UPSERT_CONFLICT_CLAUSES = {
   content = excluded.content`,
   users: `ON CONFLICT(id) DO UPDATE SET
   display_name = excluded.display_name,
-  email = excluded.email,
+  email = CASE WHEN users.password_hash IS NOT NULL THEN users.email ELSE excluded.email END,
   updated_at = excluded.updated_at`,
   application_status_history: `ON CONFLICT(id) DO UPDATE SET
   application_id = excluded.application_id,

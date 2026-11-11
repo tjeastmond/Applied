@@ -189,6 +189,26 @@ describe("backupService", () => {
     expect(db.prepare("SELECT email FROM users WHERE id = ?").get(other.id)).toEqual({ email: null });
   });
 
+  test.each(["json", "sql"] as const)("upsert %s import keeps the owner's current email and login", async (format) => {
+    const db = openDatabase(":memory:");
+    await seedSampleData(db);
+    const users = new SqliteUserRepository(db);
+    await users.ensureDefaultUser();
+    await users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
+    const now = new Date().toISOString();
+    // The backup carries the owner with an older email that another user now holds.
+    db.prepare(
+      "INSERT INTO users (id, display_name, email, created_at, updated_at) VALUES (?, 'Other', 'old@example.com', ?, ?)",
+    ).run(randomUUID(), now, now);
+    const owner = { id: DEFAULT_USER_ID, displayName: "You", email: "old@example.com", createdAt: now, updatedAt: now };
+    const backup = { ...exportJson(db), users: [owner], statusHistory: [] };
+
+    if (format === "json") importJson(db, backup, "upsert");
+    else importSql(db, exportSqlFromRecords(backup.applications, backup.notes, backup.users, [], []), "upsert");
+
+    expect((await users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
+  });
+
   test("sanitizes fullJd HTML on JSON import", async () => {
     const db = openDatabase(":memory:");
     await seedSampleData(db);

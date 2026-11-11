@@ -680,23 +680,19 @@ export function prepareSqlUpsertStatements(sql: string): string[] {
     throw new Error("No INSERT statements found in SQL backup");
   }
 
-  const isUser = (insert: string) => sqlInsertTablePriority(insert) === 0;
-  const upserts = inserts
-    .filter((insert) => !isUser(insert))
+  return inserts
     .sort((left, right) => sqlInsertTablePriority(left) - sqlInsertTablePriority(right))
-    .map((insert) => insertToUpsertStatement(insert));
-  const users = inserts.filter(isUser);
-  if (users.length === 0) return upserts;
-  // Stage user rows so emails held by other users can be nulled in SQL (a plain table: temp tables are not safe on Turso).
+    .map((insert) => userInsertToUpsert(insert) ?? insertToUpsertStatement(insert));
+}
+
+// Wraps a user's VALUES in a CTE so its email can be nulled when another user holds it (the unique index would fail).
+function userInsertToUpsert(insert: string): string | null {
+  const match = /^INSERT\s+(?:OR\s+\w+\s+)?INTO\s+users\s*\(([^)]*)\)\s*VALUES\s*([\s\S]*)$/i.exec(insert);
+  if (!match) return null;
   const cols = "id, display_name, email, created_at, updated_at";
-  return [
-    "DROP TABLE IF EXISTS incoming_users",
-    `CREATE TABLE incoming_users AS SELECT ${cols} FROM users WHERE 0`,
-    ...users.map((insert) => insert.replace(/^INSERT\s+(?:OR\s+\w+\s+)?INTO\s+users\b/i, "INSERT INTO incoming_users")),
-    `INSERT INTO users (${cols}) SELECT id, display_name, ${USER_EMAIL_IF_FREE_SQL("i.email", "i.id")}, created_at, updated_at FROM incoming_users i WHERE true\n${UPSERT_CONFLICT_CLAUSES.users}`,
-    "DROP TABLE incoming_users",
-    ...upserts,
-  ];
+  return `WITH i(${match[1]}) AS (VALUES ${match[2]})
+INSERT INTO users (${cols}) SELECT id, display_name, ${USER_EMAIL_IF_FREE_SQL("i.email", "i.id")}, created_at, updated_at FROM i WHERE true
+${UPSERT_CONFLICT_CLAUSES.users};`;
 }
 
 /** Rows whose stored full_jd changes when sanitized; SQL imports bypass parseBackupJson's sanitizing. */

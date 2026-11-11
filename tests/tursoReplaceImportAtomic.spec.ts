@@ -202,6 +202,16 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
       expect((await backend.users.getCredentialByEmail("o@example.com"))?.id).toBe(DEFAULT_USER_ID);
       const total = await client.execute("SELECT COUNT(*) FROM users");
       expect(Number(total.rows[0]?.[0])).toBe(3);
+
+      // Upsert with the owner's older email, now held by another user: the owner keeps the current email and login.
+      await client.execute({
+        sql: "INSERT INTO users (id, display_name, email, created_at, updated_at) VALUES (?, 'Old', 'old@example.com', ?, ?)",
+        args: [crypto.randomUUID(), now, now],
+      });
+      const oldOwner = { ...owner, email: "old@example.com" };
+      await backend.importJson(v3([oldOwner]), "upsert");
+      await backend.importSql(exportSqlFromRecords([], [], [oldOwner], [], []), "upsert");
+      expect((await backend.users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
     } finally {
       await client.execute({ sql: "DELETE FROM users WHERE id <> ?", args: [DEFAULT_USER_ID] }).catch(() => undefined);
       await backend.importJson(empty, "replace");
