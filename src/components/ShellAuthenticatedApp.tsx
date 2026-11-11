@@ -96,10 +96,6 @@ export function ShellAuthenticatedApp({
     router.push(appViewToPath("applications"));
   }, [router]);
 
-  const handleUserUpdated = useCallback((user: User) => {
-    setCurrentUser(user);
-  }, []);
-
   const handleCompanyOpen = useCallback(
     (name: string) => {
       const company = findCompanyByName(companiesController.companies, name);
@@ -149,7 +145,7 @@ export function ShellAuthenticatedApp({
             {onAnalyticsRoute ? (
               <AnalyticsPage applications={controller.applications} onAddApplication={controller.openAddForm} />
             ) : onProfileRoute ? (
-              <ProfilePage user={currentUser} onUserUpdated={handleUserUpdated} onCancel={handleLeaveProfile} />
+              <ProfilePage user={currentUser} onUserUpdated={setCurrentUser} onCancel={handleLeaveProfile} />
             ) : companyId ? (
               <CompanyPage
                 companyId={companyId}
