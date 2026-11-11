@@ -76,7 +76,11 @@ export function BackupImportDialog({ open, onOpenChange, onImported }: BackupImp
       onOpenChange(false);
       resetImportState();
       toast.success(
-        `${toastMessages.backupImported} ${result.imported.applications} application(s), ${result.imported.notes} note(s).`,
+        `${toastMessages.backupImported} ${result.imported.applications} application(s), ${result.imported.notes} note(s).${
+          result.emailsCleared
+            ? ` ${result.emailsCleared} restored user email(s) cleared because the owner already uses them.`
+            : ""
+        }`,
       );
     } catch (error) {
       toast.error(errorMessage(error, toastMessages.backupImportFailed));
