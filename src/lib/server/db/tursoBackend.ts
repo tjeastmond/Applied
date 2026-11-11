@@ -26,6 +26,7 @@ import {
   applicationRowToUpdateArgs,
   buildBulkArchiveByStatusesSql,
   CLEAR_PINNED_ON_ARCHIVED_SQL,
+  DELETE_APPLICATION_CHILDREN_SQL,
   DELETE_APPLICATION_SQL,
   TOUCH_APPLICATION_SQL,
   GET_APPLICATION_BY_ID_SQL,
@@ -659,8 +660,18 @@ class TursoJobApplicationRepository implements JobApplicationRepository {
 
   async delete(id: string): Promise<boolean> {
     await this.ready;
-    const result = await this.client.execute({ sql: DELETE_APPLICATION_SQL, args: [id] });
-    return result.rowsAffected > 0;
+    const tx = await this.client.transaction("write");
+    try {
+      for (const sql of DELETE_APPLICATION_CHILDREN_SQL) await tx.execute({ sql, args: [id] });
+      const result = await tx.execute({ sql: DELETE_APPLICATION_SQL, args: [id] });
+      await tx.commit();
+      return result.rowsAffected > 0;
+    } catch (error) {
+      if (!tx.closed) await tx.rollback().catch(() => undefined);
+      throw error;
+    } finally {
+      tx.close();
+    }
   }
 }
 

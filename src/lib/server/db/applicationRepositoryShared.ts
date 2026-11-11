@@ -87,6 +87,11 @@ export const UPDATE_APPLICATION_SQL = `UPDATE applications SET
   updated_at = @updated_at
 WHERE id = @id`;
 
+// Children are deleted explicitly: Turso connections can have foreign_keys OFF, which skips ON DELETE CASCADE.
+export const DELETE_APPLICATION_CHILDREN_SQL = [
+  `DELETE FROM application_notes WHERE application_id = ?`,
+  `DELETE FROM application_status_history WHERE application_id = ?`,
+];
 export const DELETE_APPLICATION_SQL = `DELETE FROM applications WHERE id = ?`;
 export const TOUCH_APPLICATION_SQL = `UPDATE applications SET updated_at = ? WHERE id = ?`;
 
