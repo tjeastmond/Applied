@@ -1,5 +1,5 @@
 import { log } from "@/lib/server/logging/logger";
-import { assertSafeFetchUrl } from "@/lib/server/urlSafety";
+import { assertSafeFetchUrl, safeFetchInit } from "@/lib/server/urlSafety";
 import { isGenericAshbyTitle, parseAshbyJobUrl, type AshbyJobPath, type AshbyRole } from "./extractAshbyRole";
 
 const ASHBY_GRAPHQL_URL = "https://jobs.ashbyhq.com/api/non-user-graphql";
@@ -78,6 +78,7 @@ async function fetchViaGraphql(jobPath: AshbyJobPath): Promise<{ role: AshbyRole
   await assertSafeFetchUrl(url);
 
   const response = await fetch(url, {
+    ...safeFetchInit,
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -111,6 +112,7 @@ async function fetchViaBoardApi(
   await assertSafeFetchUrl(url);
 
   const response = await fetch(url, {
+    ...safeFetchInit,
     headers: {
       Accept: "application/json",
       "User-Agent": USER_AGENT,

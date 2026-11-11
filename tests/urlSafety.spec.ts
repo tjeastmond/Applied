@@ -1,5 +1,16 @@
-import { describe, expect, test } from "vitest";
-import { assertPrivateIpAddressIsBlocked, assertSafeFetchUrl, UnsafeFetchUrlError } from "@/lib/server/urlSafety";
+import { describe, expect, test, vi } from "vitest";
+import {
+  assertPrivateIpAddressIsBlocked,
+  assertSafeFetchUrl,
+  safeConnectLookup,
+  UnsafeFetchUrlError,
+} from "@/lib/server/urlSafety";
+
+vi.mock("node:dns", () => ({
+  // Simulates a rebinding server: the connect-time answer is private.
+  lookup: (_host: string, _opts: unknown, cb: (e: null, a: { address: string; family: number }[]) => void) =>
+    cb(null, [{ address: "127.0.0.1", family: 4 }]),
+}));
 
 describe("urlSafety", () => {
   test("blocks loopback IPv4 literals", () => {
@@ -37,5 +48,22 @@ describe("urlSafety", () => {
   test("allows public IPv4-mapped IPv6 addresses", () => {
     expect(() => assertPrivateIpAddressIsBlocked("::ffff:8.8.8.8")).not.toThrow();
     expect(() => assertPrivateIpAddressIsBlocked("::ffff:808:808")).not.toThrow();
+  });
+});
+
+describe("urlSafety ipv6 and rebinding", () => {
+  test.each(["fe80::1", "fe90::1", "febf::1", "fec0::1"])("blocks IPv6 %s", (address) => {
+    expect(() => assertPrivateIpAddressIsBlocked(address)).toThrow(UnsafeFetchUrlError);
+  });
+
+  test("allows public IPv6 addresses", () => {
+    expect(() => assertPrivateIpAddressIsBlocked("2001:4860:4860::8888")).not.toThrow();
+  });
+
+  test("connect-time lookup rejects a private address", async () => {
+    const err = await new Promise<Error | null>((resolve) =>
+      safeConnectLookup("rebind.example", { all: true }, (e) => resolve(e)),
+    );
+    expect(err).toBeInstanceOf(UnsafeFetchUrlError);
   });
 });

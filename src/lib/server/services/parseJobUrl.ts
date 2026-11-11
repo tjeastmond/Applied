@@ -7,6 +7,7 @@ import { parseParsedApplicationSalaryFields } from "@/lib/schemas/application";
 import { parseJobUrlResultSchema, type ParseJobUrlResult } from "@/lib/schemas/parseJob";
 import {
   assertSafeFetchUrl,
+  safeFetchInit,
   MAX_FETCH_REDIRECTS,
   resolveRedirectUrl,
   UnsafeFetchUrlError,
@@ -109,6 +110,7 @@ export async function parseJobUrl(urlString: string): Promise<ParseJobUrlResult>
           Accept: "text/html,application/xhtml+xml",
         },
         redirect: "manual",
+        ...safeFetchInit,
       });
 
       if (nextResponse.status >= 300 && nextResponse.status < 400) {
