@@ -36,6 +36,7 @@ function cachedHash(): { hash: string | null } | null {
 }
 
 /** Signing secret bound to the owner's password hash so a password change invalidates old sessions. Cached: verify path only. */
+// shortcut: session secret is bound to the password hash, so sessions signed before this shipped were rejected once and any password change/setup logs out all sessions; accept the token-only secret as a fallback only if one-time logouts become a problem (it would let pre-change sessions survive).
 export async function getSessionSecret(accessToken: string): Promise<string> {
   return withHash(accessToken, (cachedHash() ?? { hash: await readHash() }).hash);
 }
