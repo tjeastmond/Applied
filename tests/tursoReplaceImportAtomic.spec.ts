@@ -219,4 +219,54 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
       backend.reset();
     }
   }, 60_000);
+
+  test("a failing upsert import rolls back entirely; a good one merges", async () => {
+    const tursoConfig = requireTursoTestConfig();
+    const backend = new TursoDatabaseBackend({
+      provider: "turso",
+      url: tursoConfig.url,
+      authToken: tursoConfig.authToken,
+    });
+    const empty = { version: 1, exportedAt: new Date().toISOString(), applications: [], notes: [] };
+    const now = new Date().toISOString();
+    const users = [
+      { id: DEFAULT_USER_ID, displayName: "You", email: null as string | null, createdAt: now, updatedAt: now },
+    ];
+    const v3 = (applications: unknown[], notes: unknown[] = []) => ({
+      ...empty,
+      version: 3,
+      applications,
+      notes,
+      users,
+      statusHistory: [],
+      companies: [],
+    });
+
+    try {
+      await backend.importJson(empty, "replace");
+      const kept = await backend.applications.create(
+        createJobApplicationSchema.parse({
+          url: "https://jobs.example.com/upsert-keep",
+          title: "Keeper",
+          company: "Acme",
+          appliedAt: "2026-06-01",
+        }),
+      );
+      const incoming = { ...kept, id: crypto.randomUUID(), title: "Incoming" };
+      const orphan = { id: crypto.randomUUID(), applicationId: crypto.randomUUID(), content: "x", createdAt: now };
+
+      // The application upsert runs before the orphan note fails; nothing may land.
+      await expect(backend.importJson(v3([incoming], [orphan]), "upsert")).rejects.toThrow();
+      expect((await backend.applications.list()).map((a) => a.id)).toEqual([kept.id]);
+      const pragma = await backend.getTursoClient().execute("PRAGMA foreign_keys");
+      expect(Number(pragma.rows[0]?.[0])).toBe(1);
+
+      await backend.importJson(v3([incoming]), "upsert");
+      expect((await backend.applications.list()).map((a) => a.id).sort()).toEqual([kept.id, incoming.id].sort());
+    } finally {
+      await backend.importJson(empty, "replace");
+      await backend.getTursoClient().execute("UPDATE users SET password_hash = NULL");
+      backend.reset();
+    }
+  }, 30_000);
 });
