@@ -617,23 +617,42 @@ describe("backupService", () => {
     );
     const lines = sql.split("\n");
     expect(lines.slice(0, 3)).toEqual(["-- Applied.dev database backup", expect.stringMatching(/^-- Exported: /), ""]);
-    expect(lines.filter((l) => /^(INSERT|DROP|COMMIT|BEGIN|PRAGMA)/.test(l)).join("\n")).toMatchInlineSnapshot(`
-      "PRAGMA foreign_keys = OFF;
-      BEGIN TRANSACTION;
-      DROP TABLE IF EXISTS application_status_history;
-      DROP TABLE IF EXISTS application_notes;
-      DROP TABLE IF EXISTS applications;
-      DROP TABLE IF EXISTS companies;
-      DROP TABLE IF EXISTS users;
-      INSERT INTO users (id, display_name, email, created_at, updated_at) VALUES ('u1', 'Me', NULL, 'c', 'u');
+    expect(lines.filter((l) => /^(DROP|BEGIN|PRAGMA)/.test(l))).toMatchInlineSnapshot(`
+      [
+        "PRAGMA foreign_keys = OFF;",
+        "BEGIN TRANSACTION;",
+        "DROP TABLE IF EXISTS application_status_history;",
+        "DROP TABLE IF EXISTS application_notes;",
+        "DROP TABLE IF EXISTS applications;",
+        "DROP TABLE IF EXISTS companies;",
+        "DROP TABLE IF EXISTS users;",
+        "PRAGMA foreign_keys = ON;",
+      ]
+    `);
+    // Everything after the schema block, multi-line note included.
+    expect(sql.slice(sql.indexOf("INSERT INTO users"))).toMatchInlineSnapshot(`
+      "INSERT INTO users (id, display_name, email, created_at, updated_at) VALUES ('u1', 'Me', NULL, 'c', 'u');
       INSERT INTO companies (id, name, url, linkedin_url, email, ignored, created_at, updated_at) VALUES ('c1', 'Acme', NULL, 'l''i', NULL, 1, 'c', 'u');
       INSERT INTO applications (id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm, contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, archived, pinned, created_at, updated_at) VALUES ('a1', 'https://x.test/o''brien', NULL, 'Eng ''Lead''', 'Acme', '2026-06-01', 1, 'Rec', NULL, NULL, NULL, NULL, '$1''0', NULL, '<p>It''s</p>', 'applied', 0, 1, '2026-06-01T00:00:00.000Z', '2026-06-02T00:00:00.000Z');
       INSERT INTO applications (id, url, linkedin_url, title, company, applied_at, via_recruiter, recruiter_name, recruiter_firm, contact_email, contact_phone, salary_range, desired_salary, notes, full_jd, status, archived, pinned, created_at, updated_at) VALUES ('a2', 'https://x.test/o''brien', NULL, 'Eng ''Lead''', 'Acme', '2026-06-01', 0, 'Rec', NULL, NULL, NULL, NULL, '$1''0', NULL, NULL, 'rejected', 1, 0, '2026-06-01T00:00:00.000Z', '2026-06-02T00:00:00.000Z');
       INSERT INTO application_notes (id, application_id, content, created_at) VALUES ('n1', 'a1', 'it''s
+      multi', '2026-06-03T00:00:00.000Z');
       INSERT INTO application_status_history (id, application_id, user_id, from_status, to_status, changed_at) VALUES ('h1', 'a1', 'u1', NULL, 'applied', 't');
+
       COMMIT;
-      PRAGMA foreign_keys = ON;"
+      PRAGMA foreign_keys = ON;
+      "
     `);
+  });
+
+  test("SQL export handles more rows than the call-argument limit", () => {
+    const notes = Array.from({ length: 130_000 }, (_, i) => ({
+      id: `n${i}`,
+      applicationId: "a1",
+      content: "x",
+      createdAt: "t",
+    }));
+    expect(() => exportSqlFromRecords([], notes, [], [], [])).not.toThrow();
   });
 });
 

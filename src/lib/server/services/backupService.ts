@@ -263,16 +263,19 @@ export function exportSqlFromRecords(
     "",
   ];
 
-  lines.push(
+  // Array spread, not push(...rows): push hits the argument limit on large backups.
+  return [
+    ...lines,
     ...users.map((r) => insertSql("users", userToRow(r))),
     ...companies.map((r) => insertSql("companies", companyToRow(r))),
     ...applications.map((r) => insertSql("applications", applicationToRow({ ...r, fullJd: r.fullJd ?? null }))),
     ...notes.map((r) => insertSql("application_notes", noteToRow(r))),
     ...statusHistory.map((r) => insertSql("application_status_history", statusHistoryToRow(r))),
-  );
-
-  lines.push("", "COMMIT;", "PRAGMA foreign_keys = ON;", "");
-  return lines.join("\n");
+    "",
+    "COMMIT;",
+    "PRAGMA foreign_keys = ON;",
+    "",
+  ].join("\n");
 }
 
 export function exportSql(db: Database.Database): string {
