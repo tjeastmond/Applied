@@ -3,6 +3,7 @@ import { withAppAccess } from "@/lib/server/appAuth";
 import { getDatabaseBackend, resetDatabaseBackend } from "@/lib/server/db";
 import { logAndRespondFromUnknown } from "@/lib/server/applicationRouteHelpers";
 import { log } from "@/lib/server/logging/logger";
+import { clearSessionSecretCache } from "@/lib/server/sessionSecret";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -61,6 +62,7 @@ export const POST = withAppAccess(async (request: Request) => {
         ? await backend.importJson(JSON.parse(content) as unknown, modeParsed.data)
         : await backend.importSql(content, modeParsed.data);
 
+    clearSessionSecretCache();
     if (format === "sql" && modeParsed.data === "replace") {
       resetDatabaseBackend();
     }

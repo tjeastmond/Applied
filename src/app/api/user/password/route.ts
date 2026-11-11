@@ -4,7 +4,7 @@ import { getUserRepository } from "@/lib/server/db";
 import { withAppAccess } from "@/lib/server/appAuth";
 import { resolveCurrentUserId } from "@/lib/server/currentUser";
 import { log } from "@/lib/server/logging/logger";
-import { buildSessionCookieHeader } from "@/lib/server/sessionSecret";
+import { buildSessionCookieHeader, clearSessionSecretCache } from "@/lib/server/sessionSecret";
 import { hashPassword, verifyPassword } from "@/lib/server/passwordHash";
 import { parseRequestBody, parsedBodyOrResponse } from "@/lib/server/parseRequestBody";
 import { changePasswordSchema } from "@/lib/schemas/auth";
@@ -53,6 +53,7 @@ export const POST = withAppAccess(async (request: Request) => {
   if (!updated) {
     return jsonError("User not found", 404);
   }
+  clearSessionSecretCache();
 
   log.info("user password changed", {
     route: "/api/user/password",
