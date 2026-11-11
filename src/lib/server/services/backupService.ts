@@ -380,12 +380,12 @@ export function exportSql(db: Database.Database): string {
   );
 }
 
-type PasswordHashes = { id: string; password_hash: string }[];
+type PasswordHashes = { id: string; email: string | null; password_hash: string }[];
 
 // Backups exclude password hashes, so a replace restore must carry them over for users that still exist.
 function clearAllData(db: Database.Database): PasswordHashes {
   const hashes = db
-    .prepare("SELECT id, password_hash FROM users WHERE password_hash IS NOT NULL")
+    .prepare("SELECT id, email, password_hash FROM users WHERE password_hash IS NOT NULL")
     .all() as PasswordHashes;
   db.exec(
     `DELETE FROM application_status_history; DELETE FROM application_notes; DELETE FROM applications; DELETE FROM companies; DELETE FROM users;`,
@@ -394,8 +394,9 @@ function clearAllData(db: Database.Database): PasswordHashes {
 }
 
 function restorePasswordHashes(db: Database.Database, hashes: PasswordHashes): void {
-  const update = db.prepare("UPDATE users SET password_hash = ? WHERE id = ?");
-  for (const { id, password_hash } of hashes) update.run(password_hash, id);
+  // Email travels with the hash: a restored owner without an email could not sign in with the carried-over hash.
+  const update = db.prepare("UPDATE users SET email = ?, password_hash = ? WHERE id = ?");
+  for (const { id, email, password_hash } of hashes) update.run(email, password_hash, id);
 }
 
 function importJsonData(db: Database.Database, data: BackupJson, mode: ImportMode): ImportResult {
@@ -550,6 +551,34 @@ function isAllowedSqlBackupStatement(statement: string): boolean {
   }
 
   return false;
+}
+
+/**
+ * Wraps a validated replace script so the users' id/email/password_hash survive inside its own transaction.
+ * Backups carry no credentials; the temp table keeps them for ids that still exist after the restore.
+ */
+export function withCredentialPreservation(sql: string): string {
+  const statements = splitSqlStatements(sql);
+  const isBegin = (s: string) => /^BEGIN(?:\s+TRANSACTION)?$/i.test(s.replace(/\s+/g, " ").trim());
+  const isCommit = (s: string) => /^COMMIT$/i.test(s.trim());
+  const begin = statements.findIndex(isBegin);
+  const commit = statements.findLastIndex(isCommit);
+  if (begin < 0 || commit < begin) {
+    throw new Error("SQL backup replace script must be wrapped in BEGIN and COMMIT");
+  }
+  statements.splice(
+    commit,
+    0,
+    "ALTER TABLE users ADD COLUMN password_hash TEXT",
+    "UPDATE users SET email = (SELECT email FROM kept_credentials k WHERE k.id = users.id), password_hash = (SELECT password_hash FROM kept_credentials k WHERE k.id = users.id) WHERE id IN (SELECT id FROM kept_credentials)",
+    "DROP TABLE kept_credentials",
+  );
+  statements.splice(
+    begin + 1,
+    0,
+    "CREATE TEMP TABLE kept_credentials AS SELECT id, email, password_hash FROM users WHERE password_hash IS NOT NULL",
+  );
+  return statements.map((statement) => `${statement};`).join("\n");
 }
 
 export function assertSqlBackupIsSafe(sql: string): void {

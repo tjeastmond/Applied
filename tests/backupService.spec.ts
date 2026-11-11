@@ -72,6 +72,24 @@ describe("backupService", () => {
     expect((await users.getCredentialById(DEFAULT_USER_ID))?.passwordHash).toBe("scrypt$hash");
   });
 
+  test.each(["json", "sql"] as const)(
+    "replace %s import of an email-less backup keeps login working",
+    async (format) => {
+      const db = openDatabase(":memory:");
+      await seedSampleData(db);
+      const users = new SqliteUserRepository(db);
+      await users.ensureDefaultUser();
+      // Backup is taken before password setup, so its user has email null.
+      const backup = format === "json" ? exportJson(db) : exportSql(db);
+      await users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
+
+      if (format === "json") importJson(db, backup, "replace");
+      else importSql(db, backup as string, "replace");
+
+      expect((await users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
+    },
+  );
+
   test("sanitizes fullJd HTML on JSON import", async () => {
     const db = openDatabase(":memory:");
     await seedSampleData(db);

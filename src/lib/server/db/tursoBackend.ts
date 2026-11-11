@@ -19,6 +19,7 @@ import {
   noteToRow,
   parseBackupJson,
   assertSqlBackupIsSafe,
+  withCredentialPreservation,
   prepareSqlUpsertStatements,
   UPSERT_APPLICATION_SQL,
   UPSERT_COMPANY_SQL,
@@ -902,11 +903,8 @@ export class TursoDatabaseBackend implements DatabaseBackend {
         prepareSqlUpsertStatements(trimmed).map((sql) => ({ sql })),
       );
     } else {
-      // Backups exclude password hashes; carry them over for users that still exist after the restore.
-      const hashes = (await this.client.execute("SELECT id, password_hash FROM users WHERE password_hash IS NOT NULL"))
-        .rows;
       try {
-        await this.client.executeMultiple(trimmed);
+        await this.client.executeMultiple(withCredentialPreservation(trimmed));
       } catch (error) {
         // The script's BEGIN stays open on the stream after a failed statement; roll back so old data survives.
         await this.client.execute("ROLLBACK").catch(() => undefined);
@@ -916,12 +914,6 @@ export class TursoDatabaseBackend implements DatabaseBackend {
       }
       // The script recreated tables from the backup schema; re-add password_hash, indexes and other migrated columns.
       await migrateTurso(this.client);
-      for (const row of hashes) {
-        await this.client.execute({
-          sql: "UPDATE users SET password_hash = ? WHERE id = ?",
-          args: [row.password_hash, row.id],
-        });
-      }
     }
 
     const stored = await this.client.execute("SELECT id, full_jd FROM applications WHERE full_jd IS NOT NULL");

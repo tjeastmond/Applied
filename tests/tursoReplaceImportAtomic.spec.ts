@@ -75,6 +75,24 @@ describe("TursoDatabaseBackend replace import atomicity", () => {
       await backend.users.setOwnerPassword({ email: "o@example.com", passwordHash: "scrypt$hash", displayName: null });
       await backend.importJson({ ...empty, version: 3, users, statusHistory: [], companies: [] }, "replace");
       await expect(backend.users.hasPasswordLogin()).resolves.toBe(true);
+      // The backup user has email null; the restored owner keeps its email and hash so login still works.
+      expect((await backend.users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
+
+      // A failed replace leaves email and hash unchanged.
+      await expect(
+        backend.importJson(
+          {
+            ...empty,
+            version: 3,
+            applications: [incoming],
+            users,
+            statusHistory: [entry, entry],
+            companies: [],
+          },
+          "replace",
+        ),
+      ).rejects.toThrow();
+      expect((await backend.users.getCredentialByEmail("o@example.com"))?.passwordHash).toBe("scrypt$hash");
     } finally {
       await backend.importJson(empty, "replace");
       // The default owner survives replace imports with its hash; clear it so other specs see a passwordless DB.
