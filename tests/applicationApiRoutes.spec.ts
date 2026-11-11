@@ -579,7 +579,14 @@ describe("application API routes", () => {
   test("archive-stale marks old applications no_response and archived with history", async () => {
     const make = (url: string, status: "applied" | "offer") =>
       getRepository().create(
-        createJobApplicationSchema.parse({ url, title: "T", company: "C", appliedAt: "2026-01-01", status }),
+        createJobApplicationSchema.parse({
+          url,
+          title: "T",
+          company: "C",
+          appliedAt: "2026-01-01",
+          status,
+          fullJd: "<p>Keep me</p>",
+        }),
       );
     const stale = await make("https://jobs.example.com/stale", "applied");
     const offer = await make("https://jobs.example.com/offer", "offer");
@@ -605,6 +612,7 @@ describe("application API routes", () => {
       });
       const history = await getStatusHistoryRepository().listByApplicationId(stale.id);
       expect(history[0]).toMatchObject({ fromStatus: "applied", toStatus: "no_response" });
+      expect((await getRepository().getById(stale.id))?.fullJd).toBe("<p>Keep me</p>");
     } finally {
       vi.useRealTimers();
     }
