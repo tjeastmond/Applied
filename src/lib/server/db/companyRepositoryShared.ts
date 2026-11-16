@@ -33,6 +33,9 @@ export const UPDATE_COMPANY_SQL = `UPDATE companies SET
   updated_at = @updated_at
 WHERE id = @id`;
 
+// Applications reference companies by name, so a rename must carry their company text along.
+export const RENAME_COMPANY_APPLICATIONS_SQL = `UPDATE applications SET company = ? WHERE lower(trim(company)) = lower(trim(?))`;
+
 export const SET_COMPANY_IGNORED_SQL = `UPDATE companies SET
   ignored = @ignored,
   updated_at = @updated_at

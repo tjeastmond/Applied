@@ -11,6 +11,7 @@ import {
   INSERT_COMPANY_SQL,
   LIST_COMPANIES_SQL,
   normalizedNamesEqual,
+  RENAME_COMPANY_APPLICATIONS_SQL,
   rowToCompany,
   SET_COMPANY_IGNORED_SQL,
   UPDATE_COMPANY_SQL,
@@ -24,6 +25,8 @@ export class SqliteCompanyRepository implements CompanyRepository {
   private readonly insertStmt;
   private readonly updateStmt;
   private readonly setIgnoredStmt;
+  private readonly renameApplicationsStmt;
+  private readonly applyUpdate;
 
   constructor(db: Database.Database) {
     this.listStmt = db.prepare(LIST_COMPANIES_SQL);
@@ -32,6 +35,24 @@ export class SqliteCompanyRepository implements CompanyRepository {
     this.insertStmt = db.prepare(INSERT_COMPANY_SQL);
     this.updateStmt = db.prepare(UPDATE_COMPANY_SQL);
     this.setIgnoredStmt = db.prepare(SET_COMPANY_IGNORED_SQL);
+    this.renameApplicationsStmt = db.prepare(RENAME_COMPANY_APPLICATIONS_SQL);
+    this.applyUpdate = db.transaction((updated: Company, previousName: string): boolean => {
+      const result = this.updateStmt.run({
+        id: updated.id,
+        name: updated.name,
+        url: updated.url,
+        linkedin_url: updated.linkedinUrl,
+        email: updated.email,
+        updated_at: updated.updatedAt,
+      });
+      if (result.changes === 0) {
+        return false;
+      }
+      if (updated.name !== previousName) {
+        this.renameApplicationsStmt.run(updated.name, previousName);
+      }
+      return true;
+    });
   }
 
   list(options?: CompanyListOptions): Promise<Company[]> {
@@ -74,19 +95,7 @@ export class SqliteCompanyRepository implements CompanyRepository {
     }
 
     const updated = buildCompanyUpdateRow(existing, input);
-    const result = this.updateStmt.run({
-      id: updated.id,
-      name: updated.name,
-      url: updated.url,
-      linkedin_url: updated.linkedinUrl,
-      email: updated.email,
-      updated_at: updated.updatedAt,
-    });
-    if (result.changes === 0) {
-      return null;
-    }
-
-    return updated;
+    return this.applyUpdate(updated, existing.name) ? updated : null;
   }
 
   async setIgnored(id: string, ignored: boolean): Promise<Company | null> {

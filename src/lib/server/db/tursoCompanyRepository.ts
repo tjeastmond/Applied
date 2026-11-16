@@ -11,6 +11,7 @@ import {
   INSERT_COMPANY_SQL,
   LIST_COMPANIES_SQL,
   normalizedNamesEqual,
+  RENAME_COMPANY_APPLICATIONS_SQL,
   rowToCompany,
   SET_COMPANY_IGNORED_SQL,
   UPDATE_COMPANY_SQL,
@@ -95,21 +96,33 @@ export class TursoCompanyRepository implements CompanyRepository {
     }
 
     const updated = buildCompanyUpdateRow(existing, input);
-    const result = await this.client.execute(
-      bindNamed(UPDATE_COMPANY_SQL, {
-        id: updated.id,
-        name: updated.name,
-        url: updated.url,
-        linkedin_url: updated.linkedinUrl,
-        email: updated.email,
-        updated_at: updated.updatedAt,
-      }),
-    );
-    if (result.rowsAffected === 0) {
-      return null;
+    const tx = await this.client.transaction("write");
+    try {
+      const result = await tx.execute(
+        bindNamed(UPDATE_COMPANY_SQL, {
+          id: updated.id,
+          name: updated.name,
+          url: updated.url,
+          linkedin_url: updated.linkedinUrl,
+          email: updated.email,
+          updated_at: updated.updatedAt,
+        }),
+      );
+      if (result.rowsAffected === 0) {
+        await tx.rollback();
+        return null;
+      }
+      if (updated.name !== existing.name) {
+        await tx.execute({ sql: RENAME_COMPANY_APPLICATIONS_SQL, args: [updated.name, existing.name] });
+      }
+      await tx.commit();
+      return updated;
+    } catch (error) {
+      if (!tx.closed) await tx.rollback().catch(() => undefined);
+      throw error;
+    } finally {
+      tx.close();
     }
-
-    return updated;
   }
 
   async setIgnored(id: string, ignored: boolean): Promise<Company | null> {

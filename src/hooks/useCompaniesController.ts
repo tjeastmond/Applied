@@ -12,6 +12,7 @@ type UseCompaniesControllerOptions = {
   initialCompanies: Company[];
   applications: JobApplication[];
   routeViewMode: CompanyViewMode;
+  onApplicationsUpdated?: (applications: JobApplication[]) => void;
 };
 
 type NewCompanyFormState = {
@@ -32,6 +33,7 @@ export function useCompaniesController({
   initialCompanies,
   applications,
   routeViewMode,
+  onApplicationsUpdated,
 }: UseCompaniesControllerOptions) {
   const [companies, setCompanies] = useState(initialCompanies);
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,11 +96,28 @@ export function useCompaniesController({
     }
   }, [newCompanyForm]);
 
-  const handleUpdateCompany = useCallback(async (id: string, input: PatchCompanyInput) => {
-    const updated = await patchCompany(id, input);
-    setCompanies((current) => sortCompanies(current.map((item) => (item.id === updated.id ? updated : item))));
-    return updated;
-  }, []);
+  const handleUpdateCompany = useCallback(
+    async (id: string, input: PatchCompanyInput) => {
+      const previousName = companies.find((item) => item.id === id)?.name;
+      const updated = await patchCompany(id, input);
+      setCompanies((current) => sortCompanies(current.map((item) => (item.id === updated.id ? updated : item))));
+      if (previousName !== undefined && previousName !== updated.name) {
+        // Mirrors RENAME_COMPANY_APPLICATIONS_SQL so local cards match the server without a refetch.
+        const matchKey = previousName.trim().toLowerCase();
+        const matches = (application: JobApplication) => application.company?.trim().toLowerCase() === matchKey;
+        if (applications.some(matches)) {
+          // handleApplicationsUpdated replaces the whole list, so pass every application.
+          onApplicationsUpdated?.(
+            applications.map((application) =>
+              matches(application) ? { ...application, company: updated.name } : application,
+            ),
+          );
+        }
+      }
+      return updated;
+    },
+    [applications, companies, onApplicationsUpdated],
+  );
 
   const clearFilters = useCallback(() => {
     setSearchQuery("");

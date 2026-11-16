@@ -241,10 +241,18 @@ describe("TursoDatabaseBackend", { timeout: 30_000 }, () => {
         "replace",
       );
       const company = await backend.companies.create({ name: "Acme" });
+      const newApplication = (url: string, companyName: string) =>
+        backend.applications.create(
+          createJobApplicationSchema.parse({ url, title: "Engineer", company: companyName, appliedAt: "2026-01-01" }),
+        );
+      const related = await newApplication("https://jobs.example.com/acme", "Acme");
+      const unrelated = await newApplication("https://jobs.example.com/other", "Other Co");
 
       expect((await backend.companies.update(company.id, { name: "Acme Renamed", email: "hr@acme.test" }))?.name).toBe(
         "Acme Renamed",
       );
+      expect((await backend.applications.getById(related.id))?.company).toBe("Acme Renamed");
+      expect((await backend.applications.getById(unrelated.id))?.company).toBe("Other Co");
       expect(await backend.companies.getById(company.id)).toMatchObject({
         name: "Acme Renamed",
         email: "hr@acme.test",
