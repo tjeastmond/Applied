@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applicationCompanyNamesToRename,
+  renameCompanyInSelection,
   companyIdFromPath,
   companyPath,
   deriveCompanyContacts,
@@ -132,5 +133,15 @@ describe("applicationCompanyNamesToRename", () => {
 
   it("is a no-op when the name is unchanged", () => {
     expect(applicationCompanyNamesToRename(["Acme"], "Acme", "Acme", [])).toEqual([]);
+  });
+});
+
+describe("renameCompanyInSelection", () => {
+  it("renames matching selections, dedupes, and respects the ambiguity guard", () => {
+    expect(renameCompanyInSelection(["acme", "Acme Corp", "Other"], "Acme", "Acme Corp", [])).toEqual([
+      "Acme Corp",
+      "Other",
+    ]);
+    expect(renameCompanyInSelection(["école"], "École", "New", ["école"])).toEqual(["école"]);
   });
 });

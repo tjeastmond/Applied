@@ -85,6 +85,18 @@ export function applicationCompanyNamesToRename(
   );
 }
 
+/** Company filter selection after a rename, using the same matching as the application cascade. */
+export function renameCompanyInSelection(
+  selection: Iterable<string>,
+  previousName: string,
+  newName: string,
+  otherCompanyNames: string[],
+): string[] {
+  const names = [...selection];
+  const renamed = new Set(applicationCompanyNamesToRename(names, previousName, newName, otherCompanyNames));
+  return [...new Set(names.map((name) => (renamed.has(name) ? newName : name)))];
+}
+
 export function countApplicationsForCompany(applications: JobApplication[], companyName: string): number {
   return applications.filter((application) => companyNameMatches(application.company, companyName)).length;
 }

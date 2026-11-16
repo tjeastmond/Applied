@@ -108,6 +108,15 @@ export function saveListRouteSnapshot(pathname: string, snapshot: ListRouteSnaps
   persistToStorage();
 }
 
+/** Rewrites saved company filters in every snapshot (e.g. after a company rename) so Back/Forward restores them. */
+export function updateListRouteSnapshotCompanies(update: (selectedCompanies: string[]) => string[]): void {
+  loadFromStorage();
+  for (const [key, snapshot] of memorySnapshots) {
+    memorySnapshots.set(key, { ...snapshot, selectedCompanies: update(snapshot.selectedCompanies) });
+  }
+  persistToStorage();
+}
+
 export function readListRouteSnapshot(pathname: string): ListRouteSnapshot | null {
   loadFromStorage();
   return memorySnapshots.get(pathname) ?? null;

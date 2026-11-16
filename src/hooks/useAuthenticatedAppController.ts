@@ -9,7 +9,8 @@ import { usePathname } from "next/navigation";
 import { companyFilterNavigatesHome, isListRoutePath, shouldShowIncludeArchived, type AppView } from "@/lib/appView";
 import { removeApplication, sortApplications, upsertApplication } from "@/lib/applicationsList";
 import { applicationMatchesViewMode } from "@/lib/applicationArchive";
-import { applicationCompanyNamesToRename } from "@/lib/companies";
+import { applicationCompanyNamesToRename, renameCompanyInSelection } from "@/lib/companies";
+import { updateListRouteSnapshotCompanies } from "@/lib/listRouteSnapshots";
 import {
   canHandleApplicationCardNavigation,
   cardNavigationKeyFromEvent,
@@ -454,13 +455,21 @@ export function useAuthenticatedAppController({
     });
   }, []);
 
-  const handleCompanyRenamed = useCallback((previousName: string, newName: string, otherCompanyNames: string[]) => {
-    setApplications((prev) => {
-      const names = [...new Set(prev.flatMap((item) => (item.company ? [item.company] : [])))];
-      const renamed = new Set(applicationCompanyNamesToRename(names, previousName, newName, otherCompanyNames));
-      return prev.map((item) => (item.company && renamed.has(item.company) ? { ...item, company: newName } : item));
-    });
-  }, []);
+  const handleCompanyRenamed = useCallback(
+    (previousName: string, newName: string, otherCompanyNames: string[]) => {
+      setApplications((prev) => {
+        const names = [...new Set(prev.flatMap((item) => (item.company ? [item.company] : [])))];
+        const renamed = new Set(applicationCompanyNamesToRename(names, previousName, newName, otherCompanyNames));
+        return prev.map((item) => (item.company && renamed.has(item.company) ? { ...item, company: newName } : item));
+      });
+      // Keep company filters (current and saved for Back/Forward) pointing at the renamed company.
+      const remap = (selection: Iterable<string>) =>
+        renameCompanyInSelection(selection, previousName, newName, otherCompanyNames);
+      setSelectedCompanies((prev) => new Set(remap(prev)));
+      updateListRouteSnapshotCompanies(remap);
+    },
+    [setSelectedCompanies],
+  );
 
   const handleNotesChange = useCallback(
     (nextNotes: ApplicationNote[]) => {
