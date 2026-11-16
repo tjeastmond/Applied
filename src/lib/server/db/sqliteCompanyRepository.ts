@@ -11,7 +11,9 @@ import {
   INSERT_COMPANY_SQL,
   LIST_COMPANIES_SQL,
   normalizedNamesEqual,
-  RENAME_COMPANY_APPLICATIONS_SQL,
+  applicationCompanyNamesToRename,
+  LIST_APPLICATION_COMPANY_NAMES_SQL,
+  RENAME_APPLICATION_COMPANY_SQL,
   rowToCompany,
   SET_COMPANY_IGNORED_SQL,
   UPDATE_COMPANY_SQL,
@@ -25,7 +27,8 @@ export class SqliteCompanyRepository implements CompanyRepository {
   private readonly insertStmt;
   private readonly updateStmt;
   private readonly setIgnoredStmt;
-  private readonly renameApplicationsStmt;
+  private readonly listApplicationCompanyNamesStmt;
+  private readonly renameApplicationCompanyStmt;
   private readonly applyUpdate;
 
   constructor(db: Database.Database) {
@@ -35,9 +38,17 @@ export class SqliteCompanyRepository implements CompanyRepository {
     this.insertStmt = db.prepare(INSERT_COMPANY_SQL);
     this.updateStmt = db.prepare(UPDATE_COMPANY_SQL);
     this.setIgnoredStmt = db.prepare(SET_COMPANY_IGNORED_SQL);
-    this.renameApplicationsStmt = db.prepare(RENAME_COMPANY_APPLICATIONS_SQL);
-    this.applyUpdate = db.transaction((updated: Company, previousName: string): boolean => {
-      const result = this.updateStmt.run({
+    this.listApplicationCompanyNamesStmt = db.prepare(LIST_APPLICATION_COMPANY_NAMES_SQL).pluck();
+    this.renameApplicationCompanyStmt = db.prepare(RENAME_APPLICATION_COMPANY_SQL);
+    // Re-read inside the transaction so the rename cascades from the name actually being replaced.
+    this.applyUpdate = db.transaction((id: string, input: PatchCompanyInput): Company | null => {
+      const row = this.getByIdStmt.get(id) as CompanyRow | undefined;
+      if (!row) {
+        return null;
+      }
+      const existing = rowToCompany(row);
+      const updated = buildCompanyUpdateRow(existing, input);
+      this.updateStmt.run({
         id: updated.id,
         name: updated.name,
         url: updated.url,
@@ -45,13 +56,11 @@ export class SqliteCompanyRepository implements CompanyRepository {
         email: updated.email,
         updated_at: updated.updatedAt,
       });
-      if (result.changes === 0) {
-        return false;
+      const names = this.listApplicationCompanyNamesStmt.all() as string[];
+      for (const name of applicationCompanyNamesToRename(names, existing.name, updated.name)) {
+        this.renameApplicationCompanyStmt.run(updated.name, name);
       }
-      if (updated.name !== previousName) {
-        this.renameApplicationsStmt.run(updated.name, previousName);
-      }
-      return true;
+      return updated;
     });
   }
 
@@ -94,8 +103,7 @@ export class SqliteCompanyRepository implements CompanyRepository {
       }
     }
 
-    const updated = buildCompanyUpdateRow(existing, input);
-    return this.applyUpdate(updated, existing.name) ? updated : null;
+    return this.applyUpdate(id, input);
   }
 
   async setIgnored(id: string, ignored: boolean): Promise<Company | null> {

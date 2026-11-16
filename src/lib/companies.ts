@@ -61,7 +61,7 @@ export function filterCompanies(companies: Company[], searchQuery: string, viewM
   });
 }
 
-function companyNameMatches(applicationCompany: string | null | undefined, companyName: string): boolean {
+export function companyNameMatches(applicationCompany: string | null | undefined, companyName: string): boolean {
   return applicationCompany?.trim().toLowerCase() === companyName.trim().toLowerCase();
 }
 

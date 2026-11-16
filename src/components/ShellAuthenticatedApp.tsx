@@ -60,7 +60,7 @@ export function ShellAuthenticatedApp({
     initialCompanies,
     applications: controller.applications,
     routeViewMode: companiesRouteViewMode,
-    onApplicationsUpdated: controller.handleApplicationsUpdated,
+    onCompanyRenamed: controller.handleCompanyRenamed,
   });
   const { mode: uiShellMode, toggleMode: toggleUiShellMode } = useUiShellMode();
   const [currentUser, setCurrentUser] = useState(initialCurrentUser);

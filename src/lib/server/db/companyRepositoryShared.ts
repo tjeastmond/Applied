@@ -1,3 +1,4 @@
+import { companyNameMatches } from "@/lib/companies";
 import { normalizeCompanyName } from "@/lib/schemas/company";
 import type { Company, CreateCompanyInput, PatchCompanyInput } from "@/types";
 import { nowIso } from "./applicationRepositoryShared";
@@ -34,7 +35,14 @@ export const UPDATE_COMPANY_SQL = `UPDATE companies SET
 WHERE id = @id`;
 
 // Applications reference companies by name, so a rename must carry their company text along.
-export const RENAME_COMPANY_APPLICATIONS_SQL = `UPDATE applications SET company = ? WHERE lower(trim(company)) = lower(trim(?))`;
+export const LIST_APPLICATION_COMPANY_NAMES_SQL = `SELECT DISTINCT company FROM applications WHERE company IS NOT NULL`;
+export const RENAME_APPLICATION_COMPANY_SQL = `UPDATE applications SET company = ? WHERE company = ?`;
+
+/** Distinct application company spellings to rewrite; matched in JS because SQLite lower() is ASCII-only. */
+export function applicationCompanyNamesToRename(names: string[], previousName: string, newName: string): string[] {
+  if (previousName === newName) return [];
+  return names.filter((name) => name !== newName && companyNameMatches(name, previousName));
+}
 
 export const SET_COMPANY_IGNORED_SQL = `UPDATE companies SET
   ignored = @ignored,

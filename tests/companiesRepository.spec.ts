@@ -72,6 +72,35 @@ describe("SqliteCompanyRepository", () => {
     expect(companyOf("a1").updated_at).toBe("2026-01-01T00:00:00.000Z");
   });
 
+  test("concurrent renames leave applications on the final company name", async () => {
+    const db = openDatabase(":memory:");
+    const repo = new SqliteCompanyRepository(db);
+    db.prepare(
+      `INSERT INTO applications (id, url, company, applied_at, created_at, updated_at)
+       VALUES ('a1', 'https://jobs.example/x', 'Acme', '2026-01-01', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`,
+    ).run();
+    const company = await repo.create({ name: "Acme" });
+
+    await Promise.all([repo.update(company.id, { name: "First" }), repo.update(company.id, { name: "Second" })]);
+
+    const finalName = (await repo.getById(company.id))?.name;
+    expect(db.prepare("SELECT company FROM applications WHERE id = 'a1'").pluck().get()).toBe(finalName);
+  });
+
+  test("rename matches non-ASCII names case-insensitively like the client", async () => {
+    const db = openDatabase(":memory:");
+    const repo = new SqliteCompanyRepository(db);
+    db.prepare(
+      `INSERT INTO applications (id, url, company, applied_at, created_at, updated_at)
+       VALUES ('a1', 'https://jobs.example/x', 'école', '2026-01-01', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`,
+    ).run();
+    const company = await repo.create({ name: "École" });
+
+    await repo.update(company.id, { name: "New Name" });
+
+    expect(db.prepare("SELECT company FROM applications WHERE id = 'a1'").pluck().get()).toBe("New Name");
+  });
+
   test("rejects duplicate names case-insensitively", async () => {
     await repository.create({ name: "Globex" });
     await expect(repository.create({ name: " globex " })).rejects.toThrow("Company name already exists");

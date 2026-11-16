@@ -11,7 +11,9 @@ import {
   INSERT_COMPANY_SQL,
   LIST_COMPANIES_SQL,
   normalizedNamesEqual,
-  RENAME_COMPANY_APPLICATIONS_SQL,
+  applicationCompanyNamesToRename,
+  LIST_APPLICATION_COMPANY_NAMES_SQL,
+  RENAME_APPLICATION_COMPANY_SQL,
   rowToCompany,
   SET_COMPANY_IGNORED_SQL,
   UPDATE_COMPANY_SQL,
@@ -95,10 +97,17 @@ export class TursoCompanyRepository implements CompanyRepository {
       }
     }
 
-    const updated = buildCompanyUpdateRow(existing, input);
     const tx = await this.client.transaction("write");
     try {
-      const result = await tx.execute(
+      // Re-read inside the write transaction so the rename cascades from the name actually being replaced.
+      const row = (await tx.execute({ sql: GET_COMPANY_BY_ID_SQL, args: [id] })).rows[0];
+      if (!row) {
+        await tx.rollback();
+        return null;
+      }
+      const current = rowToCompany(rowToCompanyRow(row));
+      const updated = buildCompanyUpdateRow(current, input);
+      await tx.execute(
         bindNamed(UPDATE_COMPANY_SQL, {
           id: updated.id,
           name: updated.name,
@@ -108,12 +117,11 @@ export class TursoCompanyRepository implements CompanyRepository {
           updated_at: updated.updatedAt,
         }),
       );
-      if (result.rowsAffected === 0) {
-        await tx.rollback();
-        return null;
-      }
-      if (updated.name !== existing.name) {
-        await tx.execute({ sql: RENAME_COMPANY_APPLICATIONS_SQL, args: [updated.name, existing.name] });
+      const names = (await tx.execute(LIST_APPLICATION_COMPANY_NAMES_SQL)).rows.map(
+        (r) => nullableRowString(r.company) ?? "",
+      );
+      for (const name of applicationCompanyNamesToRename(names, current.name, updated.name)) {
+        await tx.execute({ sql: RENAME_APPLICATION_COMPANY_SQL, args: [updated.name, name] });
       }
       await tx.commit();
       return updated;

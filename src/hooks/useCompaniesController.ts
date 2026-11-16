@@ -12,7 +12,7 @@ type UseCompaniesControllerOptions = {
   initialCompanies: Company[];
   applications: JobApplication[];
   routeViewMode: CompanyViewMode;
-  onApplicationsUpdated?: (applications: JobApplication[]) => void;
+  onCompanyRenamed?: (previousName: string, newName: string) => void;
 };
 
 type NewCompanyFormState = {
@@ -33,7 +33,7 @@ export function useCompaniesController({
   initialCompanies,
   applications,
   routeViewMode,
-  onApplicationsUpdated,
+  onCompanyRenamed,
 }: UseCompaniesControllerOptions) {
   const [companies, setCompanies] = useState(initialCompanies);
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,21 +102,11 @@ export function useCompaniesController({
       const updated = await patchCompany(id, input);
       setCompanies((current) => sortCompanies(current.map((item) => (item.id === updated.id ? updated : item))));
       if (previousName !== undefined && previousName !== updated.name) {
-        // Mirrors RENAME_COMPANY_APPLICATIONS_SQL so local cards match the server without a refetch.
-        const matchKey = previousName.trim().toLowerCase();
-        const matches = (application: JobApplication) => application.company?.trim().toLowerCase() === matchKey;
-        if (applications.some(matches)) {
-          // handleApplicationsUpdated replaces the whole list, so pass every application.
-          onApplicationsUpdated?.(
-            applications.map((application) =>
-              matches(application) ? { ...application, company: updated.name } : application,
-            ),
-          );
-        }
+        onCompanyRenamed?.(previousName, updated.name);
       }
       return updated;
     },
-    [applications, companies, onApplicationsUpdated],
+    [companies, onCompanyRenamed],
   );
 
   const clearFilters = useCallback(() => {

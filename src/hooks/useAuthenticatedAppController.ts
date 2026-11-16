@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 import { companyFilterNavigatesHome, isListRoutePath, shouldShowIncludeArchived, type AppView } from "@/lib/appView";
 import { removeApplication, sortApplications, upsertApplication } from "@/lib/applicationsList";
 import { applicationMatchesViewMode } from "@/lib/applicationArchive";
+import { companyNameMatches } from "@/lib/companies";
 import {
   canHandleApplicationCardNavigation,
   cardNavigationKeyFromEvent,
@@ -453,6 +454,12 @@ export function useAuthenticatedAppController({
     });
   }, []);
 
+  const handleCompanyRenamed = useCallback((previousName: string, newName: string) => {
+    setApplications((prev) =>
+      prev.map((item) => (companyNameMatches(item.company, previousName) ? { ...item, company: newName } : item)),
+    );
+  }, []);
+
   const handleNotesChange = useCallback(
     (nextNotes: ApplicationNote[]) => {
       const id = selectedIdRef.current;
@@ -643,6 +650,7 @@ export function useAuthenticatedAppController({
     confirmDelete,
     handleBackupImported,
     handleApplicationsUpdated,
+    handleCompanyRenamed,
     handleNotesChange,
     handlePageChange,
     handlePageSizeChange,
