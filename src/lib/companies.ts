@@ -65,6 +65,26 @@ export function companyNameMatches(applicationCompany: string | null | undefined
   return applicationCompany?.trim().toLowerCase() === companyName.trim().toLowerCase();
 }
 
+/**
+ * Distinct application company spellings a rename rewrites; shared by server and client so both agree.
+ * Matched in JS because SQLite lower() is ASCII-only.
+ * Spellings that also match another company are ambiguous (legacy Unicode near-duplicates) and are left alone.
+ */
+export function applicationCompanyNamesToRename(
+  names: string[],
+  previousName: string,
+  newName: string,
+  otherCompanyNames: string[],
+): string[] {
+  if (previousName === newName) return [];
+  return names.filter(
+    (name) =>
+      name !== newName &&
+      companyNameMatches(name, previousName) &&
+      !otherCompanyNames.some((other) => companyNameMatches(name, other)),
+  );
+}
+
 export function countApplicationsForCompany(applications: JobApplication[], companyName: string): number {
   return applications.filter((application) => companyNameMatches(application.company, companyName)).length;
 }

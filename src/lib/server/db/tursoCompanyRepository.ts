@@ -1,6 +1,6 @@
 import type { Client } from "@tursodatabase/serverless/compat";
 import type { Company, CreateCompanyInput, PatchCompanyInput } from "@/types";
-import { findCompanyByName } from "@/lib/companies";
+import { applicationCompanyNamesToRename, findCompanyByName } from "@/lib/companies";
 import type { CompanyListOptions, CompanyRepository } from "../repositories/companyRepository";
 import {
   buildCompany,
@@ -11,7 +11,6 @@ import {
   INSERT_COMPANY_SQL,
   LIST_COMPANIES_SQL,
   normalizedNamesEqual,
-  applicationCompanyNamesToRename,
   LIST_APPLICATION_COMPANY_NAMES_SQL,
   RENAME_APPLICATION_COMPANY_SQL,
   rowToCompany,

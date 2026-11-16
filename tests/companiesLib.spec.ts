@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applicationCompanyNamesToRename,
   companyIdFromPath,
   companyPath,
   deriveCompanyContacts,
@@ -114,5 +115,22 @@ describe("deriveCompanyContacts", () => {
     ]);
     expect(contacts).toHaveLength(2);
     expect(contacts[0].sourceTitles).toEqual(["A", "B"]);
+  });
+});
+
+describe("applicationCompanyNamesToRename", () => {
+  it("renames case/whitespace variants including non-ASCII", () => {
+    expect(applicationCompanyNamesToRename(["École", " école ", "Other"], "École", "New", [])).toEqual([
+      "École",
+      " école ",
+    ]);
+  });
+
+  it("skips spellings that also match another company", () => {
+    expect(applicationCompanyNamesToRename(["école"], "École", "New", ["école"])).toEqual([]);
+  });
+
+  it("is a no-op when the name is unchanged", () => {
+    expect(applicationCompanyNamesToRename(["Acme"], "Acme", "Acme", [])).toEqual([]);
   });
 });

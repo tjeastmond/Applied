@@ -12,7 +12,7 @@ type UseCompaniesControllerOptions = {
   initialCompanies: Company[];
   applications: JobApplication[];
   routeViewMode: CompanyViewMode;
-  onCompanyRenamed?: (previousName: string, newName: string) => void;
+  onCompanyRenamed?: (previousName: string, newName: string, otherCompanyNames: string[]) => void;
 };
 
 type NewCompanyFormState = {
@@ -102,7 +102,11 @@ export function useCompaniesController({
       const updated = await patchCompany(id, input);
       setCompanies((current) => sortCompanies(current.map((item) => (item.id === updated.id ? updated : item))));
       if (previousName !== undefined && previousName !== updated.name) {
-        onCompanyRenamed?.(previousName, updated.name);
+        onCompanyRenamed?.(
+          previousName,
+          updated.name,
+          companies.filter((item) => item.id !== id).map((item) => item.name),
+        );
       }
       return updated;
     },
