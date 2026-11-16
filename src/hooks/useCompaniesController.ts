@@ -12,6 +12,7 @@ type UseCompaniesControllerOptions = {
   initialCompanies: Company[];
   applications: JobApplication[];
   routeViewMode: CompanyViewMode;
+  onCompanyRenamed?: (previousName: string, newName: string, otherCompanyNames: string[]) => void;
 };
 
 type NewCompanyFormState = {
@@ -32,6 +33,7 @@ export function useCompaniesController({
   initialCompanies,
   applications,
   routeViewMode,
+  onCompanyRenamed,
 }: UseCompaniesControllerOptions) {
   const [companies, setCompanies] = useState(initialCompanies);
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,11 +96,22 @@ export function useCompaniesController({
     }
   }, [newCompanyForm]);
 
-  const handleUpdateCompany = useCallback(async (id: string, input: PatchCompanyInput) => {
-    const updated = await patchCompany(id, input);
-    setCompanies((current) => sortCompanies(current.map((item) => (item.id === updated.id ? updated : item))));
-    return updated;
-  }, []);
+  const handleUpdateCompany = useCallback(
+    async (id: string, input: PatchCompanyInput) => {
+      const previousName = companies.find((item) => item.id === id)?.name;
+      const updated = await patchCompany(id, input);
+      setCompanies((current) => sortCompanies(current.map((item) => (item.id === updated.id ? updated : item))));
+      if (previousName !== undefined && previousName !== updated.name) {
+        onCompanyRenamed?.(
+          previousName,
+          updated.name,
+          companies.filter((item) => item.id !== id).map((item) => item.name),
+        );
+      }
+      return updated;
+    },
+    [companies, onCompanyRenamed],
+  );
 
   const clearFilters = useCallback(() => {
     setSearchQuery("");

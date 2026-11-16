@@ -61,8 +61,40 @@ export function filterCompanies(companies: Company[], searchQuery: string, viewM
   });
 }
 
-function companyNameMatches(applicationCompany: string | null | undefined, companyName: string): boolean {
+export function companyNameMatches(applicationCompany: string | null | undefined, companyName: string): boolean {
   return applicationCompany?.trim().toLowerCase() === companyName.trim().toLowerCase();
+}
+
+/**
+ * Distinct application company spellings a rename rewrites; shared by server and client so both agree.
+ * Matched in JS because SQLite lower() is ASCII-only.
+ * Spellings that also match another company are ambiguous (legacy Unicode near-duplicates) and are left alone.
+ */
+export function applicationCompanyNamesToRename(
+  names: string[],
+  previousName: string,
+  newName: string,
+  otherCompanyNames: string[],
+): string[] {
+  if (previousName === newName) return [];
+  return names.filter(
+    (name) =>
+      name !== newName &&
+      companyNameMatches(name, previousName) &&
+      !otherCompanyNames.some((other) => companyNameMatches(name, other)),
+  );
+}
+
+/** Company filter selection after a rename, using the same matching as the application cascade. */
+export function renameCompanyInSelection(
+  selection: Iterable<string>,
+  previousName: string,
+  newName: string,
+  otherCompanyNames: string[],
+): string[] {
+  const names = [...selection];
+  const renamed = new Set(applicationCompanyNamesToRename(names, previousName, newName, otherCompanyNames));
+  return [...new Set(names.map((name) => (renamed.has(name) ? newName : name)))];
 }
 
 export function countApplicationsForCompany(applications: JobApplication[], companyName: string): number {

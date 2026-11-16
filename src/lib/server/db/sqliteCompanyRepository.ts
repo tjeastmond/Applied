@@ -1,16 +1,18 @@
 import type Database from "better-sqlite3";
 import type { Company, CreateCompanyInput, PatchCompanyInput } from "@/types";
+import { applicationCompanyNamesToRename, findCompanyByName } from "@/lib/companies";
 import type { CompanyListOptions, CompanyRepository } from "../repositories/companyRepository";
 import {
   buildCompany,
   buildCompanyUpdateRow,
   companyMatchesListOptions,
   companyToRow,
-  FIND_COMPANY_BY_NORMALIZED_NAME_SQL,
   GET_COMPANY_BY_ID_SQL,
   INSERT_COMPANY_SQL,
   LIST_COMPANIES_SQL,
   normalizedNamesEqual,
+  LIST_APPLICATION_COMPANY_NAMES_SQL,
+  RENAME_APPLICATION_COMPANY_SQL,
   rowToCompany,
   SET_COMPANY_IGNORED_SQL,
   UPDATE_COMPANY_SQL,
@@ -20,18 +22,44 @@ import {
 export class SqliteCompanyRepository implements CompanyRepository {
   private readonly listStmt;
   private readonly getByIdStmt;
-  private readonly findByNormalizedNameStmt;
   private readonly insertStmt;
   private readonly updateStmt;
   private readonly setIgnoredStmt;
+  private readonly listApplicationCompanyNamesStmt;
+  private readonly renameApplicationCompanyStmt;
+  private readonly applyUpdate;
 
   constructor(db: Database.Database) {
     this.listStmt = db.prepare(LIST_COMPANIES_SQL);
     this.getByIdStmt = db.prepare(GET_COMPANY_BY_ID_SQL);
-    this.findByNormalizedNameStmt = db.prepare(FIND_COMPANY_BY_NORMALIZED_NAME_SQL);
     this.insertStmt = db.prepare(INSERT_COMPANY_SQL);
     this.updateStmt = db.prepare(UPDATE_COMPANY_SQL);
     this.setIgnoredStmt = db.prepare(SET_COMPANY_IGNORED_SQL);
+    this.listApplicationCompanyNamesStmt = db.prepare(LIST_APPLICATION_COMPANY_NAMES_SQL).pluck();
+    this.renameApplicationCompanyStmt = db.prepare(RENAME_APPLICATION_COMPANY_SQL);
+    // Re-read inside the transaction so the rename cascades from the name actually being replaced.
+    this.applyUpdate = db.transaction((id: string, input: PatchCompanyInput): Company | null => {
+      const row = this.getByIdStmt.get(id) as CompanyRow | undefined;
+      if (!row) {
+        return null;
+      }
+      const existing = rowToCompany(row);
+      const updated = buildCompanyUpdateRow(existing, input);
+      this.updateStmt.run({
+        id: updated.id,
+        name: updated.name,
+        url: updated.url,
+        linkedin_url: updated.linkedinUrl,
+        email: updated.email,
+        updated_at: updated.updatedAt,
+      });
+      const names = this.listApplicationCompanyNamesStmt.all() as string[];
+      const otherCompanyNames = (this.listStmt.all() as CompanyRow[]).filter((r) => r.id !== id).map((r) => r.name);
+      for (const name of applicationCompanyNamesToRename(names, existing.name, updated.name, otherCompanyNames)) {
+        this.renameApplicationCompanyStmt.run(updated.name, name);
+      }
+      return updated;
+    });
   }
 
   list(options?: CompanyListOptions): Promise<Company[]> {
@@ -44,9 +72,10 @@ export class SqliteCompanyRepository implements CompanyRepository {
     return Promise.resolve(row ? rowToCompany(row) : null);
   }
 
+  // Matched in JS (not SQLite's ASCII-only lower()) so uniqueness agrees with the rename cascade and the client.
   findByNormalizedName(name: string): Promise<Company | null> {
-    const row = this.findByNormalizedNameStmt.get(name) as CompanyRow | undefined;
-    return Promise.resolve(row ? rowToCompany(row) : null);
+    const companies = (this.listStmt.all() as CompanyRow[]).map(rowToCompany);
+    return Promise.resolve(findCompanyByName(companies, name));
   }
 
   async create(input: CreateCompanyInput): Promise<Company> {
@@ -73,20 +102,7 @@ export class SqliteCompanyRepository implements CompanyRepository {
       }
     }
 
-    const updated = buildCompanyUpdateRow(existing, input);
-    const result = this.updateStmt.run({
-      id: updated.id,
-      name: updated.name,
-      url: updated.url,
-      linkedin_url: updated.linkedinUrl,
-      email: updated.email,
-      updated_at: updated.updatedAt,
-    });
-    if (result.changes === 0) {
-      return null;
-    }
-
-    return updated;
+    return this.applyUpdate(id, input);
   }
 
   async setIgnored(id: string, ignored: boolean): Promise<Company | null> {

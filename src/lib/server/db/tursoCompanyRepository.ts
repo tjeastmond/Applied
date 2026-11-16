@@ -1,16 +1,18 @@
 import type { Client } from "@tursodatabase/serverless/compat";
 import type { Company, CreateCompanyInput, PatchCompanyInput } from "@/types";
+import { applicationCompanyNamesToRename, findCompanyByName } from "@/lib/companies";
 import type { CompanyListOptions, CompanyRepository } from "../repositories/companyRepository";
 import {
   buildCompany,
   buildCompanyUpdateRow,
   companyMatchesListOptions,
   companyToRow,
-  FIND_COMPANY_BY_NORMALIZED_NAME_SQL,
   GET_COMPANY_BY_ID_SQL,
   INSERT_COMPANY_SQL,
   LIST_COMPANIES_SQL,
   normalizedNamesEqual,
+  LIST_APPLICATION_COMPANY_NAMES_SQL,
+  RENAME_APPLICATION_COMPANY_SQL,
   rowToCompany,
   SET_COMPANY_IGNORED_SQL,
   UPDATE_COMPANY_SQL,
@@ -64,8 +66,9 @@ export class TursoCompanyRepository implements CompanyRepository {
 
   async findByNormalizedName(name: string): Promise<Company | null> {
     await this.ready;
-    const row = await tursoFirstRow(this.client, FIND_COMPANY_BY_NORMALIZED_NAME_SQL, [name]);
-    return row ? rowToCompany(rowToCompanyRow(row)) : null;
+    // Matched in JS (not SQLite's ASCII-only lower()) so uniqueness agrees with the rename cascade and the client.
+    const companies = (await tursoRows(this.client, LIST_COMPANIES_SQL)).map(rowToCompanyRow).map(rowToCompany);
+    return findCompanyByName(companies, name);
   }
 
   async create(input: CreateCompanyInput): Promise<Company> {
@@ -94,22 +97,44 @@ export class TursoCompanyRepository implements CompanyRepository {
       }
     }
 
-    const updated = buildCompanyUpdateRow(existing, input);
-    const result = await this.client.execute(
-      bindNamed(UPDATE_COMPANY_SQL, {
-        id: updated.id,
-        name: updated.name,
-        url: updated.url,
-        linkedin_url: updated.linkedinUrl,
-        email: updated.email,
-        updated_at: updated.updatedAt,
-      }),
-    );
-    if (result.rowsAffected === 0) {
-      return null;
+    const tx = await this.client.transaction("write");
+    try {
+      // Re-read inside the write transaction so the rename cascades from the name actually being replaced.
+      const row = (await tx.execute({ sql: GET_COMPANY_BY_ID_SQL, args: [id] })).rows[0];
+      if (!row) {
+        await tx.rollback();
+        return null;
+      }
+      const current = rowToCompany(rowToCompanyRow(row));
+      const updated = buildCompanyUpdateRow(current, input);
+      await tx.execute(
+        bindNamed(UPDATE_COMPANY_SQL, {
+          id: updated.id,
+          name: updated.name,
+          url: updated.url,
+          linkedin_url: updated.linkedinUrl,
+          email: updated.email,
+          updated_at: updated.updatedAt,
+        }),
+      );
+      const names = (await tx.execute(LIST_APPLICATION_COMPANY_NAMES_SQL)).rows.map(
+        (r) => nullableRowString(r.company) ?? "",
+      );
+      const otherCompanyNames = (await tx.execute(LIST_COMPANIES_SQL)).rows
+        .map(rowToCompanyRow)
+        .filter((other) => other.id !== id)
+        .map((other) => other.name);
+      for (const name of applicationCompanyNamesToRename(names, current.name, updated.name, otherCompanyNames)) {
+        await tx.execute({ sql: RENAME_APPLICATION_COMPANY_SQL, args: [updated.name, name] });
+      }
+      await tx.commit();
+      return updated;
+    } catch (error) {
+      if (!tx.closed) await tx.rollback().catch(() => undefined);
+      throw error;
+    } finally {
+      tx.close();
     }
-
-    return updated;
   }
 
   async setIgnored(id: string, ignored: boolean): Promise<Company | null> {

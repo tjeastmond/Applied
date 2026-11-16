@@ -10,6 +10,7 @@ import {
   LIST_ROUTE_SNAPSHOTS_STORAGE_KEY,
   listRouteSnapshotKey,
   readListRouteSnapshot,
+  updateListRouteSnapshotCompanies,
   resetListRouteSnapshotsForTests,
   saveListRouteSnapshot,
   serializeListRouteSnapshots,
@@ -118,5 +119,19 @@ describe("isListRoutePath", () => {
     for (const path of ["/companies", "/companies/x", "/profile", "/analytics", null, undefined]) {
       expect(isListRoutePath(path)).toBe(false);
     }
+  });
+});
+
+describe("updateListRouteSnapshotCompanies", () => {
+  afterEach(() => resetListRouteSnapshotsForTests({ clearStorage: true }));
+
+  it("rewrites saved company filters in every snapshot", () => {
+    saveListRouteSnapshot("/", snapshot);
+    saveListRouteSnapshot("/archived", { ...snapshot, selectedCompanies: ["Other"] });
+
+    updateListRouteSnapshotCompanies((names) => names.map((name) => (name === "Acme" ? "Acme Corp" : name)));
+
+    expect(readListRouteSnapshot("/")?.selectedCompanies).toEqual(["Acme Corp"]);
+    expect(readListRouteSnapshot("/archived")?.selectedCompanies).toEqual(["Other"]);
   });
 });

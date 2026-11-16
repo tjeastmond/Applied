@@ -19,9 +19,6 @@ ORDER BY lower(trim(name)) ASC, created_at ASC`;
 
 export const GET_COMPANY_BY_ID_SQL = `SELECT id, name, url, linkedin_url, email, ignored, created_at, updated_at FROM companies WHERE id = ?`;
 
-export const FIND_COMPANY_BY_NORMALIZED_NAME_SQL = `SELECT id, name, url, linkedin_url, email, ignored, created_at, updated_at
-FROM companies WHERE lower(trim(name)) = lower(trim(?))`;
-
 export const INSERT_COMPANY_SQL = `INSERT INTO companies (id, name, url, linkedin_url, email, ignored, created_at, updated_at)
 VALUES (@id, @name, @url, @linkedin_url, @email, @ignored, @created_at, @updated_at)`;
 
@@ -32,6 +29,10 @@ export const UPDATE_COMPANY_SQL = `UPDATE companies SET
   email = @email,
   updated_at = @updated_at
 WHERE id = @id`;
+
+// Applications reference companies by name, so a rename must carry their company text along.
+export const LIST_APPLICATION_COMPANY_NAMES_SQL = `SELECT DISTINCT company FROM applications WHERE company IS NOT NULL`;
+export const RENAME_APPLICATION_COMPANY_SQL = `UPDATE applications SET company = ? WHERE company = ?`;
 
 export const SET_COMPANY_IGNORED_SQL = `UPDATE companies SET
   ignored = @ignored,
