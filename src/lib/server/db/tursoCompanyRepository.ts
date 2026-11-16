@@ -1,12 +1,12 @@
 import type { Client } from "@tursodatabase/serverless/compat";
 import type { Company, CreateCompanyInput, PatchCompanyInput } from "@/types";
+import { findCompanyByName } from "@/lib/companies";
 import type { CompanyListOptions, CompanyRepository } from "../repositories/companyRepository";
 import {
   buildCompany,
   buildCompanyUpdateRow,
   companyMatchesListOptions,
   companyToRow,
-  FIND_COMPANY_BY_NORMALIZED_NAME_SQL,
   GET_COMPANY_BY_ID_SQL,
   INSERT_COMPANY_SQL,
   LIST_COMPANIES_SQL,
@@ -67,8 +67,9 @@ export class TursoCompanyRepository implements CompanyRepository {
 
   async findByNormalizedName(name: string): Promise<Company | null> {
     await this.ready;
-    const row = await tursoFirstRow(this.client, FIND_COMPANY_BY_NORMALIZED_NAME_SQL, [name]);
-    return row ? rowToCompany(rowToCompanyRow(row)) : null;
+    // Matched in JS (not SQLite's ASCII-only lower()) so uniqueness agrees with the rename cascade and the client.
+    const companies = (await tursoRows(this.client, LIST_COMPANIES_SQL)).map(rowToCompanyRow).map(rowToCompany);
+    return findCompanyByName(companies, name);
   }
 
   async create(input: CreateCompanyInput): Promise<Company> {
@@ -120,7 +121,11 @@ export class TursoCompanyRepository implements CompanyRepository {
       const names = (await tx.execute(LIST_APPLICATION_COMPANY_NAMES_SQL)).rows.map(
         (r) => nullableRowString(r.company) ?? "",
       );
-      for (const name of applicationCompanyNamesToRename(names, current.name, updated.name)) {
+      const otherCompanyNames = (await tx.execute(LIST_COMPANIES_SQL)).rows
+        .map(rowToCompanyRow)
+        .filter((other) => other.id !== id)
+        .map((other) => other.name);
+      for (const name of applicationCompanyNamesToRename(names, current.name, updated.name, otherCompanyNames)) {
         await tx.execute({ sql: RENAME_APPLICATION_COMPANY_SQL, args: [updated.name, name] });
       }
       await tx.commit();

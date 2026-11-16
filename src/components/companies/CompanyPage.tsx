@@ -111,6 +111,7 @@ export function CompanyPage({
   const company = useMemo(() => companies.find((item) => item.id === companyId) ?? null, [companies, companyId]);
   const [form, setForm] = useState<CompanyFormState>(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
   const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const baselineRef = useRef<CompanyFormState>(EMPTY_FORM);
 
@@ -141,6 +142,9 @@ export function CompanyPage({
       return true;
     }
 
+    // Serialize saves: overlapping renames would each cascade from the same stale previous name.
+    if (savingRef.current) return false;
+    savingRef.current = true;
     setIsSaving(true);
     try {
       const updated = await handleUpdateCompany(company.id, patch);
@@ -154,6 +158,7 @@ export function CompanyPage({
       toast.error(errorMessage(error, toastMessages.companyUpdateFailed));
       return false;
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   }, [company, form, handleCompanyChange, handleUpdateCompany]);

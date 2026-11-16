@@ -20,9 +20,6 @@ ORDER BY lower(trim(name)) ASC, created_at ASC`;
 
 export const GET_COMPANY_BY_ID_SQL = `SELECT id, name, url, linkedin_url, email, ignored, created_at, updated_at FROM companies WHERE id = ?`;
 
-export const FIND_COMPANY_BY_NORMALIZED_NAME_SQL = `SELECT id, name, url, linkedin_url, email, ignored, created_at, updated_at
-FROM companies WHERE lower(trim(name)) = lower(trim(?))`;
-
 export const INSERT_COMPANY_SQL = `INSERT INTO companies (id, name, url, linkedin_url, email, ignored, created_at, updated_at)
 VALUES (@id, @name, @url, @linkedin_url, @email, @ignored, @created_at, @updated_at)`;
 
@@ -38,10 +35,23 @@ WHERE id = @id`;
 export const LIST_APPLICATION_COMPANY_NAMES_SQL = `SELECT DISTINCT company FROM applications WHERE company IS NOT NULL`;
 export const RENAME_APPLICATION_COMPANY_SQL = `UPDATE applications SET company = ? WHERE company = ?`;
 
-/** Distinct application company spellings to rewrite; matched in JS because SQLite lower() is ASCII-only. */
-export function applicationCompanyNamesToRename(names: string[], previousName: string, newName: string): string[] {
+/**
+ * Distinct application company spellings to rewrite; matched in JS because SQLite lower() is ASCII-only.
+ * Spellings that also match another company are ambiguous (legacy Unicode near-duplicates) and are left alone.
+ */
+export function applicationCompanyNamesToRename(
+  names: string[],
+  previousName: string,
+  newName: string,
+  otherCompanyNames: string[],
+): string[] {
   if (previousName === newName) return [];
-  return names.filter((name) => name !== newName && companyNameMatches(name, previousName));
+  return names.filter(
+    (name) =>
+      name !== newName &&
+      companyNameMatches(name, previousName) &&
+      !otherCompanyNames.some((other) => companyNameMatches(name, other)),
+  );
 }
 
 export const SET_COMPANY_IGNORED_SQL = `UPDATE companies SET

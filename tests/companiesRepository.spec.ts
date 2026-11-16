@@ -101,6 +101,30 @@ describe("SqliteCompanyRepository", () => {
     expect(db.prepare("SELECT company FROM applications WHERE id = 'a1'").pluck().get()).toBe("New Name");
   });
 
+  test("rejects non-ASCII case-variant duplicates", async () => {
+    await repository.create({ name: "École" });
+    await expect(repository.create({ name: "école" })).rejects.toThrow("Company name already exists");
+  });
+
+  test("rename leaves applications that also match another legacy near-duplicate company", async () => {
+    const db = openDatabase(":memory:");
+    const repo = new SqliteCompanyRepository(db);
+    const insertCompany = db.prepare(
+      `INSERT INTO companies (id, name, ignored, created_at, updated_at) VALUES (?, ?, 0, '2026-01-01', '2026-01-01')`,
+    );
+    // Legacy rows the ASCII-only unique index allowed.
+    insertCompany.run("c1", "École");
+    insertCompany.run("c2", "école");
+    db.prepare(
+      `INSERT INTO applications (id, url, company, applied_at, created_at, updated_at)
+       VALUES ('a1', 'https://jobs.example/x', 'école', '2026-01-01', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`,
+    ).run();
+
+    await repo.update("c1", { name: "Renamed" });
+
+    expect(db.prepare("SELECT company FROM applications WHERE id = 'a1'").pluck().get()).toBe("école");
+  });
+
   test("rejects duplicate names case-insensitively", async () => {
     await repository.create({ name: "Globex" });
     await expect(repository.create({ name: " globex " })).rejects.toThrow("Company name already exists");

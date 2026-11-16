@@ -1,12 +1,12 @@
 import type Database from "better-sqlite3";
 import type { Company, CreateCompanyInput, PatchCompanyInput } from "@/types";
+import { findCompanyByName } from "@/lib/companies";
 import type { CompanyListOptions, CompanyRepository } from "../repositories/companyRepository";
 import {
   buildCompany,
   buildCompanyUpdateRow,
   companyMatchesListOptions,
   companyToRow,
-  FIND_COMPANY_BY_NORMALIZED_NAME_SQL,
   GET_COMPANY_BY_ID_SQL,
   INSERT_COMPANY_SQL,
   LIST_COMPANIES_SQL,
@@ -23,7 +23,6 @@ import {
 export class SqliteCompanyRepository implements CompanyRepository {
   private readonly listStmt;
   private readonly getByIdStmt;
-  private readonly findByNormalizedNameStmt;
   private readonly insertStmt;
   private readonly updateStmt;
   private readonly setIgnoredStmt;
@@ -34,7 +33,6 @@ export class SqliteCompanyRepository implements CompanyRepository {
   constructor(db: Database.Database) {
     this.listStmt = db.prepare(LIST_COMPANIES_SQL);
     this.getByIdStmt = db.prepare(GET_COMPANY_BY_ID_SQL);
-    this.findByNormalizedNameStmt = db.prepare(FIND_COMPANY_BY_NORMALIZED_NAME_SQL);
     this.insertStmt = db.prepare(INSERT_COMPANY_SQL);
     this.updateStmt = db.prepare(UPDATE_COMPANY_SQL);
     this.setIgnoredStmt = db.prepare(SET_COMPANY_IGNORED_SQL);
@@ -57,7 +55,8 @@ export class SqliteCompanyRepository implements CompanyRepository {
         updated_at: updated.updatedAt,
       });
       const names = this.listApplicationCompanyNamesStmt.all() as string[];
-      for (const name of applicationCompanyNamesToRename(names, existing.name, updated.name)) {
+      const otherCompanyNames = (this.listStmt.all() as CompanyRow[]).filter((r) => r.id !== id).map((r) => r.name);
+      for (const name of applicationCompanyNamesToRename(names, existing.name, updated.name, otherCompanyNames)) {
         this.renameApplicationCompanyStmt.run(updated.name, name);
       }
       return updated;
@@ -74,9 +73,10 @@ export class SqliteCompanyRepository implements CompanyRepository {
     return Promise.resolve(row ? rowToCompany(row) : null);
   }
 
+  // Matched in JS (not SQLite's ASCII-only lower()) so uniqueness agrees with the rename cascade and the client.
   findByNormalizedName(name: string): Promise<Company | null> {
-    const row = this.findByNormalizedNameStmt.get(name) as CompanyRow | undefined;
-    return Promise.resolve(row ? rowToCompany(row) : null);
+    const companies = (this.listStmt.all() as CompanyRow[]).map(rowToCompany);
+    return Promise.resolve(findCompanyByName(companies, name));
   }
 
   async create(input: CreateCompanyInput): Promise<Company> {
